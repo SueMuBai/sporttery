@@ -1,0 +1,2541 @@
+{
+  "generatedAt": "2026-07-16T16:25:53+08:00",
+  "total": 20,
+  "limits": 10,
+  "matches": [
+    {
+      "matchId": 2040515,
+      "matchNum": "周四201",
+      "league": "挪超",
+      "matchDateTime": "2026-07-17 01:00:00",
+      "homeTeam": "瓦勒伦加",
+      "awayTeam": "奥勒松",
+      "homeRank": "[挪超11]",
+      "awayRank": "[挪超12]",
+      "odds": {
+        "had": {
+          "a": "4.35",
+          "af": "0",
+          "d": "4.06",
+          "df": "0",
+          "goalLine": "",
+          "goalLineValue": "",
+          "h": "1.53",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "15:14:15"
+        },
+        "hhad": {
+          "a": "2.14",
+          "af": "0",
+          "d": "3.60",
+          "df": "0",
+          "goalLine": "-1",
+          "goalLineValue": "-1.00",
+          "h": "2.60",
+          "hf": "0",
+          "updateDate": "2026-07-15",
+          "updateTime": "09:39:38"
+        }
+      },
+      "historySummary": {
+        "perspective": "瓦勒伦加",
+        "matches": 10,
+        "wins": 7,
+        "draws": 3,
+        "losses": 0,
+        "goalsFor": 25,
+        "goalsAgainst": 8,
+        "winRate": 70.0
+      },
+      "history": [
+        {
+          "date": "2024-09-25",
+          "tournament": "挪甲",
+          "homeTeam": "瓦勒伦加",
+          "awayTeam": "奥勒松",
+          "score": "4:1",
+          "halfTimeScore": "2:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2024-05-11",
+          "tournament": "挪甲",
+          "homeTeam": "奥勒松",
+          "awayTeam": "瓦勒伦加",
+          "score": "0:2",
+          "halfTimeScore": "0:1",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2023-09-18",
+          "tournament": "挪超",
+          "homeTeam": "瓦勒伦加",
+          "awayTeam": "奥勒松",
+          "score": "3:1",
+          "halfTimeScore": "1:1",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2023-04-10",
+          "tournament": "挪超",
+          "homeTeam": "奥勒松",
+          "awayTeam": "瓦勒伦加",
+          "score": "0:1",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2022-08-08",
+          "tournament": "挪超",
+          "homeTeam": "瓦勒伦加",
+          "awayTeam": "奥勒松",
+          "score": "4:0",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2022-06-20",
+          "tournament": "挪超",
+          "homeTeam": "奥勒松",
+          "awayTeam": "瓦勒伦加",
+          "score": "2:2",
+          "halfTimeScore": "1:0",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2020-11-22",
+          "tournament": "挪超",
+          "homeTeam": "奥勒松",
+          "awayTeam": "瓦勒伦加",
+          "score": "1:1",
+          "halfTimeScore": "1:0",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2020-07-05",
+          "tournament": "挪超",
+          "homeTeam": "瓦勒伦加",
+          "awayTeam": "奥勒松",
+          "score": "2:2",
+          "halfTimeScore": "0:1",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2017-10-16",
+          "tournament": "挪超",
+          "homeTeam": "瓦勒伦加",
+          "awayTeam": "奥勒松",
+          "score": "5:1",
+          "halfTimeScore": "3:1",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2017-05-13",
+          "tournament": "挪超",
+          "homeTeam": "奥勒松",
+          "awayTeam": "瓦勒伦加",
+          "score": "0:1",
+          "halfTimeScore": "0:1",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        }
+      ]
+    },
+    {
+      "matchId": 2040516,
+      "matchNum": "周四202",
+      "league": "欧罗巴",
+      "matchDateTime": "2026-07-17 01:30:00",
+      "homeTeam": "德里城",
+      "awayTeam": "索陆军",
+      "homeRank": "",
+      "awayRank": "",
+      "odds": {
+        "had": {
+          "a": "1.66",
+          "af": "0",
+          "d": "3.70",
+          "df": "0",
+          "goalLine": "",
+          "goalLineValue": "",
+          "h": "3.90",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "13:31:26"
+        },
+        "hhad": {
+          "a": "3.18",
+          "af": "0",
+          "d": "3.40",
+          "df": "0",
+          "goalLine": "+1",
+          "goalLineValue": "+1.00",
+          "h": "1.92",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "14:05:22"
+        }
+      },
+      "historySummary": {
+        "perspective": "德里城",
+        "matches": 1,
+        "wins": 0,
+        "draws": 0,
+        "losses": 1,
+        "goalsFor": 2,
+        "goalsAgainst": 3,
+        "winRate": 0.0
+      },
+      "history": [
+        {
+          "date": "2026-07-10",
+          "tournament": "欧罗巴",
+          "homeTeam": "索陆军",
+          "awayTeam": "德里城",
+          "score": "3:2",
+          "halfTimeScore": "2:1",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        }
+      ]
+    },
+    {
+      "matchId": 2040517,
+      "matchNum": "周四203",
+      "league": "欧罗巴",
+      "matchDateTime": "2026-07-17 02:15:00",
+      "homeTeam": "费伦茨",
+      "awayTeam": "伏伊伏丁",
+      "homeRank": "",
+      "awayRank": "",
+      "odds": {
+        "had": {
+          "a": "5.95",
+          "af": "0",
+          "d": "4.55",
+          "df": "0",
+          "goalLine": "",
+          "goalLineValue": "",
+          "h": "1.35",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "14:10:39"
+        },
+        "hhad": {
+          "a": "2.68",
+          "af": "0",
+          "d": "3.55",
+          "df": "0",
+          "goalLine": "-1",
+          "goalLineValue": "-1.00",
+          "h": "2.11",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "14:10:47"
+        }
+      },
+      "historySummary": {
+        "perspective": "费伦茨",
+        "matches": 1,
+        "wins": 1,
+        "draws": 0,
+        "losses": 0,
+        "goalsFor": 2,
+        "goalsAgainst": 1,
+        "winRate": 100.0
+      },
+      "history": [
+        {
+          "date": "2026-07-10",
+          "tournament": "欧罗巴",
+          "homeTeam": "伏伊伏丁",
+          "awayTeam": "费伦茨",
+          "score": "1:2",
+          "halfTimeScore": "1:1",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        }
+      ]
+    },
+    {
+      "matchId": 2040518,
+      "matchNum": "周四204",
+      "league": "欧罗巴",
+      "matchDateTime": "2026-07-17 02:30:00",
+      "homeTeam": "日利纳",
+      "awayTeam": "斯海杜克",
+      "homeRank": "",
+      "awayRank": "",
+      "odds": {
+        "had": {
+          "a": "1.92",
+          "af": "0",
+          "d": "3.35",
+          "df": "0",
+          "goalLine": "",
+          "goalLineValue": "",
+          "h": "3.22",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "15:17:26"
+        },
+        "hhad": {
+          "a": "3.90",
+          "af": "0",
+          "d": "3.55",
+          "df": "0",
+          "goalLine": "+1",
+          "goalLineValue": "+1.00",
+          "h": "1.69",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "15:17:36"
+        }
+      },
+      "historySummary": {
+        "perspective": "日利纳",
+        "matches": 1,
+        "wins": 0,
+        "draws": 0,
+        "losses": 1,
+        "goalsFor": 0,
+        "goalsAgainst": 2,
+        "winRate": 0.0
+      },
+      "history": [
+        {
+          "date": "2026-07-10",
+          "tournament": "欧罗巴",
+          "homeTeam": "斯海杜克",
+          "awayTeam": "日利纳",
+          "score": "2:0",
+          "halfTimeScore": "1:0",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        }
+      ]
+    },
+    {
+      "matchId": 2040519,
+      "matchNum": "周四205",
+      "league": "巴甲",
+      "matchDateTime": "2026-07-17 06:30:00",
+      "homeTeam": "博塔弗戈",
+      "awayTeam": "桑托斯",
+      "homeRank": "[巴甲12]",
+      "awayRank": "[巴甲15]",
+      "odds": {
+        "had": {
+          "a": "3.50",
+          "af": "0",
+          "d": "3.52",
+          "df": "0",
+          "goalLine": "",
+          "goalLineValue": "",
+          "h": "1.79",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "11:41:45"
+        },
+        "hhad": {
+          "a": "1.77",
+          "af": "0",
+          "d": "3.42",
+          "df": "0",
+          "goalLine": "-1",
+          "goalLineValue": "-1.00",
+          "h": "3.67",
+          "hf": "0",
+          "updateDate": "2026-07-15",
+          "updateTime": "13:38:51"
+        }
+      },
+      "historySummary": {
+        "perspective": "博塔弗戈",
+        "matches": 10,
+        "wins": 2,
+        "draws": 4,
+        "losses": 4,
+        "goalsFor": 11,
+        "goalsAgainst": 14,
+        "winRate": 20.0
+      },
+      "history": [
+        {
+          "date": "2025-10-27",
+          "tournament": "巴甲",
+          "homeTeam": "博塔弗戈",
+          "awayTeam": "桑托斯",
+          "score": "2:2",
+          "halfTimeScore": "2:1",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2025-06-02",
+          "tournament": "巴甲",
+          "homeTeam": "桑托斯",
+          "awayTeam": "博塔弗戈",
+          "score": "0:1",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2023-11-27",
+          "tournament": "巴甲",
+          "homeTeam": "博塔弗戈",
+          "awayTeam": "桑托斯",
+          "score": "1:1",
+          "halfTimeScore": "1:0",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2023-07-24",
+          "tournament": "巴甲",
+          "homeTeam": "桑托斯",
+          "awayTeam": "博塔弗戈",
+          "score": "2:2",
+          "halfTimeScore": "1:0",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2022-11-11",
+          "tournament": "巴甲",
+          "homeTeam": "博塔弗戈",
+          "awayTeam": "桑托斯",
+          "score": "3:0",
+          "halfTimeScore": "1:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2022-07-21",
+          "tournament": "巴甲",
+          "homeTeam": "桑托斯",
+          "awayTeam": "博塔弗戈",
+          "score": "2:0",
+          "halfTimeScore": "1:0",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2021-01-18",
+          "tournament": "巴甲",
+          "homeTeam": "桑托斯",
+          "awayTeam": "博塔弗戈",
+          "score": "2:1",
+          "halfTimeScore": "1:1",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2020-09-21",
+          "tournament": "巴甲",
+          "homeTeam": "博塔弗戈",
+          "awayTeam": "桑托斯",
+          "score": "0:0",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2019-11-04",
+          "tournament": "巴甲",
+          "homeTeam": "桑托斯",
+          "awayTeam": "博塔弗戈",
+          "score": "4:1",
+          "halfTimeScore": "2:1",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2019-07-21",
+          "tournament": "巴甲",
+          "homeTeam": "博塔弗戈",
+          "awayTeam": "桑托斯",
+          "score": "0:1",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        }
+      ]
+    },
+    {
+      "matchId": 2040520,
+      "matchNum": "周四206",
+      "league": "巴甲",
+      "matchDateTime": "2026-07-17 06:30:00",
+      "homeTeam": "维多利亚",
+      "awayTeam": "达伽马",
+      "homeRank": "[巴甲13]",
+      "awayRank": "[巴甲17]",
+      "odds": {
+        "had": {
+          "a": "2.86",
+          "af": "1",
+          "d": "3.12",
+          "df": "1",
+          "goalLine": "",
+          "goalLineValue": "",
+          "h": "2.18",
+          "hf": "-1",
+          "updateDate": "2026-07-16",
+          "updateTime": "15:28:20"
+        },
+        "hhad": {
+          "a": "1.53",
+          "af": "1",
+          "d": "3.60",
+          "df": "-1",
+          "goalLine": "-1",
+          "goalLineValue": "-1.00",
+          "h": "5.05",
+          "hf": "-1",
+          "updateDate": "2026-07-16",
+          "updateTime": "15:28:29"
+        }
+      },
+      "historySummary": {
+        "perspective": "维多利亚",
+        "matches": 10,
+        "wins": 4,
+        "draws": 1,
+        "losses": 5,
+        "goalsFor": 15,
+        "goalsAgainst": 16,
+        "winRate": 40.0
+      },
+      "history": [
+        {
+          "date": "2025-10-06",
+          "tournament": "巴甲",
+          "homeTeam": "达伽马",
+          "awayTeam": "维多利亚",
+          "score": "4:3",
+          "halfTimeScore": "1:2",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2025-05-11",
+          "tournament": "巴甲",
+          "homeTeam": "维多利亚",
+          "awayTeam": "达伽马",
+          "score": "2:1",
+          "halfTimeScore": "0:1",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2024-09-02",
+          "tournament": "巴甲",
+          "homeTeam": "维多利亚",
+          "awayTeam": "达伽马",
+          "score": "0:1",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2024-05-13",
+          "tournament": "巴甲",
+          "homeTeam": "达伽马",
+          "awayTeam": "维多利亚",
+          "score": "2:1",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2021-11-11",
+          "tournament": "巴乙",
+          "homeTeam": "达伽马",
+          "awayTeam": "维多利亚",
+          "score": "0:3",
+          "halfTimeScore": "0:1",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2021-08-08",
+          "tournament": "巴乙",
+          "homeTeam": "维多利亚",
+          "awayTeam": "达伽马",
+          "score": "0:1",
+          "halfTimeScore": "0:1",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2018-09-10",
+          "tournament": "巴甲",
+          "homeTeam": "维多利亚",
+          "awayTeam": "达伽马",
+          "score": "1:0",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2018-05-14",
+          "tournament": "巴甲",
+          "homeTeam": "达伽马",
+          "awayTeam": "维多利亚",
+          "score": "2:3",
+          "halfTimeScore": "1:1",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2017-11-06",
+          "tournament": "巴甲",
+          "homeTeam": "达伽马",
+          "awayTeam": "维多利亚",
+          "score": "1:1",
+          "halfTimeScore": "1:0",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2017-07-13",
+          "tournament": "巴甲",
+          "homeTeam": "维多利亚",
+          "awayTeam": "达伽马",
+          "score": "1:4",
+          "halfTimeScore": "0:1",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        }
+      ]
+    },
+    {
+      "matchId": 2040521,
+      "matchNum": "周四207",
+      "league": "美职",
+      "matchDateTime": "2026-07-17 07:30:00",
+      "homeTeam": "蒙特利尔",
+      "awayTeam": "多伦多",
+      "homeRank": "[美职11]",
+      "awayRank": "[美职13]",
+      "odds": {
+        "had": {
+          "a": "3.35",
+          "af": "0",
+          "d": "3.55",
+          "df": "0",
+          "goalLine": "",
+          "goalLineValue": "",
+          "h": "1.82",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "09:55:05"
+        },
+        "hhad": {
+          "a": "1.77",
+          "af": "0",
+          "d": "3.56",
+          "df": "0",
+          "goalLine": "-1",
+          "goalLineValue": "-1.00",
+          "h": "3.53",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "09:55:16"
+        }
+      },
+      "historySummary": {
+        "perspective": "蒙特利尔",
+        "matches": 10,
+        "wins": 5,
+        "draws": 2,
+        "losses": 3,
+        "goalsFor": 17,
+        "goalsAgainst": 21,
+        "winRate": 50.0
+      },
+      "history": [
+        {
+          "date": "2025-08-31",
+          "tournament": "美职",
+          "homeTeam": "多伦多",
+          "awayTeam": "蒙特利尔",
+          "score": "1:1",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2025-05-18",
+          "tournament": "美职",
+          "homeTeam": "蒙特利尔",
+          "awayTeam": "多伦多",
+          "score": "1:6",
+          "halfTimeScore": "0:3",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2025-05-01",
+          "tournament": "杯赛",
+          "homeTeam": "多伦多",
+          "awayTeam": "蒙特利尔",
+          "score": "2:2",
+          "halfTimeScore": "1:0",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2024-07-21",
+          "tournament": "美职",
+          "homeTeam": "蒙特利尔",
+          "awayTeam": "多伦多",
+          "score": "0:1",
+          "halfTimeScore": "0:1",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2024-05-19",
+          "tournament": "美职",
+          "homeTeam": "多伦多",
+          "awayTeam": "蒙特利尔",
+          "score": "5:1",
+          "halfTimeScore": "3:0",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2023-08-21",
+          "tournament": "美职",
+          "homeTeam": "多伦多",
+          "awayTeam": "蒙特利尔",
+          "score": "2:3",
+          "halfTimeScore": "0:2",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2023-05-14",
+          "tournament": "美职",
+          "homeTeam": "蒙特利尔",
+          "awayTeam": "多伦多",
+          "score": "2:0",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2023-05-10",
+          "tournament": "杯赛",
+          "homeTeam": "多伦多",
+          "awayTeam": "蒙特利尔",
+          "score": "1:2",
+          "halfTimeScore": "1:2",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2022-09-05",
+          "tournament": "美职",
+          "homeTeam": "多伦多",
+          "awayTeam": "蒙特利尔",
+          "score": "3:4",
+          "halfTimeScore": "2:3",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2022-07-17",
+          "tournament": "美职",
+          "homeTeam": "蒙特利尔",
+          "awayTeam": "多伦多",
+          "score": "1:0",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        }
+      ]
+    },
+    {
+      "matchId": 2040522,
+      "matchNum": "周四208",
+      "league": "美职",
+      "matchDateTime": "2026-07-17 08:30:00",
+      "homeTeam": "芝加哥",
+      "awayTeam": "温哥华",
+      "homeRank": "[美职3]",
+      "awayRank": "[美职1]",
+      "odds": {
+        "had": {
+          "a": "2.22",
+          "af": "0",
+          "d": "3.45",
+          "df": "0",
+          "goalLine": "",
+          "goalLineValue": "",
+          "h": "2.57",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "12:47:58"
+        },
+        "hhad": {
+          "a": "4.55",
+          "af": "0",
+          "d": "4.05",
+          "df": "0",
+          "goalLine": "+1",
+          "goalLineValue": "+1.00",
+          "h": "1.51",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "15:03:09"
+        }
+      },
+      "historySummary": {
+        "perspective": "芝加哥",
+        "matches": 10,
+        "wins": 3,
+        "draws": 1,
+        "losses": 6,
+        "goalsFor": 16,
+        "goalsAgainst": 15,
+        "winRate": 30.0
+      },
+      "history": [
+        {
+          "date": "2025-03-23",
+          "tournament": "美职",
+          "homeTeam": "温哥华",
+          "awayTeam": "芝加哥",
+          "score": "1:3",
+          "halfTimeScore": "1:1",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2023-08-31",
+          "tournament": "美职",
+          "homeTeam": "芝加哥",
+          "awayTeam": "温哥华",
+          "score": "0:1",
+          "halfTimeScore": "0:1",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2022-07-24",
+          "tournament": "美职",
+          "homeTeam": "温哥华",
+          "awayTeam": "芝加哥",
+          "score": "1:3",
+          "halfTimeScore": "0:1",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2021-04-10",
+          "tournament": "俱乐部赛",
+          "homeTeam": "温哥华",
+          "awayTeam": "芝加哥",
+          "score": "3:2",
+          "halfTimeScore": "-:-",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2020-07-23",
+          "tournament": "美职",
+          "homeTeam": "芝加哥",
+          "awayTeam": "温哥华",
+          "score": "0:2",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2019-04-13",
+          "tournament": "美职",
+          "homeTeam": "芝加哥",
+          "awayTeam": "温哥华",
+          "score": "1:1",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2018-07-08",
+          "tournament": "美职",
+          "homeTeam": "温哥华",
+          "awayTeam": "芝加哥",
+          "score": "3:2",
+          "halfTimeScore": "1:1",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2017-07-02",
+          "tournament": "美职",
+          "homeTeam": "芝加哥",
+          "awayTeam": "温哥华",
+          "score": "4:0",
+          "halfTimeScore": "3:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2016-05-12",
+          "tournament": "美职",
+          "homeTeam": "温哥华",
+          "awayTeam": "芝加哥",
+          "score": "2:1",
+          "halfTimeScore": "1:0",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2015-03-15",
+          "tournament": "美职",
+          "homeTeam": "芝加哥",
+          "awayTeam": "温哥华",
+          "score": "0:1",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        }
+      ]
+    },
+    {
+      "matchId": 2040523,
+      "matchNum": "周四209",
+      "league": "美职",
+      "matchDateTime": "2026-07-17 08:30:00",
+      "homeTeam": "圣路易城",
+      "awayTeam": "堪萨斯城",
+      "homeRank": "[美职12]",
+      "awayRank": "[美职15]",
+      "odds": {
+        "had": {
+          "a": "6.10",
+          "af": "0",
+          "d": "4.80",
+          "df": "0",
+          "goalLine": "",
+          "goalLineValue": "",
+          "h": "1.32",
+          "hf": "0",
+          "updateDate": "2026-07-15",
+          "updateTime": "20:22:04"
+        },
+        "hhad": {
+          "a": "2.80",
+          "af": "0",
+          "d": "3.78",
+          "df": "0",
+          "goalLine": "-1",
+          "goalLineValue": "-1.00",
+          "h": "1.97",
+          "hf": "0",
+          "updateDate": "2026-07-15",
+          "updateTime": "20:22:13"
+        }
+      },
+      "historySummary": {
+        "perspective": "圣路易城",
+        "matches": 10,
+        "wins": 3,
+        "draws": 3,
+        "losses": 4,
+        "goalsFor": 20,
+        "goalsAgainst": 18,
+        "winRate": 30.0
+      },
+      "history": [
+        {
+          "date": "2025-05-15",
+          "tournament": "美职",
+          "homeTeam": "圣路易城",
+          "awayTeam": "堪萨斯城",
+          "score": "2:2",
+          "halfTimeScore": "2:0",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2025-04-06",
+          "tournament": "美职",
+          "homeTeam": "堪萨斯城",
+          "awayTeam": "圣路易城",
+          "score": "2:0",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2024-09-29",
+          "tournament": "美职",
+          "homeTeam": "圣路易城",
+          "awayTeam": "堪萨斯城",
+          "score": "3:1",
+          "halfTimeScore": "1:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2024-07-21",
+          "tournament": "美职",
+          "homeTeam": "堪萨斯城",
+          "awayTeam": "圣路易城",
+          "score": "1:1",
+          "halfTimeScore": "0:1",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2024-04-21",
+          "tournament": "美职",
+          "homeTeam": "堪萨斯城",
+          "awayTeam": "圣路易城",
+          "score": "3:3",
+          "halfTimeScore": "1:2",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2023-11-06",
+          "tournament": "美职",
+          "homeTeam": "堪萨斯城",
+          "awayTeam": "圣路易城",
+          "score": "2:1",
+          "halfTimeScore": "1:0",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2023-10-30",
+          "tournament": "美职",
+          "homeTeam": "圣路易城",
+          "awayTeam": "堪萨斯城",
+          "score": "1:4",
+          "halfTimeScore": "1:3",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2023-10-01",
+          "tournament": "美职",
+          "homeTeam": "圣路易城",
+          "awayTeam": "堪萨斯城",
+          "score": "4:1",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2023-09-03",
+          "tournament": "美职",
+          "homeTeam": "堪萨斯城",
+          "awayTeam": "圣路易城",
+          "score": "2:1",
+          "halfTimeScore": "2:1",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2023-05-21",
+          "tournament": "美职",
+          "homeTeam": "圣路易城",
+          "awayTeam": "堪萨斯城",
+          "score": "4:0",
+          "halfTimeScore": "2:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        }
+      ]
+    },
+    {
+      "matchId": 2040524,
+      "matchNum": "周四210",
+      "league": "美职",
+      "matchDateTime": "2026-07-17 10:30:00",
+      "homeTeam": "西雅图",
+      "awayTeam": "波特兰",
+      "homeRank": "[美职6]",
+      "awayRank": "[美职13]",
+      "odds": {
+        "had": {
+          "a": "5.80",
+          "af": "1",
+          "d": "4.75",
+          "df": "1",
+          "goalLine": "",
+          "goalLineValue": "",
+          "h": "1.34",
+          "hf": "-1",
+          "updateDate": "2026-07-16",
+          "updateTime": "15:57:15"
+        },
+        "hhad": {
+          "a": "2.73",
+          "af": "1",
+          "d": "3.55",
+          "df": "-1",
+          "goalLine": "-1",
+          "goalLineValue": "-1.00",
+          "h": "2.08",
+          "hf": "-1",
+          "updateDate": "2026-07-16",
+          "updateTime": "15:57:23"
+        }
+      },
+      "historySummary": {
+        "perspective": "西雅图",
+        "matches": 10,
+        "wins": 2,
+        "draws": 4,
+        "losses": 4,
+        "goalsFor": 9,
+        "goalsAgainst": 15,
+        "winRate": 20.0
+      },
+      "history": [
+        {
+          "date": "2025-10-05",
+          "tournament": "美职",
+          "homeTeam": "西雅图",
+          "awayTeam": "波特兰",
+          "score": "1:0",
+          "halfTimeScore": "1:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2025-05-18",
+          "tournament": "美职",
+          "homeTeam": "波特兰",
+          "awayTeam": "西雅图",
+          "score": "1:1",
+          "halfTimeScore": "1:1",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2024-10-20",
+          "tournament": "美职",
+          "homeTeam": "西雅图",
+          "awayTeam": "波特兰",
+          "score": "1:1",
+          "halfTimeScore": "1:0",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2024-09-01",
+          "tournament": "美职",
+          "homeTeam": "波特兰",
+          "awayTeam": "西雅图",
+          "score": "1:0",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2024-05-13",
+          "tournament": "美职",
+          "homeTeam": "波特兰",
+          "awayTeam": "西雅图",
+          "score": "1:2",
+          "halfTimeScore": "1:1",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2023-09-03",
+          "tournament": "美职",
+          "homeTeam": "西雅图",
+          "awayTeam": "波特兰",
+          "score": "2:2",
+          "halfTimeScore": "2:0",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2023-06-04",
+          "tournament": "美职",
+          "homeTeam": "西雅图",
+          "awayTeam": "波特兰",
+          "score": "0:0",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2023-04-16",
+          "tournament": "美职",
+          "homeTeam": "波特兰",
+          "awayTeam": "西雅图",
+          "score": "4:1",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2022-08-27",
+          "tournament": "美职",
+          "homeTeam": "波特兰",
+          "awayTeam": "西雅图",
+          "score": "2:1",
+          "halfTimeScore": "1:1",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2022-07-10",
+          "tournament": "美职",
+          "homeTeam": "西雅图",
+          "awayTeam": "波特兰",
+          "score": "0:3",
+          "halfTimeScore": "0:1",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        }
+      ]
+    },
+    {
+      "matchId": 2040532,
+      "matchNum": "周五201",
+      "league": "瑞超",
+      "matchDateTime": "2026-07-18 01:00:00",
+      "homeTeam": "哥德堡",
+      "awayTeam": "布鲁马波",
+      "homeRank": "[瑞超14]",
+      "awayRank": "[瑞超11]",
+      "odds": {
+        "had": {
+          "a": "3.45",
+          "af": "0",
+          "d": "3.60",
+          "df": "0",
+          "goalLine": "",
+          "goalLineValue": "",
+          "h": "1.78",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "13:36:14"
+        },
+        "hhad": {
+          "a": "1.81",
+          "af": "0",
+          "d": "3.65",
+          "df": "0",
+          "goalLine": "-1",
+          "goalLineValue": "-1.00",
+          "h": "3.30",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "13:36:10"
+        }
+      },
+      "historySummary": {
+        "perspective": "哥德堡",
+        "matches": 10,
+        "wins": 6,
+        "draws": 2,
+        "losses": 2,
+        "goalsFor": 19,
+        "goalsAgainst": 7,
+        "winRate": 60.0
+      },
+      "history": [
+        {
+          "date": "2025-09-21",
+          "tournament": "瑞超",
+          "homeTeam": "哥德堡",
+          "awayTeam": "布鲁马波",
+          "score": "0:1",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2025-06-01",
+          "tournament": "瑞超",
+          "homeTeam": "布鲁马波",
+          "awayTeam": "哥德堡",
+          "score": "1:3",
+          "halfTimeScore": "0:2",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2024-07-27",
+          "tournament": "瑞超",
+          "homeTeam": "哥德堡",
+          "awayTeam": "布鲁马波",
+          "score": "3:4",
+          "halfTimeScore": "1:1",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2024-04-30",
+          "tournament": "瑞超",
+          "homeTeam": "布鲁马波",
+          "awayTeam": "哥德堡",
+          "score": "0:3",
+          "halfTimeScore": "0:1",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2023-09-16",
+          "tournament": "瑞超",
+          "homeTeam": "哥德堡",
+          "awayTeam": "布鲁马波",
+          "score": "1:0",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2023-05-09",
+          "tournament": "瑞超",
+          "homeTeam": "布鲁马波",
+          "awayTeam": "哥德堡",
+          "score": "0:0",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2018-10-23",
+          "tournament": "瑞超",
+          "homeTeam": "布鲁马波",
+          "awayTeam": "哥德堡",
+          "score": "0:2",
+          "halfTimeScore": "0:1",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2018-07-28",
+          "tournament": "瑞超",
+          "homeTeam": "哥德堡",
+          "awayTeam": "布鲁马波",
+          "score": "3:0",
+          "halfTimeScore": "1:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2014-08-17",
+          "tournament": "瑞超",
+          "homeTeam": "哥德堡",
+          "awayTeam": "布鲁马波",
+          "score": "3:0",
+          "halfTimeScore": "1:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2014-04-15",
+          "tournament": "瑞超",
+          "homeTeam": "布鲁马波",
+          "awayTeam": "哥德堡",
+          "score": "1:1",
+          "halfTimeScore": "0:1",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        }
+      ]
+    },
+    {
+      "matchId": 2040533,
+      "matchNum": "周五202",
+      "league": "瑞超",
+      "matchDateTime": "2026-07-18 01:00:00",
+      "homeTeam": "米亚尔比",
+      "awayTeam": "韦斯特罗",
+      "homeRank": "[瑞超10]",
+      "awayRank": "[瑞超8]",
+      "odds": {
+        "had": {
+          "a": "4.15",
+          "af": "0",
+          "d": "3.75",
+          "df": "0",
+          "goalLine": "",
+          "goalLineValue": "",
+          "h": "1.61",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "13:36:14"
+        },
+        "hhad": {
+          "a": "2.00",
+          "af": "0",
+          "d": "3.50",
+          "df": "0",
+          "goalLine": "-1",
+          "goalLineValue": "-1.00",
+          "h": "2.92",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "13:36:10"
+        }
+      },
+      "historySummary": {
+        "perspective": "米亚尔比",
+        "matches": 5,
+        "wins": 3,
+        "draws": 1,
+        "losses": 1,
+        "goalsFor": 9,
+        "goalsAgainst": 6,
+        "winRate": 60.0
+      },
+      "history": [
+        {
+          "date": "2024-10-05",
+          "tournament": "瑞超",
+          "homeTeam": "米亚尔比",
+          "awayTeam": "韦斯特罗",
+          "score": "2:1",
+          "halfTimeScore": "1:1",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2024-04-26",
+          "tournament": "瑞超",
+          "homeTeam": "韦斯特罗",
+          "awayTeam": "米亚尔比",
+          "score": "2:1",
+          "halfTimeScore": "1:1",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2024-02-25",
+          "tournament": "瑞典杯",
+          "homeTeam": "米亚尔比",
+          "awayTeam": "韦斯特罗",
+          "score": "2:0",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2019-10-19",
+          "tournament": "瑞甲",
+          "homeTeam": "韦斯特罗",
+          "awayTeam": "米亚尔比",
+          "score": "2:2",
+          "halfTimeScore": "1:0",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2019-04-13",
+          "tournament": "瑞甲",
+          "homeTeam": "米亚尔比",
+          "awayTeam": "韦斯特罗",
+          "score": "2:1",
+          "halfTimeScore": "1:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        }
+      ]
+    },
+    {
+      "matchId": 2040534,
+      "matchNum": "周五203",
+      "league": "挪超",
+      "matchDateTime": "2026-07-18 01:15:00",
+      "homeTeam": "博德闪耀",
+      "awayTeam": "腓特烈",
+      "homeRank": "[挪超3]",
+      "awayRank": "[挪超10]",
+      "odds": {
+        "had": {},
+        "hhad": {
+          "a": "2.54",
+          "af": "0",
+          "d": "4.00",
+          "df": "0",
+          "goalLine": "-2",
+          "goalLineValue": "-2.00",
+          "h": "2.06",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "13:36:10"
+        }
+      },
+      "historySummary": {
+        "perspective": "博德闪耀",
+        "matches": 8,
+        "wins": 5,
+        "draws": 3,
+        "losses": 0,
+        "goalsFor": 18,
+        "goalsAgainst": 5,
+        "winRate": 62.5
+      },
+      "history": [
+        {
+          "date": "2025-12-01",
+          "tournament": "挪超",
+          "homeTeam": "博德闪耀",
+          "awayTeam": "腓特烈",
+          "score": "5:0",
+          "halfTimeScore": "3:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2025-07-17",
+          "tournament": "挪超",
+          "homeTeam": "腓特烈",
+          "awayTeam": "博德闪耀",
+          "score": "0:1",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2024-11-11",
+          "tournament": "挪超",
+          "homeTeam": "博德闪耀",
+          "awayTeam": "腓特烈",
+          "score": "2:2",
+          "halfTimeScore": "0:1",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2024-04-01",
+          "tournament": "挪超",
+          "homeTeam": "腓特烈",
+          "awayTeam": "博德闪耀",
+          "score": "0:2",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2017-08-17",
+          "tournament": "挪甲",
+          "homeTeam": "博德闪耀",
+          "awayTeam": "腓特烈",
+          "score": "4:0",
+          "halfTimeScore": "2:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2017-04-23",
+          "tournament": "挪甲",
+          "homeTeam": "腓特烈",
+          "awayTeam": "博德闪耀",
+          "score": "0:1",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2009-06-29",
+          "tournament": "挪超",
+          "homeTeam": "腓特烈",
+          "awayTeam": "博德闪耀",
+          "score": "2:2",
+          "halfTimeScore": "1:2",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2009-03-16",
+          "tournament": "挪超",
+          "homeTeam": "博德闪耀",
+          "awayTeam": "腓特烈",
+          "score": "1:1",
+          "halfTimeScore": "0:1",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        }
+      ]
+    },
+    {
+      "matchId": 2040535,
+      "matchNum": "周五204",
+      "league": "巴甲",
+      "matchDateTime": "2026-07-18 06:30:00",
+      "homeTeam": "巴伊亚",
+      "awayTeam": "沙佩科",
+      "homeRank": "[巴甲6]",
+      "awayRank": "[巴甲20]",
+      "odds": {
+        "had": {
+          "a": "6.80",
+          "af": "0",
+          "d": "4.45",
+          "df": "0",
+          "goalLine": "",
+          "goalLineValue": "",
+          "h": "1.32",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "13:36:14"
+        },
+        "hhad": {
+          "a": "2.75",
+          "af": "0",
+          "d": "3.45",
+          "df": "0",
+          "goalLine": "-1",
+          "goalLineValue": "-1.00",
+          "h": "2.10",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "13:36:10"
+        }
+      },
+      "historySummary": {
+        "perspective": "巴伊亚",
+        "matches": 10,
+        "wins": 3,
+        "draws": 4,
+        "losses": 3,
+        "goalsFor": 10,
+        "goalsAgainst": 8,
+        "winRate": 30.0
+      },
+      "history": [
+        {
+          "date": "2022-10-01",
+          "tournament": "巴乙",
+          "homeTeam": "沙佩科",
+          "awayTeam": "巴伊亚",
+          "score": "3:1",
+          "halfTimeScore": "0:1",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2022-06-15",
+          "tournament": "巴乙",
+          "homeTeam": "巴伊亚",
+          "awayTeam": "沙佩科",
+          "score": "0:1",
+          "halfTimeScore": "0:1",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2021-10-25",
+          "tournament": "巴甲",
+          "homeTeam": "巴伊亚",
+          "awayTeam": "沙佩科",
+          "score": "3:0",
+          "halfTimeScore": "2:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2021-07-04",
+          "tournament": "巴甲",
+          "homeTeam": "沙佩科",
+          "awayTeam": "巴伊亚",
+          "score": "0:2",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2019-11-07",
+          "tournament": "巴甲",
+          "homeTeam": "巴伊亚",
+          "awayTeam": "沙佩科",
+          "score": "1:1",
+          "halfTimeScore": "0:1",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2019-07-28",
+          "tournament": "巴甲",
+          "homeTeam": "沙佩科",
+          "awayTeam": "巴伊亚",
+          "score": "0:0",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2018-11-05",
+          "tournament": "巴甲",
+          "homeTeam": "巴伊亚",
+          "awayTeam": "沙佩科",
+          "score": "1:0",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2018-07-20",
+          "tournament": "巴甲",
+          "homeTeam": "沙佩科",
+          "awayTeam": "巴伊亚",
+          "score": "1:1",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2017-11-27",
+          "tournament": "巴甲",
+          "homeTeam": "巴伊亚",
+          "awayTeam": "沙佩科",
+          "score": "0:1",
+          "halfTimeScore": "0:1",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2017-08-03",
+          "tournament": "巴甲",
+          "homeTeam": "沙佩科",
+          "awayTeam": "巴伊亚",
+          "score": "1:1",
+          "halfTimeScore": "1:1",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        }
+      ]
+    },
+    {
+      "matchId": 2040536,
+      "matchNum": "周五205",
+      "league": "巴甲",
+      "matchDateTime": "2026-07-18 07:00:00",
+      "homeTeam": "弗鲁米嫩",
+      "awayTeam": "布拉干RB",
+      "homeRank": "[巴甲3]",
+      "awayRank": "[巴甲5]",
+      "odds": {
+        "had": {
+          "a": "4.00",
+          "af": "0",
+          "d": "3.25",
+          "df": "0",
+          "goalLine": "",
+          "goalLineValue": "",
+          "h": "1.75",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "13:36:14"
+        },
+        "hhad": {
+          "a": "1.84",
+          "af": "0",
+          "d": "3.38",
+          "df": "0",
+          "goalLine": "-1",
+          "goalLineValue": "-1.00",
+          "h": "3.45",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "13:36:10"
+        }
+      },
+      "historySummary": {
+        "perspective": "弗鲁米嫩",
+        "matches": 10,
+        "wins": 6,
+        "draws": 2,
+        "losses": 2,
+        "goalsFor": 16,
+        "goalsAgainst": 13,
+        "winRate": 60.0
+      },
+      "history": [
+        {
+          "date": "2025-08-24",
+          "tournament": "巴甲",
+          "homeTeam": "布拉干RB",
+          "awayTeam": "弗鲁米嫩",
+          "score": "4:2",
+          "halfTimeScore": "2:1",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2025-04-07",
+          "tournament": "巴甲",
+          "homeTeam": "弗鲁米嫩",
+          "awayTeam": "布拉干RB",
+          "score": "2:1",
+          "halfTimeScore": "1:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2024-07-28",
+          "tournament": "巴甲",
+          "homeTeam": "布拉干RB",
+          "awayTeam": "弗鲁米嫩",
+          "score": "0:1",
+          "halfTimeScore": "0:1",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2024-04-14",
+          "tournament": "巴甲",
+          "homeTeam": "弗鲁米嫩",
+          "awayTeam": "布拉干RB",
+          "score": "2:2",
+          "halfTimeScore": "1:0",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2023-10-23",
+          "tournament": "巴甲",
+          "homeTeam": "布拉干RB",
+          "awayTeam": "弗鲁米嫩",
+          "score": "1:0",
+          "halfTimeScore": "1:0",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2023-06-05",
+          "tournament": "巴甲",
+          "homeTeam": "弗鲁米嫩",
+          "awayTeam": "布拉干RB",
+          "score": "2:1",
+          "halfTimeScore": "2:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2022-11-14",
+          "tournament": "巴甲",
+          "homeTeam": "布拉干RB",
+          "awayTeam": "弗鲁米嫩",
+          "score": "0:1",
+          "halfTimeScore": "0:1",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2022-07-25",
+          "tournament": "巴甲",
+          "homeTeam": "弗鲁米嫩",
+          "awayTeam": "布拉干RB",
+          "score": "2:1",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2021-09-27",
+          "tournament": "巴甲",
+          "homeTeam": "弗鲁米嫩",
+          "awayTeam": "布拉干RB",
+          "score": "2:1",
+          "halfTimeScore": "2:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2021-06-14",
+          "tournament": "巴甲",
+          "homeTeam": "布拉干RB",
+          "awayTeam": "弗鲁米嫩",
+          "score": "2:2",
+          "halfTimeScore": "2:0",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        }
+      ]
+    },
+    {
+      "matchId": 2040537,
+      "matchNum": "周五206",
+      "league": "巴甲",
+      "matchDateTime": "2026-07-18 07:00:00",
+      "homeTeam": "米拉索尔",
+      "awayTeam": "格雷米奥",
+      "homeRank": "[巴甲19]",
+      "awayRank": "[巴甲16]",
+      "odds": {
+        "had": {
+          "a": "4.15",
+          "af": "0",
+          "d": "3.15",
+          "df": "0",
+          "goalLine": "",
+          "goalLineValue": "",
+          "h": "1.75",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "13:36:14"
+        },
+        "hhad": {
+          "a": "1.83",
+          "af": "0",
+          "d": "3.32",
+          "df": "0",
+          "goalLine": "-1",
+          "goalLineValue": "-1.00",
+          "h": "3.55",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "13:36:10"
+        }
+      },
+      "historySummary": {
+        "perspective": "米拉索尔",
+        "matches": 3,
+        "wins": 3,
+        "draws": 0,
+        "losses": 0,
+        "goalsFor": 8,
+        "goalsAgainst": 3,
+        "winRate": 100.0
+      },
+      "history": [
+        {
+          "date": "2025-09-14",
+          "tournament": "巴甲",
+          "homeTeam": "格雷米奥",
+          "awayTeam": "米拉索尔",
+          "score": "0:1",
+          "halfTimeScore": "0:1",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2025-04-17",
+          "tournament": "巴甲",
+          "homeTeam": "米拉索尔",
+          "awayTeam": "格雷米奥",
+          "score": "4:1",
+          "halfTimeScore": "2:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2022-03-02",
+          "tournament": "巴西杯",
+          "homeTeam": "米拉索尔",
+          "awayTeam": "格雷米奥",
+          "score": "3:2",
+          "halfTimeScore": "2:2",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        }
+      ]
+    },
+    {
+      "matchId": 2040538,
+      "matchNum": "周五207",
+      "league": "美职",
+      "matchDateTime": "2026-07-18 08:10:00",
+      "homeTeam": "纳什维尔",
+      "awayTeam": "亚特联",
+      "homeRank": "[美职1]",
+      "awayRank": "[美职14]",
+      "odds": {
+        "had": {
+          "a": "6.10",
+          "af": "0",
+          "d": "4.25",
+          "df": "0",
+          "goalLine": "",
+          "goalLineValue": "",
+          "h": "1.37",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "13:36:14"
+        },
+        "hhad": {
+          "a": "2.60",
+          "af": "0",
+          "d": "3.55",
+          "df": "0",
+          "goalLine": "-1",
+          "goalLineValue": "-1.00",
+          "h": "2.16",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "13:36:10"
+        }
+      },
+      "historySummary": {
+        "perspective": "纳什维尔",
+        "matches": 10,
+        "wins": 4,
+        "draws": 4,
+        "losses": 2,
+        "goalsFor": 15,
+        "goalsAgainst": 12,
+        "winRate": 40.0
+      },
+      "history": [
+        {
+          "date": "2026-04-19",
+          "tournament": "美职",
+          "homeTeam": "亚特联",
+          "awayTeam": "纳什维尔",
+          "score": "0:2",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2025-08-31",
+          "tournament": "美职",
+          "homeTeam": "纳什维尔",
+          "awayTeam": "亚特联",
+          "score": "0:1",
+          "halfTimeScore": "0:1",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2025-05-04",
+          "tournament": "美职",
+          "homeTeam": "亚特联",
+          "awayTeam": "纳什维尔",
+          "score": "1:1",
+          "halfTimeScore": "1:0",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2024-09-15",
+          "tournament": "美职",
+          "homeTeam": "亚特联",
+          "awayTeam": "纳什维尔",
+          "score": "0:2",
+          "halfTimeScore": "0:1",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2024-05-19",
+          "tournament": "美职",
+          "homeTeam": "纳什维尔",
+          "awayTeam": "亚特联",
+          "score": "1:1",
+          "halfTimeScore": "1:0",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2023-08-27",
+          "tournament": "美职",
+          "homeTeam": "亚特联",
+          "awayTeam": "纳什维尔",
+          "score": "4:0",
+          "halfTimeScore": "1:0",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2023-04-30",
+          "tournament": "美职",
+          "homeTeam": "纳什维尔",
+          "awayTeam": "亚特联",
+          "score": "3:1",
+          "halfTimeScore": "1:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2022-05-22",
+          "tournament": "美职",
+          "homeTeam": "纳什维尔",
+          "awayTeam": "亚特联",
+          "score": "2:2",
+          "halfTimeScore": "2:1",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2022-05-12",
+          "tournament": "公开赛杯",
+          "homeTeam": "纳什维尔",
+          "awayTeam": "亚特联",
+          "score": "2:2",
+          "halfTimeScore": "0:2",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2021-08-29",
+          "tournament": "美职",
+          "homeTeam": "亚特联",
+          "awayTeam": "纳什维尔",
+          "score": "0:2",
+          "halfTimeScore": "0:1",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        }
+      ]
+    },
+    {
+      "matchId": 2040539,
+      "matchNum": "周五208",
+      "league": "美职",
+      "matchDateTime": "2026-07-18 10:25:00",
+      "homeTeam": "洛城银河",
+      "awayTeam": "洛杉矶FC",
+      "homeRank": "[美职9]",
+      "awayRank": "[美职5]",
+      "odds": {
+        "had": {
+          "a": "1.93",
+          "af": "0",
+          "d": "3.60",
+          "df": "0",
+          "goalLine": "",
+          "goalLineValue": "",
+          "h": "3.00",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "13:36:14"
+        },
+        "hhad": {
+          "a": "3.80",
+          "af": "0",
+          "d": "3.85",
+          "df": "0",
+          "goalLine": "+1",
+          "goalLineValue": "+1.00",
+          "h": "1.65",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "13:36:10"
+        }
+      },
+      "historySummary": {
+        "perspective": "洛城银河",
+        "matches": 10,
+        "wins": 3,
+        "draws": 2,
+        "losses": 5,
+        "goalsFor": 21,
+        "goalsAgainst": 22,
+        "winRate": 30.0
+      },
+      "history": [
+        {
+          "date": "2025-07-20",
+          "tournament": "美职",
+          "homeTeam": "洛杉矶FC",
+          "awayTeam": "洛城银河",
+          "score": "3:3",
+          "halfTimeScore": "2:1",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2025-05-19",
+          "tournament": "美职",
+          "homeTeam": "洛城银河",
+          "awayTeam": "洛杉矶FC",
+          "score": "2:2",
+          "halfTimeScore": "1:1",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2024-09-15",
+          "tournament": "美职",
+          "homeTeam": "洛城银河",
+          "awayTeam": "洛杉矶FC",
+          "score": "4:2",
+          "halfTimeScore": "0:2",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2024-07-05",
+          "tournament": "美职",
+          "homeTeam": "洛城银河",
+          "awayTeam": "洛杉矶FC",
+          "score": "1:2",
+          "halfTimeScore": "0:2",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2024-04-07",
+          "tournament": "美职",
+          "homeTeam": "洛杉矶FC",
+          "awayTeam": "洛城银河",
+          "score": "2:1",
+          "halfTimeScore": "2:1",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2023-09-17",
+          "tournament": "美职",
+          "homeTeam": "洛杉矶FC",
+          "awayTeam": "洛城银河",
+          "score": "4:2",
+          "halfTimeScore": "2:1",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2023-07-05",
+          "tournament": "美职",
+          "homeTeam": "洛城银河",
+          "awayTeam": "洛杉矶FC",
+          "score": "2:1",
+          "halfTimeScore": "1:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2023-05-24",
+          "tournament": "公开赛杯",
+          "homeTeam": "洛杉矶FC",
+          "awayTeam": "洛城银河",
+          "score": "0:2",
+          "halfTimeScore": "0:0",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2023-04-17",
+          "tournament": "美职",
+          "homeTeam": "洛城银河",
+          "awayTeam": "洛杉矶FC",
+          "score": "2:3",
+          "halfTimeScore": "1:1",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2022-10-21",
+          "tournament": "美职",
+          "homeTeam": "洛杉矶FC",
+          "awayTeam": "洛城银河",
+          "score": "3:2",
+          "halfTimeScore": "1:1",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        }
+      ]
+    },
+    {
+      "matchId": 2040540,
+      "matchNum": "周六103",
+      "league": "世界杯",
+      "matchDateTime": "2026-07-19 05:00:00",
+      "homeTeam": "法国",
+      "awayTeam": "英格兰",
+      "homeRank": "[世界杯1]",
+      "awayRank": "[世界杯1]",
+      "odds": {
+        "had": {
+          "a": "3.56",
+          "af": "0",
+          "d": "3.75",
+          "df": "0",
+          "goalLine": "",
+          "goalLineValue": "",
+          "h": "1.72",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "15:01:07"
+        },
+        "hhad": {
+          "a": "1.87",
+          "af": "0",
+          "d": "3.70",
+          "df": "0",
+          "goalLine": "-1",
+          "goalLineValue": "-1.00",
+          "h": "3.08",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "15:01:19"
+        }
+      },
+      "historySummary": {
+        "perspective": "法国",
+        "matches": 4,
+        "wins": 2,
+        "draws": 1,
+        "losses": 1,
+        "goalsFor": 6,
+        "goalsAgainst": 6,
+        "winRate": 50.0
+      },
+      "history": [
+        {
+          "date": "2022-12-11",
+          "tournament": "世界杯",
+          "homeTeam": "英格兰",
+          "awayTeam": "法国",
+          "score": "1:2",
+          "halfTimeScore": "0:1",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2017-06-14",
+          "tournament": "国际赛",
+          "homeTeam": "法国",
+          "awayTeam": "英格兰",
+          "score": "3:2",
+          "halfTimeScore": "2:1",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        },
+        {
+          "date": "2015-11-18",
+          "tournament": "国际赛",
+          "homeTeam": "英格兰",
+          "awayTeam": "法国",
+          "score": "2:0",
+          "halfTimeScore": "1:0",
+          "currentHomeTeamResult": "loss",
+          "homeTeamRole": "currentAway",
+          "awayTeamRole": "currentHome"
+        },
+        {
+          "date": "2012-06-12",
+          "tournament": "欧洲杯",
+          "homeTeam": "法国",
+          "awayTeam": "英格兰",
+          "score": "1:1",
+          "halfTimeScore": "1:1",
+          "currentHomeTeamResult": "draw",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        }
+      ]
+    },
+    {
+      "matchId": 2040541,
+      "matchNum": "周日104",
+      "league": "世界杯",
+      "matchDateTime": "2026-07-20 03:00:00",
+      "homeTeam": "西班牙",
+      "awayTeam": "阿根廷",
+      "homeRank": "[世界杯1]",
+      "awayRank": "[世界杯1]",
+      "odds": {
+        "had": {
+          "a": "3.70",
+          "af": "0",
+          "d": "2.75",
+          "df": "0",
+          "goalLine": "",
+          "goalLineValue": "",
+          "h": "2.02",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "09:35:53"
+        },
+        "hhad": {
+          "a": "1.61",
+          "af": "0",
+          "d": "3.45",
+          "df": "0",
+          "goalLine": "-1",
+          "goalLineValue": "-1.00",
+          "h": "4.60",
+          "hf": "0",
+          "updateDate": "2026-07-16",
+          "updateTime": "09:35:53"
+        }
+      },
+      "historySummary": {
+        "perspective": "西班牙",
+        "matches": 1,
+        "wins": 1,
+        "draws": 0,
+        "losses": 0,
+        "goalsFor": 6,
+        "goalsAgainst": 1,
+        "winRate": 100.0
+      },
+      "history": [
+        {
+          "date": "2018-03-28",
+          "tournament": "国际赛",
+          "homeTeam": "西班牙",
+          "awayTeam": "阿根廷",
+          "score": "6:1",
+          "halfTimeScore": "2:1",
+          "currentHomeTeamResult": "win",
+          "homeTeamRole": "currentHome",
+          "awayTeamRole": "currentAway"
+        }
+      ]
+    }
+  ],
+  "errors": []
+}

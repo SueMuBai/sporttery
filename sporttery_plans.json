@@ -1,0 +1,463 @@
+[
+  {
+    "name": "8关方案",
+    "selections": [
+      {
+        "key": "2040515|hhad|h",
+        "matchId": 2040515,
+        "market": "hhad",
+        "outcome": "h",
+        "odds": 2.6
+      },
+      {
+        "key": "2040517|had|h",
+        "matchId": 2040517,
+        "market": "had",
+        "outcome": "h",
+        "odds": 1.35
+      },
+      {
+        "key": "2040519|hhad|a",
+        "matchId": 2040519,
+        "market": "hhad",
+        "outcome": "a",
+        "odds": 1.77
+      },
+      {
+        "key": "2040520|hhad|a",
+        "matchId": 2040520,
+        "market": "hhad",
+        "outcome": "a",
+        "odds": 1.53
+      },
+      {
+        "key": "2040521|hhad|a",
+        "matchId": 2040521,
+        "market": "hhad",
+        "outcome": "a",
+        "odds": 1.77
+      },
+      {
+        "key": "2040522|hhad|h",
+        "matchId": 2040522,
+        "market": "hhad",
+        "outcome": "h",
+        "odds": 1.51
+      },
+      {
+        "key": "2040523|hhad|a",
+        "matchId": 2040523,
+        "market": "hhad",
+        "outcome": "a",
+        "odds": 2.8
+      },
+      {
+        "key": "2040524|hhad|a",
+        "matchId": 2040524,
+        "market": "hhad",
+        "outcome": "a",
+        "odds": 2.73
+      }
+    ],
+    "passCounts": [
+      6,
+      7,
+      8
+    ],
+    "multiplier": 1,
+    "id": "1784196334908",
+    "updatedAt": "2026-07-16T19:11:48+08:00",
+    "evaluation": {
+      "settledMatches": 0,
+      "pendingMatches": 8,
+      "stake": 74,
+      "prize": 0,
+      "profit": null,
+      "status": "pending"
+    },
+    "tags": [
+      "已购"
+    ]
+  },
+  {
+    "name": "6场方案",
+    "selections": [
+      {
+        "key": "2040515|hhad|h",
+        "matchId": 2040515,
+        "market": "hhad",
+        "outcome": "h",
+        "odds": 2.6
+      },
+      {
+        "key": "2040517|had|h",
+        "matchId": 2040517,
+        "market": "had",
+        "outcome": "h",
+        "odds": 1.35
+      },
+      {
+        "key": "2040519|hhad|a",
+        "matchId": 2040519,
+        "market": "hhad",
+        "outcome": "a",
+        "odds": 1.77
+      },
+      {
+        "key": "2040521|hhad|a",
+        "matchId": 2040521,
+        "market": "hhad",
+        "outcome": "a",
+        "odds": 1.77
+      },
+      {
+        "key": "2040522|hhad|h",
+        "matchId": 2040522,
+        "market": "hhad",
+        "outcome": "h",
+        "odds": 1.51
+      },
+      {
+        "key": "2040524|hhad|a",
+        "matchId": 2040524,
+        "market": "hhad",
+        "outcome": "a",
+        "odds": 2.73
+      }
+    ],
+    "passCounts": [
+      2,
+      4,
+      5,
+      6
+    ],
+    "multiplier": 1,
+    "id": "1784200143434",
+    "updatedAt": "2026-07-16T19:11:39+08:00",
+    "evaluation": {
+      "settledMatches": 0,
+      "pendingMatches": 6,
+      "stake": 74,
+      "prize": 0,
+      "profit": null,
+      "status": "pending"
+    },
+    "tags": [
+      "已购"
+    ]
+  },
+  {
+    "name": "方案 2026/7/16 17:00:00",
+    "selections": [
+      {
+        "key": "2040515|hhad|h",
+        "matchId": 2040515,
+        "market": "hhad",
+        "outcome": "h",
+        "odds": 2.6
+      },
+      {
+        "key": "2040519|had|d",
+        "matchId": 2040519,
+        "market": "had",
+        "outcome": "d",
+        "odds": 3.52
+      },
+      {
+        "key": "2040520|hhad|d",
+        "matchId": 2040520,
+        "market": "hhad",
+        "outcome": "d",
+        "odds": 3.6
+      },
+      {
+        "key": "2040521|hhad|a",
+        "matchId": 2040521,
+        "market": "hhad",
+        "outcome": "a",
+        "odds": 1.77
+      },
+      {
+        "key": "2040522|had|h",
+        "matchId": 2040522,
+        "market": "had",
+        "outcome": "h",
+        "odds": 2.57
+      },
+      {
+        "key": "2040523|hhad|a",
+        "matchId": 2040523,
+        "market": "hhad",
+        "outcome": "a",
+        "odds": 2.8
+      },
+      {
+        "key": "2040524|had|h",
+        "matchId": 2040524,
+        "market": "had",
+        "outcome": "h",
+        "odds": 1.34
+      },
+      {
+        "key": "2040518|had|a",
+        "matchId": 2040518,
+        "market": "had",
+        "outcome": "a",
+        "odds": 1.92
+      }
+    ],
+    "passCounts": [
+      4,
+      5
+    ],
+    "multiplier": 1,
+    "id": "1784192403708",
+    "updatedAt": "2026-07-16T17:00:03+08:00"
+  },
+  {
+    "name": "评估优化方案 2026/07/16",
+    "selections": [
+      {
+        "key": "2040515|had|h",
+        "matchId": 2040515,
+        "market": "had",
+        "outcome": "h",
+        "odds": 1.53
+      },
+      {
+        "key": "2040518|had|a",
+        "matchId": 2040518,
+        "market": "had",
+        "outcome": "a",
+        "odds": 1.92
+      },
+      {
+        "key": "2040521|hhad|a",
+        "matchId": 2040521,
+        "market": "hhad",
+        "outcome": "a",
+        "odds": 1.77
+      },
+      {
+        "key": "2040523|had|h",
+        "matchId": 2040523,
+        "market": "had",
+        "outcome": "h",
+        "odds": 1.32
+      },
+      {
+        "key": "2040524|had|h",
+        "matchId": 2040524,
+        "market": "had",
+        "outcome": "h",
+        "odds": 1.34
+      }
+    ],
+    "passCounts": [
+      2,
+      3
+    ],
+    "multiplier": 1,
+    "id": "1784193000000",
+    "updatedAt": "2026-07-16T17:10:00+08:00"
+  },
+  {
+    "name": "周四全体10场分析方案",
+    "selections": [
+      {
+        "key": "2040515|hhad|h",
+        "matchId": 2040515,
+        "market": "hhad",
+        "outcome": "h",
+        "odds": 2.6
+      },
+      {
+        "key": "2040516|had|a",
+        "matchId": 2040516,
+        "market": "had",
+        "outcome": "a",
+        "odds": 1.66
+      },
+      {
+        "key": "2040517|had|h",
+        "matchId": 2040517,
+        "market": "had",
+        "outcome": "h",
+        "odds": 1.35
+      },
+      {
+        "key": "2040518|had|a",
+        "matchId": 2040518,
+        "market": "had",
+        "outcome": "a",
+        "odds": 1.92
+      },
+      {
+        "key": "2040519|hhad|a",
+        "matchId": 2040519,
+        "market": "hhad",
+        "outcome": "a",
+        "odds": 1.77
+      },
+      {
+        "key": "2040520|hhad|a",
+        "matchId": 2040520,
+        "market": "hhad",
+        "outcome": "a",
+        "odds": 1.53
+      },
+      {
+        "key": "2040521|hhad|a",
+        "matchId": 2040521,
+        "market": "hhad",
+        "outcome": "a",
+        "odds": 1.77
+      },
+      {
+        "key": "2040522|hhad|h",
+        "matchId": 2040522,
+        "market": "hhad",
+        "outcome": "h",
+        "odds": 1.51
+      },
+      {
+        "key": "2040523|hhad|a",
+        "matchId": 2040523,
+        "market": "hhad",
+        "outcome": "a",
+        "odds": 2.8
+      },
+      {
+        "key": "2040524|hhad|a",
+        "matchId": 2040524,
+        "market": "hhad",
+        "outcome": "a",
+        "odds": 2.73
+      }
+    ],
+    "passCounts": [
+      2,
+      3
+    ],
+    "multiplier": 1,
+    "id": "1784194000001",
+    "updatedAt": "2026-07-16T17:30:00+08:00"
+  },
+  {
+    "name": "周四核心6场方案",
+    "selections": [
+      {
+        "key": "2040515|hhad|h",
+        "matchId": 2040515,
+        "market": "hhad",
+        "outcome": "h",
+        "odds": 2.6
+      },
+      {
+        "key": "2040517|had|h",
+        "matchId": 2040517,
+        "market": "had",
+        "outcome": "h",
+        "odds": 1.35
+      },
+      {
+        "key": "2040519|hhad|a",
+        "matchId": 2040519,
+        "market": "hhad",
+        "outcome": "a",
+        "odds": 1.77
+      },
+      {
+        "key": "2040521|hhad|a",
+        "matchId": 2040521,
+        "market": "hhad",
+        "outcome": "a",
+        "odds": 1.77
+      },
+      {
+        "key": "2040522|hhad|h",
+        "matchId": 2040522,
+        "market": "hhad",
+        "outcome": "h",
+        "odds": 1.51
+      },
+      {
+        "key": "2040524|hhad|a",
+        "matchId": 2040524,
+        "market": "hhad",
+        "outcome": "a",
+        "odds": 2.73
+      }
+    ],
+    "passCounts": [
+      2
+    ],
+    "multiplier": 1,
+    "id": "1784194000002",
+    "updatedAt": "2026-07-16T17:30:00+08:00"
+  },
+  {
+    "name": "周四保守4场方案",
+    "selections": [
+      {
+        "key": "2040517|had|h",
+        "matchId": 2040517,
+        "market": "had",
+        "outcome": "h",
+        "odds": 1.35
+      },
+      {
+        "key": "2040519|hhad|a",
+        "matchId": 2040519,
+        "market": "hhad",
+        "outcome": "a",
+        "odds": 1.77
+      },
+      {
+        "key": "2040520|hhad|a",
+        "matchId": 2040520,
+        "market": "hhad",
+        "outcome": "a",
+        "odds": 1.53
+      },
+      {
+        "key": "2040522|hhad|h",
+        "matchId": 2040522,
+        "market": "hhad",
+        "outcome": "h",
+        "odds": 1.51
+      }
+    ],
+    "passCounts": [
+      2
+    ],
+    "multiplier": 1,
+    "id": "1784194000003",
+    "updatedAt": "2026-07-16T17:30:00+08:00"
+  },
+  {
+    "name": "周三201-202结算测试方案",
+    "selections": [
+      {
+        "key": "2040513|had|a",
+        "matchId": 2040513,
+        "market": "had",
+        "outcome": "a",
+        "odds": 2.42
+      },
+      {
+        "key": "2040514|had|a",
+        "matchId": 2040514,
+        "market": "had",
+        "outcome": "a",
+        "odds": 1.52
+      }
+    ],
+    "passCounts": [
+      2
+    ],
+    "multiplier": 1,
+    "id": "1784195000001",
+    "updatedAt": "2026-07-16T18:50:00+08:00"
+  }
+]
