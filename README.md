@@ -9,7 +9,7 @@
 - 设置：标签、历史场数、并发数、超时、重试次数和默认倍数。
 - 赛果：同步体彩官方结果，自动结算方案和账单。
 
-首次启动会将 `sporttery_history.json`、`sporttery_plans.json`、`sporttery_results.jsonl` 和 `sporttery_tags.json` 自动迁移到 `sporttery.db`。原文件保留为迁移备份，后续运行数据只写入 SQLite。
+首次启动会将 `sporttery_history.json`、`sporttery_plans.json`、`sporttery_results.jsonl` 和 `sporttery_tags.json` 自动迁移到 `caiguo.db`。原文件保留为迁移备份，后续运行数据只写入 SQLite。
 
 ## 桌面版
 

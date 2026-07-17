@@ -21,3 +21,6 @@ android/app/src/main/python/web/
 sporttery.db
 sporttery.db-shm
 sporttery.db-wal
+caiguo.db
+caiguo.db-shm
+caiguo.db-wal

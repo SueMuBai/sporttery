@@ -123,7 +123,7 @@ def refresh_ledger_returns() -> None:
             evaluation = evaluate_plan(plan, results)
             status = "settled" if evaluation["status"] == "settled" else "pending"
             db.execute(
-                "UPDATE ledger_orders SET return_amount=?,status=?,updated_at=? WHERE id=?",
+                "UPDATE ledger_orders SET return_amount=CASE WHEN return_manual=1 THEN return_amount ELSE ? END,status=?,updated_at=? WHERE id=?",
                 (evaluation["prize"], status, datetime.now().astimezone().isoformat(timespec="seconds"), row["id"]),
             )
 
@@ -263,7 +263,15 @@ class Handler(BaseHTTPRequestHandler):
                                 "fetchedAt": datetime.now().astimezone().isoformat(timespec="seconds"),
                             }
                             old = existing.get(match_id)
-                            if not old or old.get("fullTimeScore") != result["fullTimeScore"]:
+                            result_signature = (
+                                result.get("halfTimeScore"), result.get("fullTimeScore"),
+                                result.get("goalLine"), result.get("officialResults", {}),
+                            )
+                            old_signature = (
+                                old.get("halfTimeScore"), old.get("fullTimeScore"),
+                                old.get("goalLine"), old.get("officialResults", {}),
+                            ) if old else None
+                            if old_signature != result_signature:
                                 appended.append(result)
                                 existing[match_id] = result
                 for result in appended:
@@ -320,7 +328,7 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 length = int(self.headers.get("Content-Length", "0"))
                 body = json.loads(self.rfile.read(length) or b"{}")
-                storage.update_ledger(str(body["id"]), body.get("stakeAmount"), body.get("notes"))
+                storage.update_ledger(str(body["id"]), body.get("returnAmount"), body.get("notes"))
                 self.send_json({"ok": True})
             except Exception as exc:
                 self.send_json({"error": f"账单更新失败：{exc}"}, 400)

@@ -14,7 +14,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent
 DATA_ROOT = Path(os.environ.get("SPORTTERY_DATA_DIR", ROOT))
 DATA_ROOT.mkdir(parents=True, exist_ok=True)
-DB_FILE = DATA_ROOT / "sporttery.db"
+DB_FILE = DATA_ROOT / "caiguo.db"
 
 
 def now() -> str:
@@ -25,7 +25,10 @@ def connect() -> sqlite3.Connection:
     db = sqlite3.connect(DB_FILE)
     db.row_factory = sqlite3.Row
     db.execute("PRAGMA foreign_keys=ON")
-    db.execute("PRAGMA journal_mode=WAL")
+    try:
+        db.execute("PRAGMA journal_mode=WAL")
+    except sqlite3.OperationalError:
+        db.execute("PRAGMA journal_mode=DELETE")
     return db
 
 
@@ -73,6 +76,9 @@ CREATE INDEX IF NOT EXISTS idx_ledger_date ON ledger_orders(purchased_at);
 def initialize() -> None:
     with connect() as db:
         db.executescript(SCHEMA)
+        columns = {r[1] for r in db.execute("PRAGMA table_info(ledger_orders)")}
+        if "return_manual" not in columns:
+            db.execute("ALTER TABLE ledger_orders ADD COLUMN return_manual INTEGER NOT NULL DEFAULT 0")
         defaults = {"history_limits": 10, "workers": 4, "timeout": 15, "retries": 2, "default_multiplier": 1}
         for key, value in defaults.items():
             db.execute(
@@ -82,6 +88,8 @@ def initialize() -> None:
         if not db.execute("SELECT 1 FROM schema_migrations WHERE version=1").fetchone():
             _migrate_legacy(db)
             db.execute("INSERT INTO schema_migrations VALUES(1,?)", (now(),))
+        if not db.execute("SELECT 1 FROM schema_migrations WHERE version=2").fetchone():
+            db.execute("INSERT INTO schema_migrations VALUES(2,?)", (now(),))
 
 
 def _read_json(name: str, default: Any) -> Any:
@@ -270,7 +278,7 @@ def create_ledger_order(db: sqlite3.Connection, plan: dict[str, Any], purchased_
     stamp = purchased_at or now()
     stake = calculated_stake(plan)
     db.execute(
-        "INSERT INTO ledger_orders VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO ledger_orders(id,plan_id,plan_name,plan_snapshot,purchased_at,stake_amount,return_amount,status,notes,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
         (order_id, str(plan["id"]), plan["name"], json.dumps(plan, ensure_ascii=False), stamp, stake, 0.0, "pending", "", now(), now()),
     )
     db.execute("INSERT INTO ledger_transactions(order_id,type,amount,occurred_at,note) VALUES(?,?,?,?,?)", (order_id, "purchase", -stake, stamp, "确认购买"))
@@ -293,18 +301,23 @@ def list_ledger(start: str | None = None, end: str | None = None) -> dict[str, A
         r["snapshot"] = json.loads(r.pop("plan_snapshot"))
         items.append(r)
     return {"items": items, "totalStake": round(sum(x["stake_amount"] for x in items), 2),
+            "totalReturn": round(sum(x["return_amount"] for x in items), 2),
             "totalProfit": round(sum(x["netProfit"] for x in items), 2)}
 
 
-def update_ledger(order_id: str, stake_amount: float | None = None, notes: str | None = None) -> None:
+def update_ledger(order_id: str, return_amount: float | None = None, notes: str | None = None) -> None:
     with connect() as db:
-        row = db.execute("SELECT stake_amount FROM ledger_orders WHERE id=?", (order_id,)).fetchone()
+        row = db.execute("SELECT return_amount,status FROM ledger_orders WHERE id=?", (order_id,)).fetchone()
         if not row:
             raise ValueError("账单不存在")
-        if stake_amount is not None and float(stake_amount) != row[0]:
-            delta = row[0] - float(stake_amount)
-            db.execute("UPDATE ledger_orders SET stake_amount=?,updated_at=? WHERE id=?", (float(stake_amount), now(), order_id))
-            db.execute("INSERT INTO ledger_transactions(order_id,type,amount,occurred_at,note) VALUES(?,?,?,?,?)", (order_id, "adjustment", delta, now(), "修正投注金额"))
+        if return_amount is not None:
+            if row["status"] != "settled":
+                raise ValueError("方案尚未全部结算，不能修改回款金额")
+            value = max(0.0, float(return_amount))
+            delta = value - float(row["return_amount"])
+            db.execute("UPDATE ledger_orders SET return_amount=?,return_manual=1,updated_at=? WHERE id=?", (value, now(), order_id))
+            if delta:
+                db.execute("INSERT INTO ledger_transactions(order_id,type,amount,occurred_at,note) VALUES(?,?,?,?,?)", (order_id, "payout_adjustment", delta, now(), "修正回款金额"))
         if notes is not None:
             db.execute("UPDATE ledger_orders SET notes=?,updated_at=? WHERE id=?", (notes, now(), order_id))
 
