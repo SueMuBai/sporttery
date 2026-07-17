@@ -1,0 +1,9 @@
+{
+  "appId": "com.suemubai.sporttery",
+  "appName": "彩果",
+  "webDir": "web",
+  "server": {
+    "url": "http://127.0.0.1:8765",
+    "cleartext": true
+  }
+}

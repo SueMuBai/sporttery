@@ -51,7 +51,10 @@ def fetch_json(url: str, params: dict[str, Any], timeout: float, retries: int) -
 
 def get_matches(timeout: float, retries: int) -> list[dict[str, Any]]:
     payload = fetch_json(
-        MATCH_URL, {"channel": "c", "poolCode": "hhad,had"}, timeout, retries
+        MATCH_URL,
+        {"channel": "c", "poolCode": "crs,ttg,hafu,hhad,had"},
+        timeout,
+        retries,
     )
     groups = payload.get("value", {}).get("matchInfoList", []) or []
     return [match for group in groups for match in (group.get("subMatchList", []) or [])]
@@ -128,7 +131,13 @@ def summarize(match: dict[str, Any], history_payload: dict[str, Any]) -> dict[st
         "awayTeam": match.get("awayTeamAbbName", ""),
         "homeRank": match.get("homeRank", ""),
         "awayRank": match.get("awayRank", ""),
-        "odds": {"had": match.get("had", {}), "hhad": match.get("hhad", {})},
+        "odds": {
+            "had": match.get("had", {}),
+            "hhad": match.get("hhad", {}),
+            "crs": match.get("crs", {}),
+            "ttg": match.get("ttg", {}),
+            "hafu": match.get("hafu", {}),
+        },
         "historySummary": {
             "perspective": match.get("homeTeamAbbName", ""),
             "matches": count,
