@@ -1,0 +1,29 @@
+{
+  "artboard": {
+    "widthPx": 853,
+    "heightPx": 1844
+  },
+  "colors": {
+    "header": "#075E4C",
+    "primary": "#0C8A6A",
+    "loss": "#FF5A5F",
+    "statusInProgressBg": "#FFF2C7",
+    "statusInProgressText": "#A96E00",
+    "statusCompletedBg": "#E5F5EF",
+    "divider": "#E2E7E4",
+    "overlay": "rgba(13,27,23,0.38)"
+  },
+  "layout": {
+    "horizontalMarginDp": 16,
+    "gridGapDp": 8,
+    "summaryColumns": 3,
+    "cardRadiusDp": 14,
+    "sheetTopRadiusDp": 24,
+    "controlHeightDp": 48
+  },
+  "motion": {
+    "sheetOpenMs": 280,
+    "sheetCloseMs": 220,
+    "easing": "ease-out"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "settingsRoot": {
+    "route": "/settings",
+    "bottomNavigation": true,
+    "children": [
+      {
+        "title": "系统设置",
+        "route": "/settings/system"
+      },
+      {
+        "title": "标签管理",
+        "route": "/settings/tags"
+      },
+      {
+        "title": "方案管理",
+        "route": "/settings/plans"
+      },
+      {
+        "title": "关于彩果",
+        "route": "/settings/about"
+      }
+    ]
+  },
+  "secondary": {
+    "bottomNavigation": false,
+    "backButton": true,
+    "transition": "push"
+  },
+  "systemDefaults": {
+    "historyCount": 10,
+    "concurrency": 4,
+    "timeoutSeconds": 15,
+    "retryCount": 2,
+    "defaultMultiplier": 1
+  },
+  "tags": [
+    {
+      "name": "已购",
+      "color": "emerald"
+    },
+    {
+      "name": "AI",
+      "color": "teal"
+    }
+  ]
+}

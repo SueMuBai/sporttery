@@ -154,6 +154,18 @@ def delete_tag(name: str) -> list[str]:
     return list_tags()
 
 
+def rename_tag(old_name: str, new_name: str) -> list[str]:
+    old_name, new_name = old_name.strip(), new_name.strip()
+    if not old_name or not new_name:
+        raise ValueError("标签名称不能为空")
+    with connect() as db:
+        duplicate = db.execute("SELECT id FROM tags WHERE lower(name)=lower(?) AND name<>?", (new_name, old_name)).fetchone()
+        if duplicate:
+            raise ValueError("标签名称已存在")
+        db.execute("UPDATE tags SET name=? WHERE name=?", (new_name, old_name))
+    return list_tags()
+
+
 def save_matches(db: sqlite3.Connection, matches: list[dict[str, Any]]) -> None:
     for match in matches:
         db.execute(

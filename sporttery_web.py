@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import itertools
 import json
+import mimetypes
 import threading
 import webbrowser
 from datetime import datetime, timedelta
@@ -20,6 +21,7 @@ import sporttery_db as storage
 
 ROOT = Path(__file__).resolve().parent
 WEB_FILE = ROOT / "web" / "index.html"
+ASSET_ROOT = ROOT / "web" / "assets"
 STATE: dict[str, Any] = {"data": None}
 RESULT_API = "https://webapi.sporttery.cn/gateway/uniform/fb/getMatchDataPageListV1.qry"
 saved_matches = storage.latest_matches()
@@ -150,6 +152,13 @@ class Handler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         if path == "/":
             self.send_bytes(WEB_FILE.read_bytes(), "text/html; charset=utf-8")
+        elif path.startswith("/assets/"):
+            asset = (ASSET_ROOT / path.removeprefix("/assets/")).resolve()
+            if ASSET_ROOT.resolve() not in asset.parents or not asset.is_file():
+                self.send_json({"error": "资源不存在"}, 404)
+                return
+            content_type = mimetypes.guess_type(asset.name)[0] or "application/octet-stream"
+            self.send_bytes(asset.read_bytes(), content_type)
         elif path == "/api/latest":
             with STATE_LOCK:
                 self.send_json(STATE["data"] or {"matches": [], "errors": [], "total": 0})
@@ -307,6 +316,14 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json(storage.delete_tag(str(body.get("tag", ""))))
             except Exception as exc:
                 self.send_json({"error": f"标签删除失败：{exc}"}, 400)
+            return
+        if path == "/api/tags/rename":
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                body = json.loads(self.rfile.read(length) or b"{}")
+                self.send_json(storage.rename_tag(str(body.get("oldTag", "")), str(body.get("newTag", ""))))
+            except Exception as exc:
+                self.send_json({"error": f"标签修改失败：{exc}"}, 400)
             return
         if path == "/api/plans/delete":
             try:

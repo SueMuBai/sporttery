@@ -1,0 +1,27 @@
+{
+  "billStatuses": {
+    "in_progress": {
+      "label": "进行中",
+      "refundEditable": false
+    },
+    "completed": {
+      "label": "已完成",
+      "refundEditable": true
+    }
+  },
+  "refundValidation": {
+    "type": "decimal",
+    "minimum": 0,
+    "decimalPlaces": 2,
+    "formula": "netProfit = refundAmount - stakeAmount"
+  },
+  "dateFilter": {
+    "quickRanges": [
+      "本月",
+      "近3个月",
+      "全部"
+    ],
+    "calendarMode": "inline_range",
+    "displayFormat": "YYYY/MM/DD"
+  }
+}
