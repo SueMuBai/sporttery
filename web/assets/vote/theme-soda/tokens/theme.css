@@ -1,0 +1,19 @@
+:root {
+  --cg-sky: #72AEFF;
+  --cg-periwinkle: #9A91F5;
+  --cg-mint: #61D6BF;
+  --cg-sakura: #FF8FB3;
+  --cg-lemon: #FFD66B;
+  --cg-coral: #FF7D7D;
+  --cg-win: #35BFA5;
+  --cg-draw: #F3A93B;
+  --cg-loss: #FF6F7F;
+  --cg-bg: #F6FAFF;
+  --cg-surface: #FFFFFF;
+  --cg-text: #31415F;
+  --cg-text-secondary: #7B879E;
+  --cg-border: #E4EAF5;
+  --cg-header-gradient: linear-gradient(120deg, #72AEFF, #9A91F5);
+  --cg-primary-gradient: linear-gradient(90deg, #72AEFF, #9A91F5);
+  --cg-selected-gradient: linear-gradient(135deg, #FF8FB3, #FF7D7D);
+}

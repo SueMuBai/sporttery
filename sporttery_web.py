@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import itertools
 import json
 import mimetypes
@@ -22,6 +23,10 @@ import sporttery_db as storage
 ROOT = Path(__file__).resolve().parent
 WEB_FILE = ROOT / "web" / "index.html"
 ASSET_ROOT = ROOT / "web" / "assets"
+try:
+    from embedded_web_assets import ASSETS_BASE64
+except ImportError:
+    ASSETS_BASE64 = {}
 STATE: dict[str, Any] = {"data": None}
 RESULT_API = "https://webapi.sporttery.cn/gateway/uniform/fb/getMatchDataPageListV1.qry"
 saved_matches = storage.latest_matches()
@@ -154,11 +159,15 @@ class Handler(BaseHTTPRequestHandler):
             self.send_bytes(WEB_FILE.read_bytes(), "text/html; charset=utf-8")
         elif path.startswith("/assets/"):
             asset = (ASSET_ROOT / path.removeprefix("/assets/")).resolve()
-            if ASSET_ROOT.resolve() not in asset.parents or not asset.is_file():
+            if ASSET_ROOT.resolve() in asset.parents and asset.is_file():
+                content = asset.read_bytes()
+            elif path in ASSETS_BASE64:
+                content = base64.b64decode(ASSETS_BASE64[path])
+            else:
                 self.send_json({"error": "资源不存在"}, 404)
                 return
             content_type = mimetypes.guess_type(asset.name)[0] or "application/octet-stream"
-            self.send_bytes(asset.read_bytes(), content_type)
+            self.send_bytes(content, content_type)
         elif path == "/api/latest":
             with STATE_LOCK:
                 self.send_json(STATE["data"] or {"matches": [], "errors": [], "total": 0})

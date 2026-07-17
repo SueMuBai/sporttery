@@ -11,6 +11,9 @@
 - `multi/`：比分、总进球、半全场和混合过关的独有切图与标注。
 - `ledger/`：账单卡片、日期筛选、状态、详情面板和回款编辑资源。
 - `settings/`：设置目录、二级页、步进器、标签和导出图标资源。
+- `theme-soda/`：晴空汽水主题切图、主题变量和验收标注。
+- `theme-soda/nav/`：晴空汽水底部导航默认态、选中态和光晕切图。
+- `theme-soda/icons/`：晴空汽水业务线性图标，统一24×24、1.8描边和动态着色。
 
 ## 使用约定
 
@@ -18,6 +21,7 @@
 - 多玩法独有资源使用 `/assets/vote/multi/SVG/文件名.svg`。
 - 账单资源使用 `/assets/vote/ledger/SVG/文件名.svg`。
 - 设置资源使用 `/assets/vote/settings/SVG/文件名.svg`。
+- 晴空汽水主题资源使用 `/assets/vote/theme-soda/SVG/文件名.svg`。
 - SVG 无法满足兼容性要求时，再使用对应倍率 PNG。
 - `ic_` 前缀为图标，`bg_` 前缀为背景或组件状态图。
 - 不直接引用 `img/ui/vote` 中的交付源文件，避免设计稿目录调整影响运行页面。
