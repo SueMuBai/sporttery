@@ -26,3 +26,5 @@ caiguo.db
 caiguo.db-shm
 caiguo.db-wal
 img/
+.playwright-cli/
+output/

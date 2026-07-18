@@ -122,17 +122,75 @@ def evaluate_plan(plan: dict[str, Any], results: dict[int, dict[str, Any]]) -> d
     }
 
 
-def refresh_ledger_returns() -> None:
+def refresh_ledger_returns() -> dict[str, int]:
     results = load_results()
+    summary = {"total": 0, "settled": 0, "pending": 0, "changed": 0}
     with storage.connect() as db:
-        for row in db.execute("SELECT id,plan_snapshot FROM ledger_orders"):
+        rows = db.execute(
+            "SELECT id,plan_snapshot,return_amount,return_manual,status FROM ledger_orders"
+        ).fetchall()
+        summary["total"] = len(rows)
+        for row in rows:
             plan = json.loads(row["plan_snapshot"])
             evaluation = evaluate_plan(plan, results)
             status = "settled" if evaluation["status"] == "settled" else "pending"
-            db.execute(
-                "UPDATE ledger_orders SET return_amount=CASE WHEN return_manual=1 THEN return_amount ELSE ? END,status=?,updated_at=? WHERE id=?",
-                (evaluation["prize"], status, datetime.now().astimezone().isoformat(timespec="seconds"), row["id"]),
-            )
+            summary[status] += 1
+            return_amount = float(row["return_amount"]) if row["return_manual"] else float(evaluation["prize"])
+            changed = status != row["status"] or abs(return_amount - float(row["return_amount"])) > 0.004
+            if changed:
+                summary["changed"] += 1
+                db.execute(
+                    "UPDATE ledger_orders SET return_amount=?,status=?,updated_at=? WHERE id=?",
+                    (return_amount, status, datetime.now().astimezone().isoformat(timespec="seconds"), row["id"]),
+                )
+    return summary
+
+
+def result_sync_scope(current_matches: list[dict[str, Any]]) -> tuple[dict[int, dict[str, Any]], set[int], set[str]]:
+    """Return match metadata, target IDs and dates needed for a result refresh.
+
+    Purchased ledger snapshots remain authoritative even if their source plan
+    is later deleted. Stored match snapshots provide the original match date,
+    allowing old pending orders to settle outside the rolling seven-day range.
+    """
+
+    stored_matches = storage.latest_matches()
+    by_id = {int(m["matchId"]): m for m in stored_matches}
+    by_id.update({int(m["matchId"]): m for m in current_matches})
+    desired_ids = {int(m["matchId"]) for m in current_matches}
+    try:
+        plans = storage.list_plans()
+    except (OSError, json.JSONDecodeError):
+        plans = []
+    for plan in plans:
+        desired_ids.update(int(s["matchId"]) for s in plan.get("selections", []))
+    try:
+        ledger_items = storage.list_ledger().get("items", [])
+    except (OSError, json.JSONDecodeError):
+        ledger_items = []
+    for order in ledger_items:
+        desired_ids.update(
+            int(s["matchId"])
+            for s in order.get("snapshot", {}).get("selections", [])
+        )
+
+    today = datetime.now().astimezone()
+    dates = {
+        (today + timedelta(days=offset)).strftime("%Y-%m-%d")
+        for offset in range(-7, 2)
+    }
+    for match_id in desired_ids:
+        parts = str(by_id.get(match_id, {}).get("matchDateTime", "")).split()
+        if not parts:
+            continue
+        raw = parts[0]
+        try:
+            day = datetime.fromisoformat(raw)
+        except ValueError:
+            continue
+        dates.add(day.strftime("%Y-%m-%d"))
+        dates.add((day - timedelta(days=1)).strftime("%Y-%m-%d"))
+    return by_id, desired_ids, dates
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -174,20 +232,27 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/plans":
             plans = storage.list_plans()
             results = load_results()
+            match_map = {int(match["matchId"]): match for match in storage.latest_matches()}
             for plan in plans:
                 plan["evaluation"] = evaluate_plan(plan, results)
+                match_ids = {int(item["matchId"]) for item in plan.get("selections", [])}
+                plan["matches"] = [match_map[match_id] for match_id in match_ids if match_id in match_map]
             self.send_json(plans)
         elif path == "/api/results":
             self.send_json(list(load_results().values()))
         elif path == "/api/tags":
             self.send_json(storage.list_tags())
+        elif path == "/api/tag-details":
+            self.send_json(storage.list_tag_details())
         elif path == "/api/settings":
             self.send_json(storage.get_settings())
         elif path == "/api/ledger":
             from urllib.parse import parse_qs
             params = parse_qs(urlparse(self.path).query)
-            refresh_ledger_returns()
-            self.send_json(storage.list_ledger((params.get("start") or [None])[0], (params.get("end") or [None])[0]))
+            sync_summary = refresh_ledger_returns()
+            ledger = storage.list_ledger((params.get("start") or [None])[0], (params.get("end") or [None])[0])
+            ledger["sync"] = sync_summary
+            self.send_json(ledger)
         elif path in ("/download/json", "/download/markdown"):
             with STATE_LOCK:
                 data = STATE["data"]
@@ -210,23 +275,7 @@ class Handler(BaseHTTPRequestHandler):
                 with STATE_LOCK:
                     data = STATE["data"] or {}
                 matches = data.get("matches", [])
-                by_id = {int(m["matchId"]): m for m in matches}
-                try:
-                    plans = storage.list_plans()
-                except (OSError, json.JSONDecodeError):
-                    plans = []
-                desired_ids = set(by_id)
-                for plan in plans:
-                    desired_ids.update(int(s["matchId"]) for s in plan.get("selections", []))
-                today = datetime.now().astimezone()
-                dates: set[str] = {
-                    (today + timedelta(days=offset)).strftime("%Y-%m-%d")
-                    for offset in range(-7, 2)
-                }
-                for match in matches:
-                    day = datetime.fromisoformat(match["matchDateTime"].split()[0])
-                    dates.add(day.strftime("%Y-%m-%d"))
-                    dates.add((day - timedelta(days=1)).strftime("%Y-%m-%d"))
+                by_id, desired_ids, dates = result_sync_scope(matches)
                 existing = load_results()
                 appended: list[dict[str, Any]] = []
                 for match_date in sorted(dates):
@@ -295,8 +344,20 @@ class Handler(BaseHTTPRequestHandler):
                 for result in appended:
                     storage.store_result(result)
                 # Recalculate current return amounts for purchased ledger snapshots.
-                refresh_ledger_returns()
-                self.send_json({"ok": True, "appended": len(appended), "results": list(existing.values())})
+                ledger_summary = refresh_ledger_returns()
+                plans = storage.list_plans()
+                evaluations = [evaluate_plan(plan, existing) for plan in plans]
+                self.send_json({
+                    "ok": True,
+                    "appended": len(appended),
+                    "results": list(existing.values()),
+                    "ledger": ledger_summary,
+                    "plans": {
+                        "total": len(evaluations),
+                        "settled": sum(e["status"] == "settled" for e in evaluations),
+                        "pending": sum(e["status"] != "settled" for e in evaluations),
+                    },
+                })
             except Exception as exc:
                 self.send_json({"error": f"赛果更新失败：{exc}"}, 500)
             return
@@ -314,7 +375,7 @@ class Handler(BaseHTTPRequestHandler):
                 length = int(self.headers.get("Content-Length", "0"))
                 body = json.loads(self.rfile.read(length) or b"{}")
                 tag = str(body.get("tag", "")).strip()
-                self.send_json(storage.add_tag(tag) if tag else storage.list_tags())
+                self.send_json(storage.add_tag(tag, body.get("color")) if tag else storage.list_tags())
             except Exception as exc:
                 self.send_json({"error": f"标签保存失败：{exc}"}, 400)
             return
@@ -330,9 +391,17 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 length = int(self.headers.get("Content-Length", "0"))
                 body = json.loads(self.rfile.read(length) or b"{}")
-                self.send_json(storage.rename_tag(str(body.get("oldTag", "")), str(body.get("newTag", ""))))
+                self.send_json(storage.rename_tag(str(body.get("oldTag", "")), str(body.get("newTag", "")), body.get("color")))
             except Exception as exc:
                 self.send_json({"error": f"标签修改失败：{exc}"}, 400)
+            return
+        if path == "/api/tags/reorder":
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                body = json.loads(self.rfile.read(length) or b"{}")
+                self.send_json(storage.reorder_tags([str(name) for name in body.get("tags", [])]))
+            except Exception as exc:
+                self.send_json({"error": f"标签排序失败：{exc}"}, 400)
             return
         if path == "/api/plans/delete":
             try:

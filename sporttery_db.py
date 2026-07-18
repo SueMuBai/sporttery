@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sqlite3
 import uuid
 from datetime import datetime
@@ -79,6 +80,16 @@ def initialize() -> None:
         columns = {r[1] for r in db.execute("PRAGMA table_info(ledger_orders)")}
         if "return_manual" not in columns:
             db.execute("ALTER TABLE ledger_orders ADD COLUMN return_manual INTEGER NOT NULL DEFAULT 0")
+        tag_columns = {r[1] for r in db.execute("PRAGMA table_info(tags)")}
+        if "color" not in tag_columns:
+            db.execute("ALTER TABLE tags ADD COLUMN color TEXT NOT NULL DEFAULT '#5797F5'")
+        if "sort_order" not in tag_columns:
+            db.execute("ALTER TABLE tags ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0")
+        palette = ("#5797F5", "#9A91F5", "#61D6BF", "#FF8FB3", "#FFD166", "#FF6B4A")
+        for index, row in enumerate(db.execute("SELECT id,color,sort_order FROM tags ORDER BY id")):
+            color = row["color"] if re.fullmatch(r"#[0-9A-Fa-f]{6}", row["color"] or "") else palette[index % len(palette)]
+            sort_order = row["sort_order"] or index + 1
+            db.execute("UPDATE tags SET color=?,sort_order=? WHERE id=?", (color.upper(), sort_order, row["id"]))
         defaults = {"history_limits": 10, "workers": 4, "timeout": 15, "retries": 2, "default_multiplier": 1}
         for key, value in defaults.items():
             db.execute(
@@ -90,6 +101,14 @@ def initialize() -> None:
             db.execute("INSERT INTO schema_migrations VALUES(1,?)", (now(),))
         if not db.execute("SELECT 1 FROM schema_migrations WHERE version=2").fetchone():
             db.execute("INSERT INTO schema_migrations VALUES(2,?)", (now(),))
+        if not db.execute("SELECT 1 FROM schema_migrations WHERE version=3").fetchone():
+            palette = ("#5797F5", "#9A91F5", "#61D6BF", "#FF8FB3", "#FFD166", "#FF6B4A")
+            for index, row in enumerate(db.execute("SELECT id FROM tags ORDER BY id"), 1):
+                db.execute(
+                    "UPDATE tags SET color=?,sort_order=? WHERE id=?",
+                    (palette[(index - 1) % len(palette)], index, row["id"]),
+                )
+            db.execute("INSERT INTO schema_migrations VALUES(3,?)", (now(),))
 
 
 def _read_json(name: str, default: Any) -> Any:
@@ -139,12 +158,47 @@ def update_settings(values: dict[str, Any]) -> dict[str, Any]:
 
 def list_tags() -> list[str]:
     with connect() as db:
-        return [r["name"] for r in db.execute("SELECT name FROM tags ORDER BY id")]
+        return [r["name"] for r in db.execute("SELECT name FROM tags ORDER BY sort_order,id")]
 
 
-def add_tag(name: str) -> list[str]:
+def list_tag_details() -> list[dict[str, Any]]:
     with connect() as db:
-        db.execute("INSERT OR IGNORE INTO tags(name,created_at) VALUES(?,?)", (name.strip(), now()))
+        rows = db.execute(
+            """SELECT t.name,t.color,t.sort_order,COUNT(pt.plan_id) AS plan_count
+               FROM tags t LEFT JOIN plan_tags pt ON pt.tag_id=t.id
+               GROUP BY t.id ORDER BY t.sort_order,t.id"""
+        ).fetchall()
+    return [
+        {
+            "name": row["name"],
+            "color": row["color"],
+            "sortOrder": row["sort_order"],
+            "planCount": row["plan_count"],
+            "system": row["name"] == "已购",
+        }
+        for row in rows
+    ]
+
+
+def normalize_tag_color(value: str | None) -> str:
+    color = str(value or "#5797F5").strip().upper()
+    if not re.fullmatch(r"#[0-9A-F]{6}", color):
+        raise ValueError("标签颜色格式无效")
+    return color
+
+
+def add_tag(name: str, color: str | None = None) -> list[str]:
+    name = name.strip()
+    if not name or len(name) > 8:
+        raise ValueError("标签名称需为1至8个字符")
+    with connect() as db:
+        if db.execute("SELECT COUNT(*) FROM tags").fetchone()[0] >= 8:
+            raise ValueError("最多只能创建8个标签")
+        next_order = db.execute("SELECT COALESCE(MAX(sort_order),0)+1 FROM tags").fetchone()[0]
+        db.execute(
+            "INSERT INTO tags(name,created_at,color,sort_order) VALUES(?,?,?,?)",
+            (name, now(), normalize_tag_color(color), next_order),
+        )
     return list_tags()
 
 
@@ -154,16 +208,29 @@ def delete_tag(name: str) -> list[str]:
     return list_tags()
 
 
-def rename_tag(old_name: str, new_name: str) -> list[str]:
+def rename_tag(old_name: str, new_name: str, color: str | None = None) -> list[str]:
     old_name, new_name = old_name.strip(), new_name.strip()
-    if not old_name or not new_name:
-        raise ValueError("标签名称不能为空")
+    if not old_name or not new_name or len(new_name) > 8:
+        raise ValueError("标签名称需为1至8个字符")
     with connect() as db:
         duplicate = db.execute("SELECT id FROM tags WHERE lower(name)=lower(?) AND name<>?", (new_name, old_name)).fetchone()
         if duplicate:
             raise ValueError("标签名称已存在")
-        db.execute("UPDATE tags SET name=? WHERE name=?", (new_name, old_name))
+        if color is None:
+            db.execute("UPDATE tags SET name=? WHERE name=?", (new_name, old_name))
+        else:
+            db.execute("UPDATE tags SET name=?,color=? WHERE name=?", (new_name, normalize_tag_color(color), old_name))
     return list_tags()
+
+
+def reorder_tags(names: list[str]) -> list[dict[str, Any]]:
+    with connect() as db:
+        existing = [r["name"] for r in db.execute("SELECT name FROM tags ORDER BY sort_order,id")]
+        ordered = [name for name in names if name in existing]
+        ordered.extend(name for name in existing if name not in ordered)
+        for index, name in enumerate(ordered, 1):
+            db.execute("UPDATE tags SET sort_order=? WHERE name=?", (index, name))
+    return list_tag_details()
 
 
 def save_matches(db: sqlite3.Connection, matches: list[dict[str, Any]]) -> None:
@@ -208,6 +275,12 @@ def save_plan(db: sqlite3.Connection, plan: dict[str, Any], create_ledger: bool 
         tag_id = db.execute("SELECT id FROM tags WHERE name=?", (tag,)).fetchone()[0]
         db.execute("INSERT OR IGNORE INTO plan_tags VALUES(?,?)", (plan_id, tag_id))
     saved = get_plan(db, plan_id)
+    # Keep the linked ledger label in sync while preserving its purchased
+    # selections, odds, stake and timestamp as an immutable snapshot.
+    db.execute(
+        "UPDATE ledger_orders SET plan_name=?,updated_at=? WHERE plan_id=? AND plan_name<>?",
+        (saved["name"], stamp, plan_id, saved["name"]),
+    )
     if create_ledger and "已购" in plan.get("tags", []):
         create_ledger_order(db, saved, allow_existing=True)
     return saved
