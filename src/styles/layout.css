@@ -1,0 +1,45 @@
+.app-shell {
+  width: 100%;
+  min-height: 100dvh;
+  background: var(--color-page);
+}
+
+.app-main {
+  min-height: 100dvh;
+  padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom));
+}
+
+.page {
+  min-height: calc(100dvh - var(--bottom-nav-height) - env(safe-area-inset-bottom));
+}
+
+.page-content {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--page-gutter) var(--space-8);
+}
+
+.content-section {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px;
+}
+
+.app-outline {
+  background: var(--color-surface);
+  box-shadow: var(--outline-default);
+}
+
+@media (min-width: 600px) {
+  .app-shell {
+    max-width: 520px;
+    margin: 0 auto;
+    box-shadow: 0 0 36px rgb(57 83 116 / 10%);
+  }
+}

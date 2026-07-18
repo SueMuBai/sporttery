@@ -1,0 +1,26 @@
+{
+  "extends": ["stylelint-config-standard"],
+  "ignoreFiles": ["dist/**", "web/**", "android/**"],
+  "overrides": [
+    {
+      "files": ["**/*.vue"],
+      "customSyntax": "postcss-html"
+    }
+  ],
+  "rules": {
+    "selector-class-pattern": null,
+    "custom-property-pattern": null,
+    "declaration-block-no-redundant-longhand-properties": null,
+    "custom-property-empty-line-before": null,
+    "import-notation": null,
+    "media-feature-range-notation": null,
+    "no-descending-specificity": null,
+    "selector-pseudo-class-no-unknown": [
+      true,
+      {
+        "ignorePseudoClasses": ["deep"]
+      }
+    ],
+    "value-keyword-case": null
+  }
+}

@@ -1,0 +1,28 @@
+:root:root {
+  --van-primary-color: var(--color-primary);
+  --van-success-color: var(--color-success);
+  --van-danger-color: var(--color-danger);
+  --van-warning-color: var(--color-warning);
+  --van-text-color: var(--color-text);
+  --van-text-color-2: var(--color-text-secondary);
+  --van-text-color-3: var(--color-text-tertiary);
+  --van-border-color: var(--color-border);
+  --van-background: var(--color-page);
+  --van-background-2: var(--color-surface);
+  --van-radius-md: var(--radius-control);
+  --van-button-default-height: var(--control-height);
+  --van-button-default-font-size: var(--font-size-md);
+  --van-button-border-radius: var(--radius-control);
+  --van-cell-font-size: var(--font-size-md);
+  --van-cell-line-height: 24px;
+  --van-tab-font-size: var(--font-size-md);
+  --van-popup-round-radius: var(--radius-sheet);
+}
+
+.van-toast {
+  border-radius: var(--radius-control);
+}
+
+.van-overlay {
+  background: var(--color-overlay);
+}

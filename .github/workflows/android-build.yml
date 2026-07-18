@@ -6,7 +6,11 @@ on:
       version_name:
         description: Version name
         required: true
-        default: "1.0.0"
+        default: "2.0.0"
+      version_code:
+        description: Android version code
+        required: true
+        default: "2"
 
 jobs:
   build:
@@ -27,10 +31,16 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: gradle
-      - name: Install and prepare Android runtime
+      - name: Install dependencies and verify web app
         run: |
           npm ci
+          npm run verify:migration
+          npm test
+          npm run lint
+      - name: Build web app and synchronize Capacitor
+        run: |
           npm run android:sync
+          npm run verify:runtime
       - name: Restore release keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -45,6 +55,7 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           APP_VERSION_NAME: ${{ inputs.version_name }}
+          APP_VERSION_CODE: ${{ inputs.version_code }}
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon

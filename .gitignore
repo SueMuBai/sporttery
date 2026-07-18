@@ -11,14 +11,10 @@ __pycache__/
 *release-fingerprint.txt
 .android-signing.env
 node_modules/
+dist/
 android/.gradle/
 android/local.properties
 android/app/build/
-android/app/src/main/python/sporttery_*.py
-android/app/src/main/python/sporttery_*.json
-android/app/src/main/python/sporttery_*.jsonl
-android/app/src/main/python/web/
-android/app/src/main/python/embedded_web_assets.py
 sporttery.db
 sporttery.db-shm
 sporttery.db-wal

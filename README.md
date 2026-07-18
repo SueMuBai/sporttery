@@ -1,47 +1,61 @@
 # 彩果 · 体彩长期账单
 
-“彩果”用于管理体彩选票、官方赛果和长期投入回报。桌面版使用 Python 本地服务，Android 版使用 Capacitor WebView 并在 App 内运行相同的 Python/SQLite 服务。
+“彩果”是一个用于管理体彩选票、官方赛果和长期投入回报的移动端应用。
 
-## 功能
+当前版本已重构为 Vue 3 + TypeScript + Vant + Capacitor，不再运行 Python 本地网页服务。
 
-- 账单：按日期查看投注金额与净盈亏，进行中订单显示临时回款，可修正实际购买金额。
-- 选票：比赛、历史交锋、胜平负、让球、比分、总进球、半全场、混合过关和方案管理。
-- 设置：标签、历史场数、并发数、超时、重试次数和默认倍数。
-- 赛果：同步体彩官方结果，自动结算方案和账单。
+## 主要能力
 
-首次启动会将 `sporttery_history.json`、`sporttery_plans.json`、`sporttery_results.jsonl` 和 `sporttery_tags.json` 自动迁移到 `caiguo.db`。原文件保留为迁移备份，后续运行数据只写入 SQLite。
+- 账单：日期筛选、投入/回款/盈亏汇总、进行中收益、完赛后回款修正。
+- 选票：比赛、历史交锋、五种玩法、多选过关、奖金范围和方案保存。
+- 方案：导入编辑、筛选、改名、标签、详情、组合和删除。
+- 设置：同步参数、标签管理、数据更新、JSON/Markdown 导出。
+- 赛果：增量同步官方结果，自动计算完成场次、猜对数量和当前收益。
 
-## 桌面版
+## 技术栈
 
-需要 Python 3.9+，无第三方 Python 依赖：
+- Vue 3、TypeScript、Vite、Pinia、Vue Router、Vant 4。
+- Android：Capacitor 7、Capacitor Community SQLite。
+- 浏览器开发环境：IndexedDB。
+- 测试：Vitest、Vue Test Utils、Playwright。
+
+## 本地开发
+
+需要 Node.js 22 和 npm：
 
 ```bash
-python3 sporttery_web.py
+npm install
+npm run dev
 ```
 
-浏览器访问 `http://127.0.0.1:8000`。不自动打开浏览器：
+浏览器访问 Vite 输出的本地地址，通常为 `http://localhost:5173`。
+
+常用检查：
 
 ```bash
-python3 sporttery_web.py --no-browser
-```
-
-命令行历史汇总仍可使用：
-
-```bash
-python3 sporttery_history.py --limits 10 --workers 4
+npm run typecheck
+npm test
+npm run lint
+npm run build
 ```
 
 ## Android
 
 - 应用名：`彩果`
 - 包名：`com.suemubai.sporttery`
+- 最低 Android：API 24
 
-安装依赖并同步 Android 工程：
+构建 Web 资源并同步 Android 工程：
 
 ```bash
-npm install
 npm run android:sync
 ```
+
+新 App 直接加载打包后的 Vite 资源，不依赖 Chaquopy、Python 或 localhost HTTP 服务。
+
+从旧版本升级时，应用会在新数据库不存在的情况下，将旧版 `filesDir/caiguo.db` 一次性复制并迁移到 Capacitor SQLite。旧数据库不会被覆盖或删除。
+
+## GitHub Actions
 
 Windows 下生成正式签名 Key：
 
@@ -56,4 +70,18 @@ scripts\generate_android_key.cmd
 - `ANDROID_KEY_ALIAS`
 - `ANDROID_KEY_PASSWORD`
 
-进入 GitHub Actions，手动运行 `Build signed Android APK`，然后下载 signed APK artifact 和 SHA-256 校验文件。
+进入 GitHub Actions，手动运行 `Build signed Android APK`，填写版本名称和 Android version code。工作流会执行迁移校验、测试、Lint、Web 构建、Capacitor 同步和签名 APK 构建。
+
+只有用户明确要求“提交构建”时才应推送并触发该工作流。
+
+## 旧数据备份
+
+仓库根目录中的 `caiguo.db`、`sporttery_history.json`、`sporttery_plans.json`、`sporttery_results.jsonl` 和 `sporttery_tags.json` 是旧版迁移与运行数据备份。重构过程不会修改或删除这些用户数据文件。
+
+完整架构与阶段记录见：
+
+- `docs/APP_REFACTOR_PLAN.md`
+- `docs/refactor/PROGRESS.md`
+- `docs/refactor/BASELINE.md`
+- `docs/refactor/ANDROID_ACCEPTANCE.md`
+- `docs/refactor/UPGRADE_GUIDE.md`

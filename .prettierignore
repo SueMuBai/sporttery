@@ -1,0 +1,6 @@
+dist/
+web/
+android/
+node_modules/
+img/
+*.jsonl
