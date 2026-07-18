@@ -7,7 +7,7 @@ android {
         applicationId "com.suemubai.sporttery"
         minSdkVersion 24
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode (System.getenv("APP_VERSION_CODE") ?: "2").toInteger()
+        versionCode Integer.parseInt(System.getenv("APP_VERSION_CODE") ?: "2")
         versionName System.getenv("APP_VERSION_NAME") ?: "2.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         ndk {
