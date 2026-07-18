@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import type { NormalizedMatch } from '@/features/matches/types'
 import { SyncService } from '@/features/sync/SyncService'
@@ -74,9 +74,11 @@ describe('SyncService', () => {
     const database = new IndexedDbAdapter(`caiguo-sync-${crypto.randomUUID()}`)
     await database.initialize()
     const service = new SyncService(database, new FakeSyncGateway())
+    const outerTransaction = vi.spyOn(database, 'transaction')
 
     expect(await service.syncMatches()).toMatchObject({ added: 1, updated: 0, unchanged: 0 })
     expect(await service.syncMatches()).toMatchObject({ added: 0, updated: 0, unchanged: 1 })
+    expect(outerTransaction).not.toHaveBeenCalled()
 
     const plan: SavedPlan = {
       id: 'plan-1',

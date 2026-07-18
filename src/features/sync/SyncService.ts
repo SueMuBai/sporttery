@@ -118,21 +118,22 @@ export class SyncService {
         else unchanged += 1
         oddsHistory.push(...changedOdds(before, match))
       }
-      await this.database.transaction(async () => {
-        await this.database.saveMatches([...added, ...updated])
-        await this.database.saveOddsHistory(oddsHistory)
-        await this.database.saveSyncJob({
-          ...this.job(
-            'matches',
-            collected.errors.length ? 'partial' : 'success',
-            startedAt,
-          ),
-          addedCount: added.length,
-          updatedCount: updated.length,
-          failedCount: collected.errors.length,
-          errorMessage: collected.errors.map((item) => item.message).join('\n'),
-          finishedAt: new Date().toISOString(),
-        })
+      // Each bulk persistence method owns its transaction. Wrapping them in an
+      // additional adapter transaction causes Capacitor SQLite to reject the
+      // nested beginTransaction call with "Already in transaction".
+      await this.database.saveMatches([...added, ...updated])
+      await this.database.saveOddsHistory(oddsHistory)
+      await this.database.saveSyncJob({
+        ...this.job(
+          'matches',
+          collected.errors.length ? 'partial' : 'success',
+          startedAt,
+        ),
+        addedCount: added.length,
+        updatedCount: updated.length,
+        failedCount: collected.errors.length,
+        errorMessage: collected.errors.map((item) => item.message).join('\n'),
+        finishedAt: new Date().toISOString(),
       })
       return {
         added: added.length,
