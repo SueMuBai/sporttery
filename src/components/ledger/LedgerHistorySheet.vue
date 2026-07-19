@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 
+import headerBackground from '@/assets/ui/common/bg_header.svg?url'
 import AppBottomSheet from '@/components/base/AppBottomSheet.vue'
-import AppButton from '@/components/base/AppButton.vue'
 import AppIcon from '@/components/base/AppIcon.vue'
 import { useLedgerStore, type EvaluatedLedgerOrder } from '@/stores/ledger'
 import { centsToYuan } from '@/utils/money'
@@ -17,6 +17,7 @@ const emit = defineEmits<{
 }>()
 
 const store = useLedgerStore()
+const historyHeaderBackground = `url("${headerBackground}")`
 const adjustments = computed(() =>
   props.item ? (store.adjustments[props.item.order.id] ?? []) : [],
 )
@@ -46,6 +47,8 @@ function formatDateTime(value: string): string {
 <template>
   <AppBottomSheet
     :show="show"
+    class="ledger-history-sheet"
+    :style="{ '--history-header-background': historyHeaderBackground }"
     title="回款修改历史"
     close-label="关闭回款修改历史"
     @update:show="emit('update:show', $event)"
@@ -93,26 +96,77 @@ function formatDateTime(value: string): string {
         <span>修改记录仅用于追溯，不影响原始投注数据</span>
       </div>
     </div>
-
-    <template #footer>
-      <AppButton variant="secondary" block @click="emit('update:show', false)">关闭</AppButton>
-    </template>
   </AppBottomSheet>
 </template>
 
 <style scoped>
 .history-sheet {
   display: grid;
-  gap: 12px;
-  padding: 10px var(--page-gutter) 12px;
+  gap: 14px;
+  min-height: calc(100dvh - 116px - env(safe-area-inset-top));
+  align-content: start;
+  padding: 12px 14px calc(22px + env(safe-area-inset-bottom));
+  background: var(--color-page);
+}
+
+.ledger-history-sheet {
+  height: 100dvh;
+  max-height: 100dvh;
+  border-radius: 0;
+}
+
+.ledger-history-sheet :deep(.app-bottom-sheet__panel) {
+  height: 100dvh;
+  max-height: 100dvh;
+}
+
+.ledger-history-sheet :deep(.app-bottom-sheet__header) {
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  min-height: calc(88px + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) 14px 0;
+  color: #fff;
+  background-color: #80c3ff;
+  background-image: var(--history-header-background);
+  background-position: center;
+  background-size: cover;
+  border-bottom: 0;
+}
+
+.ledger-history-sheet :deep(.app-bottom-sheet__header > div) {
+  grid-column: 2;
+  text-align: center;
+}
+
+.ledger-history-sheet :deep(.app-bottom-sheet__header h2) {
+  font-size: 19px;
+}
+
+.ledger-history-sheet :deep(.app-bottom-sheet__close) {
+  position: relative;
+  grid-row: 1;
+  grid-column: 1;
+  color: #fff;
+}
+
+.ledger-history-sheet :deep(.app-bottom-sheet__close .app-icon) {
+  display: none;
+}
+
+.ledger-history-sheet :deep(.app-bottom-sheet__close::after) {
+  width: 12px;
+  height: 12px;
+  border-bottom: 2px solid currentcolor;
+  border-left: 2px solid currentcolor;
+  content: "";
+  transform: rotate(45deg);
 }
 
 .history-plan {
   display: flex;
-  min-height: 46px;
+  min-height: 50px;
   align-items: center;
   gap: 7px;
-  padding: 0 10px;
+  padding: 0 14px;
   border-radius: var(--radius-card);
   color: var(--color-primary);
   background: var(--color-surface);
@@ -121,7 +175,7 @@ function formatDateTime(value: string): string {
 
 .history-plan strong {
   overflow: hidden;
-  font-size: 14px;
+  font-size: 16px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -129,21 +183,21 @@ function formatDateTime(value: string): string {
 .history-plan span {
   flex: 0 0 auto;
   color: var(--color-text-secondary);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .history-timeline {
   position: relative;
   display: grid;
-  gap: 10px;
-  padding-left: 36px;
+  gap: 12px;
+  padding-left: 48px;
 }
 
 .history-timeline::before {
   position: absolute;
   top: 22px;
   bottom: 22px;
-  left: 17px;
+  left: 21px;
   width: 1px;
   background: var(--color-border);
   content: "";
@@ -156,11 +210,11 @@ function formatDateTime(value: string): string {
 .history-entry__icon {
   position: absolute;
   z-index: 1;
-  top: 12px;
-  left: -36px;
+  top: 14px;
+  left: -48px;
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   place-items: center;
   color: #fff;
@@ -173,8 +227,9 @@ function formatDateTime(value: string): string {
 
 .history-entry__card {
   display: grid;
-  gap: 8px;
-  padding: 10px;
+  gap: 12px;
+  min-height: 116px;
+  padding: 14px;
   border-radius: var(--radius-card);
   background: var(--color-surface);
   box-shadow: var(--outline-default);
@@ -185,24 +240,24 @@ function formatDateTime(value: string): string {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding-bottom: 7px;
+  padding-bottom: 10px;
   border-bottom: 1px solid var(--color-divider);
 }
 
 .history-entry__card header strong {
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .history-entry__card time {
   color: var(--color-text-secondary);
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .history-entry__amounts {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 18px minmax(0, 1fr);
   align-items: center;
-  gap: 6px;
+  gap: 10px;
 }
 
 .history-entry__amounts > div {
@@ -213,11 +268,11 @@ function formatDateTime(value: string): string {
 .history-entry__amounts span,
 .history-entry__card p {
   color: var(--color-text-secondary);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .history-entry__amounts b {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
 }
 
@@ -225,7 +280,7 @@ function formatDateTime(value: string): string {
   display: flex;
   gap: 8px;
   margin: 0;
-  padding-top: 7px;
+  padding-top: 10px;
   border-top: 1px solid var(--color-divider);
 }
 
@@ -245,14 +300,14 @@ function formatDateTime(value: string): string {
 
 .history-note {
   display: flex;
-  min-height: 44px;
+  min-height: 48px;
   align-items: center;
   gap: 8px;
   padding: 8px 10px;
   border-radius: var(--radius-control);
   color: var(--color-primary);
   background: var(--color-primary-soft);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .amount-positive {

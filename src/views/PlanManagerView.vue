@@ -11,7 +11,7 @@ import AppButton from "@/components/base/AppButton.vue";
 import AppBottomSheet from "@/components/base/AppBottomSheet.vue";
 import AppChip from "@/components/base/AppChip.vue";
 import AppIcon from "@/components/base/AppIcon.vue";
-import AppState from "@/components/base/AppState.vue";
+import AppIconButton from "@/components/base/AppIconButton.vue";
 import SubpageHeader from "@/components/base/SubpageHeader.vue";
 import PlanCard from "@/components/plans/PlanCard.vue";
 import {
@@ -32,6 +32,7 @@ const showRename = ref(false);
 const showLoad = ref(false);
 const showDelete = ref(false);
 const showFilters = ref(false);
+const showHeaderMenu = ref(false);
 const renameValue = ref("");
 const saving = ref(false);
 const loadingPlan = ref(false);
@@ -42,6 +43,16 @@ const draftStatus = ref<PlanStatusFilter>("all");
 const draftTag = ref("all");
 const draftPass = ref<number>();
 const draftSort = ref<PlanSort>("updated-desc");
+const errorCode = computed(
+  () => store.error.match(/[A-Z][A-Z0-9_]{2,}/)?.[0] ?? "LOCAL_READ_ERROR",
+);
+const searchSuggestions = computed(() => {
+  const suggestions = [
+    ...store.tags.map((tag) => tag.name),
+    ...store.plans.map((plan) => plan.name),
+  ];
+  return [...new Set(suggestions)].slice(0, 3);
+});
 
 const statusFilters: Array<{ value: PlanStatusFilter; label: string }> = [
   { value: "all", label: "全部状态" },
@@ -111,6 +122,9 @@ onBeforeUnmount(() => {
 });
 
 function closeActions(event: MouseEvent): void {
+  if (!(event.target as Element).closest(".header-plan-menu")) {
+    showHeaderMenu.value = false;
+  }
   if ((event.target as Element).closest(".plan-card")) return;
   if (showRename.value) return;
   actionPlan.value = undefined;
@@ -127,11 +141,30 @@ function openMore(plan: SavedPlan): void {
 }
 
 function openFilters(): void {
+  showHeaderMenu.value = false;
   draftStatus.value = store.statusFilter;
   draftTag.value = store.tagFilter;
   draftPass.value = store.passFilter;
   draftSort.value = store.sort;
   showFilters.value = true;
+}
+
+function clearAllFilters(): void {
+  store.search = "";
+  store.statusFilter = "all";
+  store.tagFilter = "all";
+  store.passFilter = undefined;
+  store.sort = "updated-desc";
+}
+
+function applySuggestion(value: string): void {
+  const tag = store.tags.find((item) => item.name === value);
+  if (tag) {
+    store.search = "";
+    store.tagFilter = tag.name;
+    return;
+  }
+  store.search = value;
 }
 
 function resetFilterDraft(): void {
@@ -243,15 +276,32 @@ async function applyLoad(): Promise<void> {
   <div class="plan-page" @click="closeActions">
     <SubpageHeader title="方案管理">
       <template #action>
-        <button
-          type="button"
-          class="header-tags"
-          @click="router.push('/settings/tags')"
-        >
-          标签
-        </button>
+        <AppIconButton
+          label="方案管理菜单"
+          icon="more"
+          variant="plain"
+          :aria-expanded="showHeaderMenu"
+          @click.stop="showHeaderMenu = !showHeaderMenu"
+        />
       </template>
     </SubpageHeader>
+
+    <Transition name="header-plan-menu">
+      <div v-if="showHeaderMenu" class="header-plan-menu" @click.stop>
+        <button type="button" @click="router.push('/settings/tags?new=1')">
+          <AppIcon name="add" :size="20" /><span>新建标签</span>
+        </button>
+        <button type="button" @click="router.push('/settings/tags')">
+          <AppIcon name="tag" :size="20" /><span>标签管理</span>
+        </button>
+        <button type="button" @click="router.push('/settings/data')">
+          <AppIcon name="save" :size="20" /><span>导入方案</span>
+        </button>
+        <button type="button" @click="openFilters">
+          <AppIcon name="sort" :size="20" /><span>排序方式</span>
+        </button>
+      </div>
+    </Transition>
 
     <main class="plan-page__content">
       <div class="plan-toolbar">
@@ -330,55 +380,104 @@ async function applyLoad(): Promise<void> {
         </button>
       </div>
 
-      <AppState
+      <section
         v-if="store.loading && !store.plans.length"
-        type="loading"
-        title="正在读取方案"
-      />
-      <AppState
-        v-else-if="store.error"
-        type="error"
-        title="方案读取失败"
-        :description="store.error"
-        action-text="重试"
-        @action="store.load"
-      />
-      <AppState
+        class="plan-state plan-state--loading"
+        aria-live="polite"
+      >
+        <van-loading size="32" color="var(--color-primary)" />
+        <strong>正在读取方案</strong>
+      </section>
+
+      <section
+        v-else-if="store.error && !store.plans.length"
+        class="plan-state plan-state--error"
+        role="alert"
+      >
+        <span class="plan-state__icon plan-state__icon--error">
+          <AppIcon name="warning" :size="46" />
+        </span>
+        <strong>方案加载失败</strong>
+        <p>无法读取本机方案，请检查存储后重试</p>
+        <code>{{ errorCode }}</code>
+        <div class="plan-state__actions">
+          <AppButton variant="secondary" @click="router.push('/settings')">
+            返回设置
+          </AppButton>
+          <AppButton @click="store.load">重新加载</AppButton>
+        </div>
+      </section>
+
+      <section
+        v-else-if="!store.plans.length"
+        class="plan-state plan-state--empty"
+      >
+        <span class="plan-state__icon"><AppIcon name="folder" :size="54" /></span>
+        <strong>还没有保存方案</strong>
+        <p>在选票页完成选择后即可保存</p>
+        <AppButton @click="router.push('/ticket')">去选票页</AppButton>
+      </section>
+
+      <section
         v-else-if="!store.filteredPlans.length"
-        type="empty"
-        title="没有符合条件的方案"
-        description="可以修改筛选条件，或返回选票保存新方案"
-      />
-      <div v-else class="plan-list">
-        <PlanCard
-          v-for="item in store.filteredPlans"
-          :key="item.plan.id"
-          :item="item"
-          :menu-open="actionPlan?.id === item.plan.id && !showRename"
-          :renaming="actionPlan?.id === item.plan.id && showRename"
-          :rename-value="renameValue"
-          :saving="saving"
-          @detail="router.push(`/plans/${item.plan.id}`)"
-          @click.stop
-          @more="openMore(item.plan)"
-          @load="requestLoad(item.plan)"
-          @rename="
-            actionPlan = item.plan;
-            openRename();
-          "
-          @tags="
-            actionPlan = item.plan;
-            openTags();
-          "
-          @remove="requestDelete(item.plan)"
-          @update:rename-value="renameValue = $event"
-          @save-rename="saveRename"
-          @cancel-rename="
-            showRename = false;
-            actionPlan = undefined;
-          "
-        />
-      </div>
+        class="plan-state plan-state--no-result"
+      >
+        <span class="plan-state__icon"><AppIcon name="search" :size="48" /></span>
+        <strong>未找到相关方案</strong>
+        <p>试试其他名称、标签或筛选条件</p>
+        <AppButton variant="secondary" @click="clearAllFilters">清除筛选</AppButton>
+        <div v-if="searchSuggestions.length" class="search-suggestions">
+          <span>搜索建议</span>
+          <div>
+            <button
+              v-for="suggestion in searchSuggestions"
+              :key="suggestion"
+              type="button"
+              @click="applySuggestion(suggestion)"
+            >
+              {{ suggestion }}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <template v-else>
+        <div v-if="store.error" class="offline-notice" role="status">
+          <AppIcon name="warning" :size="18" />
+          <span>当前为离线模式，已显示本地缓存数据，部分信息可能过期</span>
+          <button type="button" @click="store.load">重试</button>
+        </div>
+        <div class="plan-list">
+          <PlanCard
+            v-for="item in store.filteredPlans"
+            :key="item.plan.id"
+            :item="item"
+            :menu-open="actionPlan?.id === item.plan.id && !showRename"
+            :renaming="actionPlan?.id === item.plan.id && showRename"
+            :rename-value="renameValue"
+            :saving="saving"
+            @detail="router.push(`/plans/${item.plan.id}`)"
+            @click.stop
+            @more="openMore(item.plan)"
+            @load="requestLoad(item.plan)"
+            @rename="
+              actionPlan = item.plan;
+              openRename();
+            "
+            @tags="
+              actionPlan = item.plan;
+              openTags();
+            "
+            @remove="requestDelete(item.plan)"
+            @update:rename-value="renameValue = $event"
+            @save-rename="saveRename"
+            @cancel-rename="
+              showRename = false;
+              actionPlan = undefined;
+            "
+          />
+        </div>
+      </template>
     </main>
 
     <AppBottomSheet
@@ -595,17 +694,48 @@ async function applyLoad(): Promise<void> {
   padding: 10px var(--page-gutter) var(--space-8);
 }
 
-.header-tags {
+.header-plan-menu {
+  position: fixed;
+  z-index: 80;
+  top: calc(48px + env(safe-area-inset-top));
+  right: var(--page-gutter);
   display: grid;
-  width: 44px;
-  height: 44px;
-  padding: 0;
+  width: 144px;
+  padding: 4px;
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  box-shadow: var(--outline-strong), var(--shadow-float);
+  transform-origin: top right;
+}
+
+.header-plan-menu button {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  min-height: 42px;
+  gap: 9px;
+  padding: 0 10px;
   border: 0;
-  color: var(--color-primary);
+  border-radius: var(--radius-xs);
+  color: var(--color-text);
   background: transparent;
   font-size: 13px;
-  line-height: 1;
-  place-items: center;
+  text-align: left;
+}
+
+.header-plan-menu button:active {
+  background: var(--color-surface-soft);
+}
+
+.header-plan-menu-enter-active,
+.header-plan-menu-leave-active {
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.header-plan-menu-enter-from,
+.header-plan-menu-leave-to {
+  opacity: 0;
+  transform: translateY(-3px) scale(0.98);
 }
 
 .plan-toolbar {
@@ -699,6 +829,123 @@ async function applyLoad(): Promise<void> {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 8px;
+}
+
+.plan-state {
+  display: grid;
+  min-height: min(540px, calc(100dvh - 190px));
+  align-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 28px 18px;
+  border-radius: var(--radius-card);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.plan-state--no-result,
+.plan-state--error {
+  background: var(--color-surface);
+  box-shadow: var(--outline-default);
+}
+
+.plan-state strong {
+  color: var(--color-text);
+  font-size: 18px;
+  line-height: 26px;
+}
+
+.plan-state p {
+  margin: -2px 0 4px;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.plan-state code {
+  margin-bottom: 8px;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-family);
+  font-size: 11px;
+}
+
+.plan-state__icon {
+  display: grid;
+  width: 108px;
+  height: 86px;
+  border-radius: 30px;
+  color: var(--color-primary);
+  background: linear-gradient(145deg, #f5f9ff, #eaf4ff);
+  place-items: center;
+}
+
+.plan-state__icon--error {
+  color: var(--color-danger);
+  background: var(--color-accent-soft);
+}
+
+.plan-state__actions {
+  display: grid;
+  width: min(100%, 280px);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.search-suggestions {
+  display: grid;
+  width: 100%;
+  justify-items: start;
+  gap: 10px;
+  margin-top: 26px;
+  text-align: left;
+}
+
+.search-suggestions > span {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.search-suggestions > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.search-suggestions button {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-control);
+  color: var(--color-text);
+  background: var(--color-surface);
+  box-shadow: var(--outline-default);
+  font-size: 12px;
+}
+
+.offline-notice {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 38px;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: var(--radius-control);
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+  box-shadow: var(--outline-default);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.offline-notice :deep(.app-icon) {
+  color: var(--color-mint);
+}
+
+.offline-notice button {
+  padding: 6px;
+  border: 0;
+  color: var(--color-primary);
+  background: transparent;
+  font-size: 11px;
 }
 
 .applied-filters {

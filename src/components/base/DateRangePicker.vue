@@ -89,6 +89,12 @@ const firstWeekday = computed(() => new Date(visibleYear.value, visibleMonth.val
 const days = computed(() => Array.from({ length: monthDays.value }, (_, index) => index + 1))
 const years = computed(() => Array.from({ length: 12 }, (_, index) => yearPageStart.value + index))
 const months = Array.from({ length: 12 }, (_, index) => index + 1)
+const nearbyYears = computed(() => [visibleYear.value - 1, visibleYear.value, visibleYear.value + 1])
+const nearbyMonths = computed(() => {
+  const previous = visibleMonth.value === 1 ? 12 : visibleMonth.value - 1
+  const next = visibleMonth.value === 12 ? 1 : visibleMonth.value + 1
+  return [previous, visibleMonth.value, next]
+})
 
 function dateValue(day: number): string {
   return formatParts(visibleYear.value, visibleMonth.value, day)
@@ -128,6 +134,16 @@ function openYearPicker(): void {
 function chooseMonth(month: number): void {
   visibleMonth.value = month
   mode.value = 'day'
+}
+
+function previewYear(year: number): void {
+  if (yearDisabled(year)) return
+  visibleYear.value = year
+}
+
+function previewMonth(month: number): void {
+  if (monthDisabled(visibleYear.value, month)) return
+  visibleMonth.value = month
 }
 
 function monthBoundary(year: number, month: number, end = false): string {
@@ -213,6 +229,35 @@ function selectedMonth(): boolean {
       <button type="button" aria-label="下一页" @click="movePicker(1)">
         <AppIcon name="chevron-right" :size="20" />
       </button>
+    </div>
+
+    <div v-if="expanded && mode === 'day'" class="date-range-picker__wheel" aria-label="年月选择预览">
+      <div>
+        <span>年份</span>
+        <button
+          v-for="year in nearbyYears"
+          :key="year"
+          type="button"
+          :class="{ selected: year === visibleYear }"
+          :disabled="yearDisabled(year)"
+          @click="previewYear(year)"
+        >
+          {{ year }}
+        </button>
+      </div>
+      <div>
+        <span>月份</span>
+        <button
+          v-for="month in nearbyMonths"
+          :key="month"
+          type="button"
+          :class="{ selected: month === visibleMonth }"
+          :disabled="monthDisabled(visibleYear, month)"
+          @click="previewMonth(month)"
+        >
+          {{ month }}月
+        </button>
+      </div>
     </div>
 
     <div v-if="expanded && mode === 'day'" class="date-range-picker__calendar">
@@ -383,6 +428,43 @@ function selectedMonth(): boolean {
   box-shadow: var(--outline-default);
 }
 
+.date-range-picker__wheel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px;
+  padding: 0 54px;
+}
+
+.date-range-picker__wheel > div {
+  display: grid;
+  grid-template-rows: 22px repeat(3, 30px);
+  text-align: center;
+}
+
+.date-range-picker__wheel span {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+}
+
+.date-range-picker__wheel button {
+  min-height: 30px;
+  padding: 0;
+  border: 0;
+  border-top: 1px solid var(--color-divider);
+  color: var(--color-text-tertiary);
+  background: transparent;
+  font-size: 13px;
+}
+
+.date-range-picker__wheel button.selected {
+  color: var(--color-primary);
+  font-size: 15px;
+}
+
+.date-range-picker__wheel button:disabled {
+  opacity: 0.35;
+}
+
 .date-range-picker__week,
 .date-range-picker__days {
   display: grid;
@@ -392,7 +474,7 @@ function selectedMonth(): boolean {
 
 .date-range-picker__week span {
   display: grid;
-  min-height: 28px;
+  min-height: 24px;
   place-items: center;
   color: var(--color-text-secondary);
   font-size: 10px;
@@ -401,7 +483,7 @@ function selectedMonth(): boolean {
 .date-range-picker__days > span,
 .date-range-picker__days button {
   min-width: 0;
-  min-height: 40px;
+  min-height: 27px;
 }
 
 .date-range-picker__days button {
@@ -409,7 +491,7 @@ function selectedMonth(): boolean {
   border: 0;
   color: var(--color-text);
   background: transparent;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .date-range-picker__days button.in-range {
@@ -418,13 +500,27 @@ function selectedMonth(): boolean {
 
 .date-range-picker__days button.is-start,
 .date-range-picker__days button.is-end {
+  z-index: 0;
   color: #fff;
+  background: transparent;
+}
+
+.date-range-picker__days button.is-start::before,
+.date-range-picker__days button.is-end::before {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 27px;
+  height: 27px;
   border-radius: 50%;
   background: var(--color-primary);
+  content: '';
+  z-index: -1;
+  transform: translateX(-50%);
 }
 
 .date-range-picker__days button.is-end {
-  background: var(--color-primary);
+  background: transparent;
 }
 
 .date-range-picker__days button:disabled {

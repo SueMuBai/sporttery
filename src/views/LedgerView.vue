@@ -113,6 +113,10 @@ async function applyDraftRange(): Promise<void> {
 }
 
 function openDetail(item: EvaluatedLedgerOrder): void {
+  if (item.status === "settled") {
+    void router.push(`/ledger/${item.order.id}`);
+    return;
+  }
   selectedLedgerId.value = item.order.id;
   showDetailSheet.value = true;
 }
@@ -125,7 +129,7 @@ function continueEditing(plan: SavedPlan): void {
 
 <template>
   <div class="page ledger-page">
-    <AppHeader title="彩果 · 账单" subtitle="记录每一次投入与回报" />
+    <AppHeader title="彩果·账单" subtitle="记录每一次投入与回报" />
 
     <div class="page-content ledger-content">
       <AppCard
@@ -210,7 +214,9 @@ function continueEditing(plan: SavedPlan): void {
           class="ledger-empty"
           :padded="false"
         >
-          <img :src="billSectionIcon" alt="" />
+          <span class="ledger-empty__illustration">
+            <AppIcon name="history" :size="52" />
+          </span>
           <strong>暂无账单记录</strong>
           <p>所选日期内还没有购买方案</p>
           <AppButton variant="secondary" @click="showDateSheet = true">调整日期</AppButton>
@@ -343,16 +349,21 @@ function continueEditing(plan: SavedPlan): void {
 <style scoped>
 .ledger-content {
   display: grid;
-  gap: 12px;
+  gap: 14px;
+  padding-top: 14px;
+}
+
+.ledger-page :deep(.app-header) {
+  min-height: calc(86px + env(safe-area-inset-top));
 }
 
 .period-card {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr) auto;
   align-items: center;
-  height: 48px;
-  gap: var(--space-2);
-  padding: 5px 10px;
+  height: 56px;
+  gap: 10px;
+  padding: 7px 14px;
 }
 
 .period-card__icon {
@@ -379,7 +390,7 @@ function continueEditing(plan: SavedPlan): void {
 
 .period-card__copy span {
   color: var(--color-text);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   line-height: 17px;
 }
@@ -388,7 +399,7 @@ function continueEditing(plan: SavedPlan): void {
   min-width: 0;
   overflow: hidden;
   color: var(--color-text-secondary);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 400;
   line-height: 15px;
   text-overflow: ellipsis;
@@ -398,14 +409,15 @@ function continueEditing(plan: SavedPlan): void {
 .ledger-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  min-height: 76px;
-  padding: 8px 0 6px;
+  min-height: 122px;
+  padding: 16px 0 10px;
 }
 
 .ledger-summary > div {
   display: grid;
   min-width: 0;
-  gap: 2px;
+  align-content: center;
+  gap: 8px;
   padding: 0 var(--space-2);
   text-align: center;
 }
@@ -416,12 +428,12 @@ function continueEditing(plan: SavedPlan): void {
 
 .ledger-summary span {
   color: var(--color-text-secondary);
-  font-size: var(--font-size-xs);
+  font-size: 13px;
 }
 
 .ledger-summary strong {
   overflow: hidden;
-  font-size: 16px;
+  font-size: 19px;
   line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -429,11 +441,11 @@ function continueEditing(plan: SavedPlan): void {
 
 .ledger-summary p {
   grid-column: 1 / -1;
-  margin: 5px 10px 0;
-  padding-top: 5px;
+  margin: 12px 14px 0;
+  padding-top: 10px;
   border-top: 1px solid var(--color-divider);
   color: var(--color-text-secondary);
-  font-size: 11px;
+  font-size: 13px;
   text-align: center;
 }
 
@@ -454,6 +466,7 @@ function continueEditing(plan: SavedPlan): void {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  font-size: 16px;
 }
 
 .section-heading__title img {
@@ -470,13 +483,16 @@ function continueEditing(plan: SavedPlan): void {
   border: 0;
   color: var(--color-text-secondary);
   background: transparent;
-  font-size: var(--font-size-sm);
+  font-size: 13px;
   line-height: 1;
 }
 
 .ledger-item {
   display: grid;
-  gap: 6px;
+  min-height: 164px;
+  align-content: stretch;
+  gap: 10px;
+  padding: 14px;
 }
 
 .ledger-item__meta,
@@ -489,17 +505,17 @@ function continueEditing(plan: SavedPlan): void {
 
 .ledger-item__meta time {
   color: var(--color-text-secondary);
-  font-size: var(--font-size-xs);
+  font-size: 13px;
 }
 
 .status-pill {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
-  min-height: 22px;
-  padding: 0 8px;
-  border-radius: var(--radius-pill);
-  font-size: 10px;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 7px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -523,7 +539,7 @@ function continueEditing(plan: SavedPlan): void {
   margin: 0;
   overflow: hidden;
   color: var(--color-primary-strong);
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -532,9 +548,9 @@ function continueEditing(plan: SavedPlan): void {
 .ledger-item__title-row p {
   display: block;
   overflow: hidden;
-  margin: 2px 0 0;
+  margin: 5px 0 0;
   color: var(--color-text-secondary);
-  font-size: 11px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -542,14 +558,16 @@ function continueEditing(plan: SavedPlan): void {
 .ledger-item__finance {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  padding-top: 5px;
+  min-height: 58px;
+  padding-top: 10px;
   border-top: 1px solid var(--color-divider);
 }
 
 .ledger-item__finance > div {
   display: grid;
   min-width: 0;
-  gap: 1px;
+  align-content: center;
+  gap: 5px;
   padding: 0 var(--space-2);
   text-align: center;
 }
@@ -573,15 +591,15 @@ function continueEditing(plan: SavedPlan): void {
 
 .ledger-item__finance strong {
   overflow: hidden;
-  font-size: 13px;
-  line-height: 18px;
+  font-size: 15px;
+  line-height: 20px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .ledger-list {
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 
 .ledger-state-card {
@@ -590,7 +608,7 @@ function continueEditing(plan: SavedPlan): void {
 
 .ledger-empty {
   display: grid;
-  min-height: 268px;
+  min-height: 292px;
   place-items: center;
   align-content: center;
   gap: 8px;
@@ -598,13 +616,36 @@ function continueEditing(plan: SavedPlan): void {
   text-align: center;
 }
 
-.ledger-empty > img {
-  width: 56px;
-  height: 56px;
-  padding: 12px;
-  border-radius: 16px;
-  background: var(--color-primary-soft);
-  opacity: 0.72;
+.ledger-empty__illustration {
+  position: relative;
+  display: grid;
+  width: 96px;
+  height: 78px;
+  border-radius: 28px;
+  color: #a9c7f2;
+  background: linear-gradient(145deg, #f7faff, #edf4ff);
+  place-items: center;
+}
+
+.ledger-empty__illustration::before,
+.ledger-empty__illustration::after {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  content: "";
+  background: var(--color-primary);
+  transform: rotate(45deg);
+}
+
+.ledger-empty__illustration::before {
+  top: 4px;
+  right: -8px;
+}
+
+.ledger-empty__illustration::after {
+  bottom: 2px;
+  left: -8px;
+  background: var(--color-mint);
 }
 
 .ledger-empty strong {

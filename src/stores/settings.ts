@@ -92,7 +92,7 @@ export const useSettingsStore = defineStore("settings", () => {
         tag.name.toLocaleLowerCase() === normalized.toLocaleLowerCase() &&
         tag.name !== originalName,
     );
-    if (duplicate) throw new Error("已存在同名标签");
+    if (duplicate) throw new Error("标签名称已存在，请换一个名称");
 
     saving.value = true;
     try {

@@ -211,9 +211,13 @@ function selected(option: Option): boolean {
   background: var(--color-surface);
   box-shadow: var(--outline-default);
   line-height: 1;
+  text-align: center;
 }
 
 .odds-cell span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
   max-width: 100%;
   color: var(--color-accent-strong);
@@ -224,12 +228,31 @@ function selected(option: Option): boolean {
 }
 
 .odds-cell strong {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 13px;
   line-height: 1.15;
 }
 
 .odds-grid--result .odds-cell {
-  min-height: 48px;
+  min-height: 72px;
+  padding-block: 10px;
+  gap: 7px;
+}
+
+.odds-grid--result .odds-cell span {
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.odds-grid--result .odds-cell strong {
+  font-size: 14px;
+  line-height: 18px;
+}
+
+.odds-grid--goals .odds-cell {
+  min-height: 52px;
 }
 
 .odds-grid--score .odds-cell span {

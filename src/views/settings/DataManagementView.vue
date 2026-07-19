@@ -5,7 +5,6 @@ import { ref } from 'vue'
 import exportJsonIcon from '@/assets/ui/settings/ic_export_json.svg?url'
 import exportMarkdownIcon from '@/assets/ui/settings/ic_export_markdown.svg?url'
 import AppAssetIcon from '@/components/base/AppAssetIcon.vue'
-import AppButton from '@/components/base/AppButton.vue'
 import AppCard from '@/components/base/AppCard.vue'
 import AppIcon from '@/components/base/AppIcon.vue'
 import AppPage from '@/components/base/AppPage.vue'
@@ -72,70 +71,175 @@ async function importFile(event: Event): Promise<void> {
 </script>
 
 <template>
-  <AppPage secondary>
+  <AppPage secondary content-class="data-content">
     <template #header><SubpageHeader title="数据与备份" subtitle="导出账单报告与完整结构化数据" /></template>
     <AppCard class="data-info">
       导出不会删除或修改本地数据。JSON 可恢复方案、标签及其比赛赛果，Markdown 适合阅读和归档。
     </AppCard>
-    <AppCard class="export-card">
-      <span class="export-icon export-icon--markdown"><AppAssetIcon :src="exportMarkdownIcon" /></span>
-      <div><h2>Markdown 报告</h2><p>包含账单汇总、方案和比赛选择，适合阅读。</p></div>
-      <AppButton size="small" variant="secondary" :loading="exporting === 'markdown'" @click="exportData('markdown')">导出</AppButton>
-    </AppCard>
-    <AppCard class="export-card">
-      <span class="export-icon export-icon--json"><AppAssetIcon :src="exportJsonIcon" /></span>
-      <div><h2>JSON 完整备份</h2><p>保留可重新解析的结构化数据，适合迁移和存档。</p></div>
-      <AppButton size="small" :loading="exporting === 'json'" @click="exportData('json')">导出</AppButton>
-    </AppCard>
-    <AppCard class="export-card">
-      <span class="export-icon export-icon--import"><AppIcon name="copy" /></span>
-      <div><h2>导入方案备份</h2><p>恢复方案、标签和引用的比赛赛果；账单保持不变。</p></div>
-      <AppButton size="small" variant="secondary" :loading="importing" @click="fileInput?.click()">选择文件</AppButton>
-      <input
-        ref="fileInput"
-        class="file-input"
-        type="file"
-        accept=".json,application/json"
-        aria-label="选择彩果 JSON 备份"
-        @change="importFile"
-      />
-    </AppCard>
+    <section class="data-section">
+      <h2>导出</h2>
+      <AppCard class="data-list" :padded="false">
+        <button
+          type="button"
+          class="data-row"
+          :disabled="Boolean(exporting)"
+          @click="exportData('markdown')"
+        >
+          <span class="data-row__icon data-row__icon--markdown">
+            <AppAssetIcon :src="exportMarkdownIcon" :size="22" />
+          </span>
+          <span class="data-row__copy">
+            <strong>导出 Markdown</strong>
+            <small>比赛、方案与账单摘要，适合阅读和归档</small>
+          </span>
+          <van-loading v-if="exporting === 'markdown'" size="18" />
+          <AppIcon v-else name="chevron-right" :size="18" />
+        </button>
+        <button
+          type="button"
+          class="data-row"
+          :disabled="Boolean(exporting)"
+          @click="exportData('json')"
+        >
+          <span class="data-row__icon data-row__icon--json">
+            <AppAssetIcon :src="exportJsonIcon" :size="22" />
+          </span>
+          <span class="data-row__copy">
+            <strong>导出 JSON</strong>
+            <small>完整结构化数据，适合迁移和存档</small>
+          </span>
+          <van-loading v-if="exporting === 'json'" size="18" />
+          <AppIcon v-else name="chevron-right" :size="18" />
+        </button>
+      </AppCard>
+    </section>
+    <section class="data-section">
+      <h2>恢复</h2>
+      <AppCard class="data-list" :padded="false">
+        <button
+          type="button"
+          class="data-row"
+          :disabled="importing"
+          @click="fileInput?.click()"
+        >
+          <span class="data-row__icon data-row__icon--import">
+            <AppIcon name="copy" :size="22" />
+          </span>
+          <span class="data-row__copy">
+            <strong>从 JSON 恢复方案</strong>
+            <small>恢复方案、标签及引用的比赛赛果；账单保持不变</small>
+          </span>
+          <van-loading v-if="importing" size="18" />
+          <AppIcon v-else name="chevron-right" :size="18" />
+        </button>
+      </AppCard>
+    </section>
+    <input
+      ref="fileInput"
+      class="file-input"
+      type="file"
+      accept=".json,application/json"
+      aria-label="选择彩果 JSON 备份"
+      @change="importFile"
+    />
   </AppPage>
 </template>
 
 <style scoped>
+.data-content {
+  align-content: start;
+  gap: 12px;
+}
+
 .data-info {
   color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  line-height: 1.55;
+  font-size: 11px;
+  line-height: 16px;
 }
 
-.export-card {
+.data-section {
   display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.data-section h2 {
+  margin: 0 4px;
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.data-list {
+  display: grid;
+}
+
+.data-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 20px;
   align-items: center;
-  gap: var(--space-3);
+  width: 100%;
+  min-height: 58px;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 0;
+  color: var(--color-text);
+  background: transparent;
+  text-align: left;
 }
 
-.export-icon {
+.data-row + .data-row {
+  border-top: 1px solid var(--color-divider);
+}
+
+.data-row:active:not(:disabled) {
+  background: var(--color-surface-soft);
+}
+
+.data-row:disabled {
+  opacity: 0.65;
+}
+
+.data-row__icon {
   display: grid;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: var(--radius-control);
   place-items: center;
-  color: #ff8fb3;
-  background: #fff0f6;
-  font-size: 24px;
-}
-
-.export-icon--json {
-  color: #e8aa32;
-  background: #fff8df;
-}
-
-.export-icon--import {
   color: var(--color-primary);
   background: var(--color-primary-soft);
+}
+
+.data-row__icon--markdown {
+  color: #ff8fb3;
+  background: #fff0f6;
+}
+
+.data-row__icon--json {
+  color: var(--color-violet);
+  background: rgb(154 145 245 / 12%);
+}
+
+.data-row__copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.data-row__copy strong,
+.data-row__copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.data-row__copy strong {
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.data-row__copy small {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  line-height: 16px;
 }
 
 .file-input {
@@ -145,21 +249,5 @@ async function importFile(event: Event): Promise<void> {
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
-}
-
-.export-card h2,
-.export-card p {
-  margin: 0;
-}
-
-.export-card h2 {
-  font-size: 14px;
-}
-
-.export-card p {
-  margin-top: 4px;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-xs);
-  line-height: 1.45;
 }
 </style>

@@ -20,5 +20,5 @@ export function assertValidPlanTag(tag: PlanTag): void {
 }
 
 export function normalizedTagIdentity(name: string): string {
-  return name.toLocaleLowerCase();
+  return name.trim().toLocaleLowerCase();
 }

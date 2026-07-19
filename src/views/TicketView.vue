@@ -4,23 +4,30 @@ import { computed, onActivated, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AppButton from '@/components/base/AppButton.vue'
+import AppAssetIcon from '@/components/base/AppAssetIcon.vue'
 import AppChip from '@/components/base/AppChip.vue'
 import AppHeader from '@/components/base/AppHeader.vue'
 import AppIcon from '@/components/base/AppIcon.vue'
 import AppState from '@/components/base/AppState.vue'
 import AppSyncIndicator from '@/components/base/AppSyncIndicator.vue'
 import { confirmAction } from '@/components/base/confirmAction'
+import BetMultiplierSheet from '@/components/ticket/BetMultiplierSheet.vue'
 import MatchCard from '@/components/ticket/MatchCard.vue'
 import PurchaseSheet from '@/components/ticket/PurchaseSheet.vue'
 import { useTicketStore, type TicketMarket } from '@/stores/ticket'
 import type { MarketCode } from '@/types/domain'
 import { centsToYuan } from '@/utils/money'
 
+import clearIcon from '@/assets/ui/ticket/ic_clear.svg?url'
+import manageIcon from '@/assets/ui/ticket/ic_manage.svg?url'
+import searchIcon from '@/assets/ui/ticket/ic_search.svg?url'
+
 const store = useTicketStore()
 const router = useRouter()
 const betExpanded = ref(false)
 const saving = ref(false)
 const showPurchase = ref(false)
+const showMultiplierEditor = ref(false)
 const syncFeedback = ref<'idle' | 'success' | 'warning'>('idle')
 let syncFeedbackTimer: ReturnType<typeof setTimeout> | undefined
 let refreshBlockedUntil = 0
@@ -162,6 +169,16 @@ function adjustMultiplier(delta: number): void {
   setMultiplier(store.multiplier + delta)
 }
 
+function openMultiplierEditor(): void {
+  betExpanded.value = true
+  showMultiplierEditor.value = true
+}
+
+function purchaseFromMultiplierEditor(): void {
+  showMultiplierEditor.value = false
+  showPurchase.value = true
+}
+
 async function clearSelections(): Promise<void> {
   if (!store.selectedSelections.length) return
   await confirmAction({
@@ -227,16 +244,16 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
 
 <template>
   <div class="page ticket-page">
-    <AppHeader title="彩果 · 选票" subtitle="赛事、选号与方案管理" />
+    <AppHeader title="彩果·选票" subtitle="赛事、选号与方案管理" />
 
     <div class="page-content ticket-content">
       <section class="ticket-actions" aria-label="方案操作">
         <button type="button" class="ticket-action" @click="router.push('/plans')">
-          <AppIcon name="folder" :size="22" />
+          <AppAssetIcon :src="manageIcon" :size="24" />
           <span>方案管理</span>
         </button>
         <button type="button" class="ticket-action ticket-action--end" @click="clearSelections">
-          <AppIcon name="delete" :size="22" />
+          <AppAssetIcon :src="clearIcon" :size="24" />
           <span>清空</span>
         </button>
       </section>
@@ -271,7 +288,7 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
         clearable
         aria-label="搜索比赛"
       >
-        <template #left-icon><AppIcon name="search" :size="20" /></template>
+        <template #left-icon><AppAssetIcon :src="searchIcon" :size="20" /></template>
       </van-field>
 
       <AppState
@@ -340,17 +357,9 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
           <span>倍数</span>
           <span class="bet-stepper">
             <button type="button" aria-label="减少倍数" :disabled="store.multiplier <= 1" @click="adjustMultiplier(-1)">−</button>
-            <input
-              :value="store.multiplier"
-              type="number"
-              min="1"
-              max="9999"
-              step="1"
-              inputmode="numeric"
-              aria-label="投注倍数"
-              @input="setMultiplier(($event.target as HTMLInputElement).value)"
-              @blur="setMultiplier(store.multiplier)"
-            />
+            <button type="button" class="bet-stepper__value numeric" aria-label="编辑投注倍数" @click="openMultiplierEditor">
+              {{ store.multiplier }}
+            </button>
             <button type="button" aria-label="增加倍数" :disabled="store.multiplier >= 9999" @click="adjustMultiplier(1)">＋</button>
           </span>
         </label>
@@ -364,6 +373,19 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
         </div>
       </div>
     </aside>
+
+    <BetMultiplierSheet
+      v-model:show="showMultiplierEditor"
+      :multiplier="store.multiplier"
+      :bet-count="store.betCount"
+      :stake-cents="store.stakeCents"
+      :saving="saving"
+      :can-save="Boolean(store.betCount && store.canSavePlan)"
+      :can-purchase="Boolean(store.betCount)"
+      @update:multiplier="setMultiplier"
+      @save="savePlan"
+      @purchase="purchaseFromMultiplierEditor"
+    />
 
     <PurchaseSheet
       v-model:show="showPurchase"
@@ -389,7 +411,7 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
 .ticket-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  min-height: 52px;
+  min-height: 44px;
   margin-inline: calc(var(--page-gutter) * -1);
   padding: 0 var(--page-gutter);
   border-bottom: 1px solid var(--color-divider);
@@ -400,7 +422,7 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
   display: inline-flex;
   align-items: center;
   min-width: 0;
-  min-height: 52px;
+  min-height: 44px;
   gap: 8px;
   padding: 0 8px;
   border: 0;
@@ -408,7 +430,14 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
   background: transparent;
   font-size: 13px;
   font-weight: 500;
+  line-height: 1;
   text-align: left;
+}
+
+.ticket-action > span:last-child {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
 }
 
 .ticket-action--end {
@@ -548,6 +577,12 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
   white-space: nowrap;
 }
 
+.bet-dock__summary-copy > * {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+}
+
 .bet-dock__summary-copy strong {
   flex: 0 0 auto;
   font-weight: 500;
@@ -569,14 +604,16 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
 
 .bet-dock__expanded {
   display: grid;
-  gap: 10px;
-  padding: 0 8px 12px;
+  gap: 8px;
+  padding: 8px 8px 10px;
   border-top: 1px solid var(--color-divider);
 }
 
 .bet-dock__expanded section {
   display: grid;
-  gap: 6px;
+  grid-template-columns: 112px minmax(0, 1fr);
+  align-items: start;
+  gap: 6px 8px;
 }
 
 .bet-dock__expanded h2,
@@ -585,20 +622,26 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
 }
 
 .bet-dock__expanded h2 {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  grid-row: 1 / span 2;
   font-size: 13px;
   font-weight: 500;
+  line-height: 18px;
 }
 
 .bet-pass-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  grid-column: 2;
+  gap: 6px 8px;
 }
 
 .bet-pass-grid .app-chip {
   width: 100%;
   min-width: 0;
-  height: 40px;
+  height: 32px;
   border-radius: var(--radius-control);
 }
 
@@ -609,6 +652,7 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
 }
 
 .bet-pass-hint {
+  grid-column: 2;
   color: var(--color-text-secondary);
   font-size: 10px;
   line-height: 14px;
@@ -622,10 +666,16 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
   font-size: 13px;
 }
 
+.bet-multiplier > span:first-child {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+}
+
 .bet-stepper {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 40px;
-  height: 40px;
+  grid-template-columns: 34px minmax(0, 1fr) 34px;
+  height: 32px;
   border-radius: var(--radius-control);
   overflow: hidden;
   box-shadow: var(--outline-default);
@@ -634,7 +684,7 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
 .bet-stepper button,
 .bet-stepper input {
   min-width: 0;
-  height: 40px;
+  height: 32px;
   padding: 0;
   border: 0;
   outline: 0;
@@ -660,8 +710,10 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
   background: var(--color-disabled);
 }
 
-.bet-stepper input {
+.bet-stepper .bet-stepper__value {
+  color: var(--color-text);
   font-size: 14px;
+  font-weight: 400;
 }
 
 .bet-dock__finance {
@@ -690,6 +742,10 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
+}
+
+.bet-dock__actions :deep(.app-button) {
+  min-height: 36px;
 }
 
 @media (min-width: 600px) {

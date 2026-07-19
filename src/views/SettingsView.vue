@@ -11,7 +11,6 @@ import systemSettingsIcon from "@/assets/ui/settings/ic_system_settings.svg?url"
 import tagIcon from "@/assets/ui/settings/ic_tag.svg?url";
 import AppFormRow from "@/components/base/AppFormRow.vue";
 import AppHeader from "@/components/base/AppHeader.vue";
-import AppIconButton from "@/components/base/AppIconButton.vue";
 import type { AppIconName } from "@/components/base/AppIcon.vue";
 import AppListGroup from "@/components/base/AppListGroup.vue";
 import AppPage from "@/components/base/AppPage.vue";
@@ -115,18 +114,13 @@ async function activate(item: SettingsItem): Promise<void> {
 </script>
 
 <template>
-  <AppPage>
+  <AppPage content-class="settings-page__content">
     <template #header>
-      <AppHeader title="彩果 · 设置" subtitle="配置数据、标签与应用">
-        <template #action>
-          <AppIconButton
-            class="settings-header-action"
-            label="打开系统设置"
-            icon="system"
-            @click="router.push('/settings/system')"
-          />
-        </template>
-      </AppHeader>
+      <AppHeader
+        class="settings-page__header"
+        title="彩果·设置"
+        subtitle="配置数据、标签与应用"
+      />
     </template>
     <AppListGroup
       v-for="group in groups"
@@ -149,9 +143,13 @@ async function activate(item: SettingsItem): Promise<void> {
 </template>
 
 <style scoped>
-.settings-header-action {
-  color: #fff;
-  background: rgb(255 255 255 / 10%);
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 80%);
+:deep(.settings-page__header) {
+  min-height: calc(86px + env(safe-area-inset-top));
+  padding-inline: 24px;
+}
+
+:deep(.settings-page__content) {
+  gap: 22px;
+  padding-top: 20px;
 }
 </style>

@@ -174,7 +174,7 @@ function toggleMixedSection(section: (typeof mixedSections)[number]): void {
   align-items: start;
   gap: var(--space-2);
   width: 100%;
-  min-height: 60px;
+  min-height: 64px;
   padding: 0;
   border: 0;
   color: var(--color-text);
@@ -295,7 +295,7 @@ function toggleMixedSection(section: (typeof mixedSections)[number]): void {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 36px;
+  min-height: 40px;
   margin: 0;
   border-radius: var(--radius-xs);
   color: var(--color-accent-strong);
@@ -367,6 +367,7 @@ function toggleMixedSection(section: (typeof mixedSections)[number]): void {
 }
 
 .mixed-result {
+  position: relative;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
@@ -374,6 +375,36 @@ function toggleMixedSection(section: (typeof mixedSections)[number]): void {
   border-radius: var(--radius-xs);
   background: var(--color-surface);
   box-shadow: var(--outline-default);
+}
+
+.mixed-result::after {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 50%;
+  width: 1px;
+  background: var(--color-divider);
+  content: '';
+}
+
+.mixed-result .market-section {
+  gap: 5px;
+}
+
+.mixed-result .market-section h3 {
+  justify-content: flex-start;
+  min-height: 28px;
+  padding: 0 6px;
+  border-radius: 0;
+  color: var(--color-text);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.mixed-result :deep(.odds-grid--result .odds-cell) {
+  min-height: 46px;
 }
 
 .mixed-section {

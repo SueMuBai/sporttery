@@ -12,12 +12,13 @@ defineProps<{ title?: string }>()
 <style scoped>
 .app-list-group {
   display: grid;
-  gap: var(--space-2);
+  gap: 10px;
 }
 
 .app-list-group h2 {
-  margin: 0 4px;
-  font-size: 15px;
+  margin: 0 12px;
+  font-size: 16px;
+  font-weight: 600;
   line-height: 1.35;
 }
 

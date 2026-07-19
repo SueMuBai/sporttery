@@ -379,8 +379,9 @@ function tagTone(tag: string): string {
 }
 
 .plan-card__title-line {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   min-width: 0;
   gap: 6px;
 }
@@ -391,13 +392,15 @@ function tagTone(tag: string): string {
 }
 
 .plan-card h2 {
+  display: -webkit-box;
   min-width: 0;
   overflow: hidden;
-  flex: 0 1 auto;
   font-size: 14px;
-  line-height: 1.35;
+  line-height: 19px;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .plan-more {
@@ -507,7 +510,6 @@ function tagTone(tag: string): string {
 .plan-tags {
   display: flex;
   min-width: 0;
-  flex: 0 1 auto;
   overflow: hidden;
   gap: 5px;
 }

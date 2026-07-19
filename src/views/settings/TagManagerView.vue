@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { showFailToast } from "vant";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
+import { useRoute } from "vue-router";
 
 import AppButton from "@/components/base/AppButton.vue";
 import AppCard from "@/components/base/AppCard.vue";
@@ -8,11 +9,16 @@ import AppIcon from "@/components/base/AppIcon.vue";
 import AppPage from "@/components/base/AppPage.vue";
 import AppState from "@/components/base/AppState.vue";
 import SubpageHeader from "@/components/base/SubpageHeader.vue";
-import { MAX_PLAN_TAG_NAME_LENGTH } from "@/features/plans/tagValidation";
+import {
+  MAX_PLAN_TAG_NAME_LENGTH,
+  MAX_PLAN_TAGS,
+  normalizedTagIdentity,
+} from "@/features/plans/tagValidation";
 import { useSettingsStore } from "@/stores/settings";
 import type { PlanTag } from "@/types/domain";
 
 const store = useSettingsStore();
+const route = useRoute();
 const editing = ref<PlanTag>();
 const name = ref("");
 const color = ref("#5797F5");
@@ -38,12 +44,39 @@ const colors = [
   "#E8AA32",
   "#FF7D7D",
 ];
+const tagLimitReached = computed(() => store.tags.length >= MAX_PLAN_TAGS);
+const duplicateMessage = "标签名称已存在，请换一个名称";
+const addDuplicateError = computed(() => {
+  const value = newName.value.trim();
+  if (!value) return "";
+  const identity = normalizedTagIdentity(value);
+  return store.tags.some(
+    (tag) => normalizedTagIdentity(tag.name.trim()) === identity,
+  )
+    ? duplicateMessage
+    : "";
+});
+const editDuplicateError = computed(() => {
+  const value = name.value.trim();
+  if (!editing.value || !value) return "";
+  const identity = normalizedTagIdentity(value);
+  return store.tags.some(
+    (tag) =>
+      tag.name !== editing.value?.name &&
+      normalizedTagIdentity(tag.name.trim()) === identity,
+  )
+    ? duplicateMessage
+    : "";
+});
 
 const deleteUsage = computed(() =>
   deleteTarget.value ? (store.tagUsage[deleteTarget.value.name] ?? 0) : 0,
 );
 
-onMounted(() => store.load());
+onMounted(async () => {
+  await store.load();
+  if (route.query.new === "1" && !tagLimitReached.value) await focusAdd();
+});
 onBeforeUnmount(() => {
   if (toastTimer) clearTimeout(toastTimer);
 });
@@ -58,6 +91,7 @@ function showTagToast(message: string): void {
 }
 
 async function focusAdd(): Promise<void> {
+  if (tagLimitReached.value) return;
   editing.value = undefined;
   editError.value = "";
   addExpanded.value = true;
@@ -115,6 +149,10 @@ function cancelEdit(): void {
 }
 
 async function saveEdit(): Promise<void> {
+  if (editDuplicateError.value) {
+    editError.value = editDuplicateError.value;
+    return;
+  }
   try {
     editError.value = "";
     const saved = await store.saveTag(
@@ -132,10 +170,14 @@ async function saveEdit(): Promise<void> {
 }
 
 async function addTag(): Promise<void> {
+  if (tagLimitReached.value || addDuplicateError.value) {
+    addError.value = addDuplicateError.value;
+    return;
+  }
   try {
     addError.value = "";
     const saved = await store.saveTag(newName.value, newColor.value);
-    newName.value = saved.name;
+    newName.value = "";
     newColor.value = saved.color;
     showTagToast("标签已添加");
   } catch (reason) {
@@ -172,15 +214,18 @@ async function confirmRemove(): Promise<void> {
     <template #header>
       <SubpageHeader title="标签管理">
         <template #action>
-          <button type="button" class="header-add" @click="focusAdd">
-            新增
+          <button
+            type="button"
+            class="header-add"
+            :disabled="tagLimitReached"
+            @click="focusAdd"
+          >
+            {{ tagLimitReached ? "已满" : "新增" }}
           </button>
         </template>
       </SubpageHeader>
     </template>
-    <p class="tag-tip">
-      <AppIcon name="info" :size="18" />标签用于方案筛选与整理，最多8个
-    </p>
+    <p class="tag-tip">最多{{ MAX_PLAN_TAGS }}个标签 · 已使用{{ store.tags.length }}/{{ MAX_PLAN_TAGS }}</p>
     <AppCard v-if="store.tags.length" class="tag-list" :padded="false">
       <div class="tag-list__heading">
         <strong>已有标签</strong><span>{{ store.tags.length }}/8</span>
@@ -240,7 +285,12 @@ async function confirmRemove(): Promise<void> {
         </button>
         <div v-if="editing?.name === tag.name" class="tag-inline-editor">
           <div class="tag-edit-main">
-            <label class="tag-edit-input">
+            <label
+              :class="[
+                'tag-edit-input',
+                { 'tag-edit-input--error': editError || editDuplicateError },
+              ]"
+            >
               <input
                 v-model="name"
                 :maxlength="MAX_PLAN_TAG_NAME_LENGTH"
@@ -256,7 +306,7 @@ async function confirmRemove(): Promise<void> {
             </button>
             <AppButton
               :loading="store.saving"
-              :disabled="!name.trim()"
+              :disabled="!name.trim() || Boolean(editDuplicateError)"
               @click="saveEdit"
             >
               保存
@@ -281,16 +331,32 @@ async function confirmRemove(): Promise<void> {
           <small>修改后，已关联的{{
             store.tagUsage[tag.name] || 0
           }}个方案同步更新</small>
-          <p v-if="editError" class="tag-error" role="alert">{{ editError }}</p>
+          <p v-if="editError || editDuplicateError" class="tag-error" role="alert">
+            <AppIcon name="warning" :size="17" />
+            <span>{{ editError || editDuplicateError }}</span>
+          </p>
         </div>
       </div>
     </AppCard>
     <section ref="addSection" class="tag-add-section">
       <h2>新增标签</h2>
-      <AppCard v-if="addExpanded && !editing" class="tag-add-card">
+      <div v-if="tagLimitReached" class="tag-limit-state">
+        <p class="tag-limit-warning" role="status">
+          <AppIcon name="warning" :size="18" />
+          <span>标签数量已达上限，删除后可继续添加</span>
+        </p>
+        <button type="button" class="tag-add-collapsed" disabled>
+          <AppIcon name="add" :size="18" />
+          <span>新增标签</span>
+        </button>
+      </div>
+      <AppCard v-else-if="addExpanded && !editing" class="tag-add-card">
         <div class="tag-add-row">
           <label
-            :class="['tag-add-input', { 'tag-add-input--error': addError }]"
+            :class="[
+              'tag-add-input',
+              { 'tag-add-input--error': addError || addDuplicateError },
+            ]"
           >
             <input
               ref="addInput"
@@ -303,7 +369,7 @@ async function confirmRemove(): Promise<void> {
             <span>{{ newName.length }}/{{ MAX_PLAN_TAG_NAME_LENGTH }}</span>
           </label>
           <AppButton
-            :disabled="!newName.trim() || store.tags.length >= 8"
+            :disabled="!newName.trim() || Boolean(addDuplicateError)"
             :loading="store.saving"
             @click="addTag"
           >
@@ -324,7 +390,10 @@ async function confirmRemove(): Promise<void> {
             :style="{ color: newColor, backgroundColor: `${newColor}18` }"
           >{{ newName.trim() || "标签预览" }}</span>
         </div>
-        <p v-if="addError" class="tag-error" role="alert">{{ addError }}</p>
+        <p v-if="addError || addDuplicateError" class="tag-error" role="alert">
+          <AppIcon name="warning" :size="17" />
+          <span>{{ addError || addDuplicateError }}</span>
+        </p>
       </AppCard>
       <button v-else type="button" class="tag-add-collapsed" @click="focusAdd">
         <AppIcon name="add" :size="18" />
@@ -434,6 +503,10 @@ async function confirmRemove(): Promise<void> {
   place-items: center;
 }
 
+.header-add:disabled {
+  color: var(--color-text-tertiary);
+}
+
 .tag-tip {
   display: flex;
   align-items: center;
@@ -502,7 +575,8 @@ async function confirmRemove(): Promise<void> {
   box-shadow: var(--outline-primary);
 }
 
-.tag-add-input--error {
+.tag-add-input--error,
+.tag-edit-input--error {
   box-shadow: inset 0 0 0 1px var(--color-danger);
 }
 
@@ -583,6 +657,36 @@ async function confirmRemove(): Promise<void> {
   color: var(--color-text-secondary);
   background: rgb(255 255 255 / 54%);
   font-size: 13px;
+  line-height: 18px;
+}
+
+.tag-add-collapsed:disabled {
+  color: var(--color-text-tertiary);
+  border-color: transparent;
+  background: var(--color-disabled);
+  cursor: not-allowed;
+}
+
+.tag-limit-state {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--outline-default);
+}
+
+.tag-limit-warning {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  gap: 8px;
+  margin: 0;
+  padding: 0 10px;
+  border-radius: var(--radius-control);
+  color: #d88712;
+  background: #fff6e7;
+  font-size: 12px;
   line-height: 18px;
 }
 
@@ -738,10 +842,17 @@ async function confirmRemove(): Promise<void> {
 }
 
 .tag-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin: 0;
   color: var(--color-danger);
   font-size: 11px;
   line-height: 16px;
+}
+
+.tag-error :deep(.app-icon) {
+  flex: 0 0 auto;
 }
 
 .tag-feedback-toast {

@@ -54,28 +54,28 @@
     },
     {
       "effect": "03_设置_数据更新默认态.png",
-      "status": "partial",
-      "note": "Latest snapshot, incremental counts, and sync action exist; separate fetch-match/update-result commands and task history do not"
+      "status": "aligned-current-domain",
+      "note": "Latest snapshot, real processed/add/result/failure metrics, sync action, and latest report are rendered; separate fetch-match/update-result commands and task history do not exist"
     },
     {
       "effect": "04_设置_数据更新同步中.png",
-      "status": "partial",
-      "note": "Progress and failure count exist; cancellable sync and per-step log history do not"
+      "status": "aligned-current-domain",
+      "note": "Live completed/total progress, percentage, failure count, disabled submit state, and persistence message are rendered; cancellable sync and per-step log history do not exist"
     },
     {
       "effect": "05_设置_数据更新失败与重试.png",
-      "status": "partial",
-      "note": "Retry-failed action and failed match IDs exist; expandable failure-detail history does not"
+      "status": "aligned-current-domain",
+      "note": "Real success/failure totals, error messages, affected match IDs, and retry-failed action are rendered; historical expandable failure jobs do not exist"
     },
     {
       "effect": "06_设置_数据与备份.png",
-      "status": "partial",
-      "note": "Markdown/JSON export and JSON plan restore exist; device-size summary, full backup restore, and destructive local-data reset are not implemented"
+      "status": "aligned-current-domain",
+      "note": "Markdown/JSON export and JSON plan restore use grouped list rows and real loading feedback; device-size summary, full backup restore, and destructive local-data reset are not implemented"
     },
     {
       "effect": "07_设置_关于彩果.png",
-      "status": "partial",
-      "note": "Version, data/privacy/source, and responsible-play information exist; update/help/license/feedback routes and final brand artwork are not supplied"
+      "status": "aligned-current-domain",
+      "note": "Existing ticket artwork, runtime version, tagline, privacy/source/responsible-play information, and copyright are rendered; update/help/license/feedback routes and final brand artwork are not supplied"
     }
   ]
 }

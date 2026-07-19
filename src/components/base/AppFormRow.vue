@@ -32,10 +32,14 @@ const emit = defineEmits<{ click: [] }>()
     :disabled="!interactive"
     @click="emit('click')"
   >
-    <span v-if="icon || iconSrc || $slots.leading" class="app-form-row__icon" :style="{ color: iconColor, backgroundColor: `${iconColor}18` }">
+    <span
+      v-if="icon || iconSrc || $slots.leading"
+      class="app-form-row__icon"
+      :style="{ color: iconColor }"
+    >
       <slot name="leading">
-        <AppAssetIcon v-if="iconSrc" :src="iconSrc" :size="20" />
-        <AppIcon v-else-if="icon" :name="icon" :size="20" />
+        <AppAssetIcon v-if="iconSrc" :src="iconSrc" :size="26" />
+        <AppIcon v-else-if="icon" :name="icon" :size="26" />
       </slot>
     </span>
     <span class="app-form-row__copy">
@@ -50,12 +54,12 @@ const emit = defineEmits<{ click: [] }>()
 <style scoped>
 .app-form-row {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto 18px;
+  grid-template-columns: 40px minmax(0, 1fr) auto 18px;
   align-items: center;
   width: 100%;
-  min-height: 52px;
-  gap: var(--space-2);
-  padding: 6px 10px;
+  min-height: 72px;
+  gap: var(--space-3);
+  padding: 8px 18px;
   border: 0;
   color: var(--color-text);
   background: transparent;
@@ -72,8 +76,8 @@ const emit = defineEmits<{ click: [] }>()
 
 .app-form-row__icon {
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--radius-control);
   place-items: center;
 }
@@ -94,13 +98,14 @@ const emit = defineEmits<{ click: [] }>()
 }
 
 .app-form-row__copy strong {
-  font-size: 14px;
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .app-form-row__copy small,
 .app-form-row__value {
   color: var(--color-text-secondary);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-sm);
 }
 
 .app-form-row__value {
@@ -108,12 +113,14 @@ const emit = defineEmits<{ click: [] }>()
 }
 
 .app-form-row--static {
-  grid-template-columns: 34px minmax(0, 1fr) auto;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
 }
 
 @media (max-width: 359px) {
   .app-form-row {
-    grid-template-columns: 34px minmax(0, 1fr) 18px;
+    grid-template-columns: 40px minmax(0, 1fr) 18px;
+    gap: 10px;
+    padding-inline: 14px;
   }
 
   .app-form-row__value {
