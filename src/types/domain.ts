@@ -27,6 +27,9 @@ export interface PlanSelection {
 
 export interface SavedPlan {
   id: string
+  sourcePlanId?: string
+  revision: number
+  status: 'saved'
   name: string
   selections: PlanSelection[]
   passCounts: number[]
@@ -76,6 +79,15 @@ export interface LedgerOrder {
   updatedAt: string
 }
 
+export interface LedgerAdjustment {
+  id?: number
+  orderId: string
+  previousReturnCents: number
+  nextReturnCents: number
+  occurredAt: string
+  note: string
+}
+
 export interface SyncJob {
   id?: number
   kind: 'matches' | 'results' | 'full'
@@ -112,15 +124,6 @@ export interface DatabaseCounts {
   matches: number
   results: number
   ledgerOrders: number
-}
-
-export interface LegacyMigrationReport {
-  legacyFound: boolean
-  copied: boolean
-  sourcePath?: string
-  destinationPath?: string
-  sourceBytes?: number
-  reason?: string
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {

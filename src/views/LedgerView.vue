@@ -1,49 +1,30 @@
 <script setup lang="ts">
-import { showFailToast, showSuccessToast } from "vant";
-import { computed, onMounted, ref, watch } from "vue";
+import { showFailToast } from "vant";
+import { computed, onActivated, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 
 import AppButton from "@/components/base/AppButton.vue";
+import AppBottomSheet from "@/components/base/AppBottomSheet.vue";
 import AppCard from "@/components/base/AppCard.vue";
 import AppChip from "@/components/base/AppChip.vue";
 import AppHeader from "@/components/base/AppHeader.vue";
 import AppIconButton from "@/components/base/AppIconButton.vue";
+import AppIcon from "@/components/base/AppIcon.vue";
 import AppState from "@/components/base/AppState.vue";
-import { groupSelections } from "@/features/betting/calculator";
+import DateRangePicker from "@/components/base/DateRangePicker.vue";
 import { useLedgerStore, type EvaluatedLedgerOrder } from "@/stores/ledger";
-import type { MarketCode, PlanSelection } from "@/types/domain";
-import { centsToYuan, yuanToCents } from "@/utils/money";
+import { centsToYuan } from "@/utils/money";
 
 const store = useLedgerStore();
+const router = useRouter();
 const showDateSheet = ref(false);
 const showCalendar = ref(false);
-const showDatePicker = ref(false);
-const activeDateEndpoint = ref<"start" | "end">("start");
-const pickerValue = ref<string[]>([]);
-const showDetail = ref(false);
-const activeItem = ref<EvaluatedLedgerOrder>();
 const draftStart = ref("");
 const draftEnd = ref("");
-const returnValue = ref("");
-const returnError = ref("");
-
-const marketLabels: Record<MarketCode, string> = {
-  had: "胜平负",
-  hhad: "让球胜平负",
-  crs: "比分",
-  ttg: "总进球",
-  hafu: "半全场",
-};
 
 const dateLabel = computed(() => {
   if (!store.range.start || !store.range.end) return "全部账单";
   return `${store.range.start} 至 ${store.range.end}`;
-});
-const draftCalendarDates = computed<[Date, Date] | undefined>(() => {
-  if (!draftStart.value || !draftEnd.value) return undefined;
-  return [
-    new Date(`${draftStart.value}T00:00:00`),
-    new Date(`${draftEnd.value}T00:00:00`),
-  ];
 });
 const minCalendarDate = computed(() => {
   const now = new Date();
@@ -53,30 +34,14 @@ const maxCalendarDate = computed(() => {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth() + 1, 0);
 });
-const activeGroups = computed(() =>
-  activeItem.value
-    ? [...groupSelections(activeItem.value.order.planSnapshot.selections)]
-    : [],
-);
-const previewProfitCents = computed(() => {
-  if (!activeItem.value) return 0;
-  try {
-    return (
-      yuanToCents(returnValue.value || "0") - activeItem.value.order.stakeCents
-    );
-  } catch {
-    return activeItem.value.profitCents;
-  }
-});
 
-onMounted(() => store.load());
+onActivated(() => store.load());
 
 watch(showDateSheet, (visible) => {
   if (!visible) return;
   draftStart.value = store.range.start ?? "";
   draftEnd.value = store.range.end ?? "";
   showCalendar.value = false;
-  showDatePicker.value = false;
 });
 
 function formatDateTime(value: string): string {
@@ -93,27 +58,6 @@ function formatDateTime(value: string): string {
   });
 }
 
-function formatShortDate(value: Date): string {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function outcomeLabel(selection: PlanSelection): string {
-  if (selection.market === "had" || selection.market === "hhad") {
-    return (
-      { h: "胜", d: "平", a: "负" }[selection.outcome] ?? selection.outcome
-    );
-  }
-  if (selection.market === "hafu") {
-    const labels: Record<string, string> = { h: "胜", d: "平", a: "负" };
-    const [half, full] = selection.outcome.split("-");
-    return `${labels[half ?? ""] ?? half}${labels[full ?? ""] ?? full}`;
-  }
-  return selection.outcome;
-}
-
 async function selectQuickRange(
   preset: "month" | "three-months" | "all",
 ): Promise<void> {
@@ -121,27 +65,8 @@ async function selectQuickRange(
   showDateSheet.value = false;
 }
 
-function applyCalendarRange(values: Date | Date[]): void {
-  if (!Array.isArray(values) || values.length < 2) return;
-  draftStart.value = formatShortDate(values[0]!);
-  draftEnd.value = formatShortDate(values[1]!);
-  showCalendar.value = false;
-}
-
-function openDateEndpoint(endpoint: "start" | "end"): void {
-  activeDateEndpoint.value = endpoint;
-  const fallback = endpoint === "start" ? draftStart.value : draftEnd.value;
-  const value = fallback || formatShortDate(new Date());
-  pickerValue.value = value.split("-");
-  showCalendar.value = false;
-  showDatePicker.value = true;
-}
-
-function applyPickedDate(payload: { selectedValues: string[] }): void {
-  const value = payload.selectedValues.join("-");
-  if (activeDateEndpoint.value === "start") draftStart.value = value;
-  else draftEnd.value = value;
-  showDatePicker.value = false;
+function openInlineCalendar(): void {
+  showCalendar.value = !showCalendar.value;
 }
 
 async function applyCustomRange(): Promise<void> {
@@ -154,28 +79,7 @@ async function applyCustomRange(): Promise<void> {
 }
 
 function openDetail(item: EvaluatedLedgerOrder): void {
-  activeItem.value = item;
-  returnValue.value = centsToYuan(item.displayedReturnCents);
-  returnError.value = "";
-  showDetail.value = true;
-}
-
-async function saveReturn(): Promise<void> {
-  const item = activeItem.value;
-  if (!item) return;
-  try {
-    const cents = yuanToCents(returnValue.value);
-    if (cents < 0) throw new TypeError("回款金额不能小于 0");
-    returnError.value = "";
-    await store.updateReturn(item, cents);
-    activeItem.value = store.evaluatedOrders.find(
-      (candidate) => candidate.order.id === item.order.id,
-    );
-    showSuccessToast("回款金额已保存");
-  } catch (reason) {
-    returnError.value =
-      reason instanceof Error ? reason.message : String(reason);
-  }
+  router.push(`/ledger/${item.order.id}`);
 }
 </script>
 
@@ -185,9 +89,10 @@ async function saveReturn(): Promise<void> {
       <template #action>
         <AppIconButton
           label="筛选账单日期"
-          icon="calendar-o"
           @click="showDateSheet = true"
-        />
+        >
+          <AppIcon name="calendar-filter" />
+        </AppIconButton>
       </template>
     </AppHeader>
 
@@ -202,13 +107,13 @@ async function saveReturn(): Promise<void> {
         @keydown.space.prevent="showDateSheet = true"
       >
         <div class="period-card__icon">
-          <van-icon name="calendar-o" size="22" />
+          <AppIcon name="calendar" />
         </div>
         <div class="period-card__copy">
           <span>统计周期</span>
           <strong class="numeric">{{ dateLabel }}</strong>
         </div>
-        <van-icon name="arrow" size="18" color="var(--color-text-tertiary)" />
+        <AppIcon name="chevron-right" :size="18" />
       </AppCard>
 
       <div class="quick-ranges" aria-label="快捷日期范围">
@@ -268,11 +173,7 @@ async function saveReturn(): Promise<void> {
             @click="store.sort = store.sort === 'desc' ? 'asc' : 'desc'"
           >
             按时间{{ store.sort === "desc" ? "倒序" : "正序" }}
-            <van-icon
-              :name="store.sort === 'desc' ? 'arrow-down' : 'arrow-up'"
-              size="14"
-              aria-hidden="true"
-            />
+            <AppIcon :name="store.sort === 'desc' ? 'chevron-down' : 'chevron-up'" :size="14" />
           </button>
         </div>
 
@@ -293,7 +194,7 @@ async function saveReturn(): Promise<void> {
           v-else-if="!store.evaluatedOrders.length"
           type="empty"
           title="当前周期暂无账单"
-          description="保存方案并标记“已购”后，会自动记录到这里"
+          description="在选票或当前选择页点击“记录购买”后，会自动记录到这里"
         />
         <template v-else>
           <AppCard
@@ -318,20 +219,9 @@ async function saveReturn(): Promise<void> {
             <div class="ledger-item__title-row">
               <div>
                 <h3>{{ item.order.planName }}</h3>
-                <p>
-                  {{ item.evaluation.totalMatches }} 场 ·
-                  {{ item.order.planSnapshot.selections.length }} 个选项
-                </p>
-                <small>完成 {{ item.evaluation.settledMatches }}/{{
-                  item.evaluation.totalMatches
-                }}
-                  · 猜对 {{ item.evaluation.correctMatches }}</small>
+                <p>{{ item.evaluation.totalMatches }}场 · {{ item.order.planSnapshot.selections.length }}个选项 · 完成{{ item.evaluation.settledMatches }}/{{ item.evaluation.totalMatches }} · 猜对{{ item.evaluation.correctMatches }}</p>
               </div>
-              <van-icon
-                name="arrow"
-                size="18"
-                color="var(--color-text-tertiary)"
-              />
+              <AppIcon name="chevron-right" :size="18" />
             </div>
             <div class="ledger-item__finance">
               <div>
@@ -339,8 +229,12 @@ async function saveReturn(): Promise<void> {
               </div>
               <div>
                 <span>{{
-                  item.status === "pending" ? "当前回款" : "回款"
-                }}</span><strong class="numeric amount-positive">¥{{ centsToYuan(item.displayedReturnCents) }}</strong>
+                  item.status === "pending"
+                    ? "当前已结算"
+                    : item.order.returnManual
+                      ? "实际回款"
+                      : "理论回款"
+                }}<small v-if="item.order.returnManual">手工调整</small></span><strong class="numeric amount-positive">¥{{ centsToYuan(item.displayedReturnCents) }}</strong>
               </div>
               <div>
                 <span>净盈亏</span>
@@ -364,15 +258,8 @@ async function saveReturn(): Promise<void> {
       </section>
     </div>
 
-    <van-popup
-      v-model:show="showDateSheet"
-      position="bottom"
-      round
-      closeable
-      class="date-sheet-popup"
-    >
+    <AppBottomSheet v-model:show="showDateSheet" title="日期筛选" description="选择统计账单的起止日期">
       <div class="date-sheet">
-        <h2>日期筛选</h2>
         <section>
           <h3>快捷选择</h3>
           <div class="date-sheet__quick">
@@ -401,181 +288,40 @@ async function saveReturn(): Promise<void> {
         <section>
           <h3>自定义日期</h3>
           <div class="range-fields">
-            <button type="button" @click="openDateEndpoint('start')">
-              <van-icon name="calendar-o" />{{ draftStart || "起始日期" }}
+            <button type="button" @click="openInlineCalendar">
+              <AppIcon name="calendar" :size="20" />{{ draftStart || "起始日期" }}
+              <AppIcon name="chevron-down" :size="16" />
             </button>
             <b>至</b>
-            <button type="button" @click="openDateEndpoint('end')">
-              <van-icon name="calendar-o" />{{ draftEnd || "结束日期" }}
+            <button type="button" @click="openInlineCalendar">
+              <AppIcon name="calendar" :size="20" />{{ draftEnd || "结束日期" }}
+              <AppIcon name="chevron-down" :size="16" />
             </button>
           </div>
-          <button
-            type="button"
-            class="range-mode-button"
-            @click="
-              showCalendar = !showCalendar;
-              showDatePicker = false;
-            "
-          >
-            <van-icon name="notes-o" />
-            {{ showCalendar ? "收起区间日历" : "展开区间日历" }}
-          </button>
           <p class="range-hint">最多可查询最近 12 个月的账单</p>
-          <van-date-picker
-            v-if="showDatePicker"
-            v-model="pickerValue"
-            :title="
-              activeDateEndpoint === 'start' ? '选择起始日期' : '选择结束日期'
-            "
-            :min-date="minCalendarDate"
-            :max-date="maxCalendarDate"
-            @confirm="applyPickedDate"
-            @cancel="showDatePicker = false"
-          />
-          <van-calendar
+          <DateRangePicker
             v-if="showCalendar"
-            class="inline-calendar"
-            type="range"
-            :poppable="false"
+            v-model:start="draftStart"
+            v-model:end="draftEnd"
             :min-date="minCalendarDate"
             :max-date="maxCalendarDate"
-            :default-date="draftCalendarDates"
-            color="var(--color-primary)"
-            @confirm="applyCalendarRange"
           />
         </section>
+      </div>
+      <template #footer>
         <div class="date-sheet__actions">
-          <AppButton
-            variant="secondary"
-            block
-            @click="
-              draftStart = '';
-              draftEnd = '';
-              showCalendar = true;
-              showDatePicker = false;
-            "
-          >
-            重置
-          </AppButton>
-          <AppButton block :loading="store.loading" @click="applyCustomRange">
-            确定
-          </AppButton>
+          <AppButton variant="secondary" block @click="draftStart = ''; draftEnd = ''; showCalendar = true">重置</AppButton>
+          <AppButton block :loading="store.loading" @click="applyCustomRange">确定</AppButton>
         </div>
-      </div>
-    </van-popup>
-
-    <van-popup
-      v-model:show="showDetail"
-      position="bottom"
-      round
-      closeable
-      class="detail-sheet-popup"
-    >
-      <div v-if="activeItem" class="ledger-detail">
-        <header>
-          <div>
-            <h2>{{ activeItem.order.planName }}</h2>
-            <p>{{ formatDateTime(activeItem.order.purchasedAt) }}</p>
-          </div>
-          <span :class="['status-pill', `status-pill--${activeItem.status}`]">
-            {{ activeItem.status === "settled" ? "已完成" : "进行中" }}
-          </span>
-        </header>
-
-        <AppCard class="detail-summary" :padded="false">
-          <div>
-            <span>投注</span><strong>¥{{ centsToYuan(activeItem.order.stakeCents) }}</strong>
-          </div>
-          <div>
-            <span>当前回款</span><strong class="amount-positive">¥{{ centsToYuan(activeItem.displayedReturnCents) }}</strong>
-          </div>
-          <div>
-            <span>净盈亏</span><strong
-              :class="
-                activeItem.profitCents >= 0
-                  ? 'amount-positive'
-                  : 'amount-negative'
-              "
-            >{{ activeItem.profitCents >= 0 ? "+" : "-" }}¥{{
-              centsToYuan(Math.abs(activeItem.profitCents))
-            }}</strong>
-          </div>
-        </AppCard>
-
-        <div class="progress-banner">
-          已完成 {{ activeItem.evaluation.settledMatches }}/{{
-            activeItem.evaluation.totalMatches
-          }}
-          场，猜对 {{ activeItem.evaluation.correctMatches }} 场
-        </div>
-
-        <section class="detail-matches">
-          <h3>方案快照</h3>
-          <div
-            v-for="[matchId, selections] in activeGroups"
-            :key="matchId"
-            class="detail-match-row"
-          >
-            <div>
-              <strong>{{ store.matchById.get(matchId)?.homeTeam || matchId }} vs
-                {{
-                  store.matchById.get(matchId)?.awayTeam || "未知球队"
-                }}</strong>
-              <small>{{ store.matchById.get(matchId)?.matchNum }} ·
-                {{ marketLabels[selections[0]!.market] }}</small>
-            </div>
-            <span>{{
-              selections
-                .map(
-                  (selection) => `${outcomeLabel(selection)} ${selection.odds}`,
-                )
-                .join("、")
-            }}</span>
-          </div>
-        </section>
-
-        <section v-if="activeItem.status === 'settled'" class="return-editor">
-          <div class="return-editor__heading">
-            <div>
-              <h3>回款金额</h3>
-              <p>比赛已全部完成，可以按实际到账金额修正</p>
-            </div>
-            <van-icon name="edit" size="20" color="var(--color-primary)" />
-          </div>
-          <van-field
-            v-model="returnValue"
-            type="decimal"
-            inputmode="decimal"
-            label="¥"
-            placeholder="0.00"
-            :error-message="returnError"
-            @update:model-value="returnError = ''"
-          />
-          <p>
-            修改后净盈亏：<strong
-              :class="
-                previewProfitCents >= 0 ? 'amount-positive' : 'amount-negative'
-              "
-            >{{ previewProfitCents >= 0 ? "+" : "-" }}¥{{
-              centsToYuan(Math.abs(previewProfitCents))
-            }}</strong>
-          </p>
-          <AppButton block :loading="store.saving" @click="saveReturn">
-            保存回款金额
-          </AppButton>
-        </section>
-        <div v-else class="pending-banner">
-          比赛完成后可录入回款金额；当前收益按已结算组合实时计算。
-        </div>
-      </div>
-    </van-popup>
+      </template>
+    </AppBottomSheet>
   </div>
 </template>
 
 <style scoped>
 .ledger-content {
   display: grid;
-  gap: var(--space-4);
+  gap: 12px;
 }
 
 .period-card {
@@ -593,6 +339,12 @@ async function saveReturn(): Promise<void> {
   place-items: center;
   color: var(--color-primary);
   background: var(--color-primary-soft);
+}
+
+.period-card__icon img,
+.header-action-icon {
+  width: 24px;
+  height: 24px;
 }
 
 .period-card__copy {
@@ -623,32 +375,29 @@ async function saveReturn(): Promise<void> {
 .ledger-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  padding: var(--space-4) 0 var(--space-3);
+  padding: 10px 0 8px;
 }
 
-.ledger-summary > div,
-.detail-summary > div {
+.ledger-summary > div {
   display: grid;
   min-width: 0;
-  gap: 6px;
+  gap: 2px;
   padding: 0 var(--space-2);
   text-align: center;
 }
 
-.ledger-summary > div + div,
-.detail-summary > div + div {
+.ledger-summary > div + div {
   border-left: 1px solid var(--color-divider);
 }
 
-.ledger-summary span,
-.detail-summary span {
+.ledger-summary span {
   color: var(--color-text-secondary);
   font-size: var(--font-size-xs);
 }
 
 .ledger-summary strong {
   overflow: hidden;
-  font-size: clamp(15px, 4.5vw, 20px);
+  font-size: 16px;
   line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -656,7 +405,7 @@ async function saveReturn(): Promise<void> {
 
 .ledger-summary p {
   grid-column: 1 / -1;
-  margin: var(--space-3) 0 0;
+  margin: 6px 0 0;
   color: var(--color-text-secondary);
   font-size: var(--font-size-xs);
   text-align: center;
@@ -686,7 +435,7 @@ async function saveReturn(): Promise<void> {
 
 .ledger-item {
   display: grid;
-  gap: var(--space-3);
+  gap: 6px;
 }
 
 .ledger-item__meta,
@@ -706,8 +455,8 @@ async function saveReturn(): Promise<void> {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
-  min-height: 28px;
-  padding: 0 11px;
+  min-height: 22px;
+  padding: 0 8px;
   border-radius: var(--radius-pill);
   font-size: 11px;
   font-weight: 650;
@@ -730,35 +479,33 @@ async function saveReturn(): Promise<void> {
 .ledger-item__title-row h3 {
   margin: 0;
   overflow: hidden;
-  font-size: 19px;
+  font-size: 14px;
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.ledger-item__title-row p,
-.ledger-item__title-row small {
+.ledger-item__title-row p {
   display: block;
-  margin: 3px 0 0;
+  overflow: hidden;
+  margin: 2px 0 0;
   color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-}
-
-.ledger-item__title-row small {
   font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ledger-item__finance {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  padding-top: var(--space-3);
+  padding-top: 5px;
   border-top: 1px solid var(--color-divider);
 }
 
 .ledger-item__finance > div {
   display: grid;
   min-width: 0;
-  gap: 4px;
+  gap: 1px;
   padding: 0 var(--space-2);
   text-align: center;
 }
@@ -772,9 +519,18 @@ async function saveReturn(): Promise<void> {
   font-size: var(--font-size-xs);
 }
 
+.ledger-item__finance span small {
+  display: block;
+  margin-top: 2px;
+  color: var(--color-warning);
+  font-size: 9px;
+  line-height: 1;
+}
+
 .ledger-item__finance strong {
   overflow: hidden;
-  font-size: clamp(14px, 4vw, 18px);
+  font-size: 13px;
+  line-height: 18px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -785,43 +541,22 @@ async function saveReturn(): Promise<void> {
   text-align: center;
 }
 
-.date-sheet-popup,
-.detail-sheet-popup {
-  width: 100%;
-  max-height: 88dvh;
-  overflow-y: auto;
-}
-
-.date-sheet,
-.ledger-detail {
+.date-sheet {
   display: grid;
-  gap: var(--space-5);
-  padding: var(--space-5) var(--page-gutter)
-    calc(var(--space-5) + env(safe-area-inset-bottom));
+  gap: 16px;
+  padding: 12px var(--page-gutter);
 }
 
-.date-sheet h2,
-.date-sheet h3,
-.ledger-detail h2,
-.ledger-detail h3,
-.ledger-detail p {
+.date-sheet h3 {
   margin: 0;
-}
-
-.date-sheet h2 {
-  padding-right: 44px;
-  font-size: 22px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-md);
+  font-weight: 500;
 }
 
 .date-sheet section {
   display: grid;
   gap: var(--space-3);
-}
-
-.date-sheet h3 {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-md);
-  font-weight: 500;
 }
 
 .date-sheet__quick,
@@ -848,7 +583,7 @@ async function saveReturn(): Promise<void> {
   align-items: center;
   justify-content: center;
   min-width: 0;
-  min-height: 52px;
+  min-height: 40px;
   gap: 7px;
   padding: 0 8px;
   border: 0;
@@ -859,136 +594,10 @@ async function saveReturn(): Promise<void> {
   font-size: 13px;
 }
 
-.range-fields .van-icon {
-  color: var(--color-primary);
-  font-size: 20px;
-}
-
-.range-mode-button {
-  display: inline-flex;
-  align-items: center;
-  justify-self: start;
-  min-height: 36px;
-  gap: 6px;
-  padding: 0 4px;
-  border: 0;
-  color: var(--color-primary);
-  background: transparent;
-  font-size: var(--font-size-sm);
-}
-
 .range-hint {
   margin: 0;
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
-}
-
-.inline-calendar {
-  overflow: hidden;
-  border-radius: var(--radius-card);
-  box-shadow: var(--outline-default);
-}
-
-.inline-calendar :deep(.van-calendar__header) {
-  box-shadow: inset 0 -1px 0 var(--color-divider);
-}
-
-.ledger-detail header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding-right: 38px;
-}
-
-.ledger-detail header h2 {
-  font-size: 21px;
-}
-
-.ledger-detail header p {
-  margin-top: 4px;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-}
-
-.detail-summary {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  padding: var(--space-4) 0;
-}
-
-.detail-summary strong {
-  font-size: 15px;
-}
-
-.progress-banner,
-.pending-banner {
-  padding: var(--space-3);
-  border-radius: var(--radius-control);
-  color: var(--color-primary);
-  background: var(--color-primary-soft);
-  box-shadow: inset 0 0 0 1px rgb(87 151 245 / 20%);
-  font-size: var(--font-size-sm);
-}
-
-.detail-matches {
-  display: grid;
-  gap: var(--space-2);
-}
-
-.detail-match-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--color-divider);
-}
-
-.detail-match-row > div {
-  display: grid;
-  min-width: 0;
-  gap: 3px;
-}
-
-.detail-match-row strong {
-  overflow: hidden;
-  font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.detail-match-row small {
-  color: var(--color-text-secondary);
-  font-size: 10px;
-}
-
-.detail-match-row > span {
-  flex: 0 0 auto;
-  color: var(--color-primary);
-  font-size: 11px;
-}
-
-.return-editor {
-  display: grid;
-  gap: var(--space-3);
-}
-
-.return-editor__heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.return-editor__heading p,
-.return-editor > p {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-}
-
-.return-editor :deep(.van-field) {
-  border-radius: var(--radius-control);
-  box-shadow: var(--outline-default);
 }
 
 @media (max-width: 359px) {

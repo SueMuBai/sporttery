@@ -74,7 +74,7 @@ const emit = defineEmits<{
 
 .app-chip--selected {
   color: #fff;
-  background: var(--color-accent);
+  background: linear-gradient(135deg, #ff8fb3, #ff727c);
   box-shadow: var(--outline-accent);
 }
 

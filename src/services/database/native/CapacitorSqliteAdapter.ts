@@ -3,6 +3,21 @@ import {
   SQLiteConnection,
   type SQLiteDBConnection,
 } from "@capacitor-community/sqlite";
+import {
+  assertPersistableLedgerOrder,
+  assertPersistablePlan,
+  normalizeLedgerNotes,
+} from "@/features/plans/validation";
+import {
+  assertValidPlanTag,
+  MAX_PLAN_TAGS,
+  normalizedTagIdentity,
+} from "@/features/plans/tagValidation";
+import { validateSettings } from "@/features/settings/validation";
+import {
+  assertValidMatchResult,
+  assertValidMatchSnapshot,
+} from "@/features/matches/validation";
 
 import type {
   DatabaseAdapter,
@@ -13,13 +28,14 @@ import {
   DATABASE_VERSION,
   NATIVE_SCHEMA,
 } from "@/services/database/schema";
-import { prepareLegacyNativeDatabase } from "@/services/migration/legacyNativeMigration";
+import { SerialTaskQueue } from "@/services/database/SerialTaskQueue";
 import {
   DEFAULT_SETTINGS,
   type AppEvent,
   type AppSettings,
   type DatabaseCounts,
   type LedgerOrder,
+  type LedgerAdjustment,
   type MatchResult,
   type MatchSnapshot,
   type OddsHistoryEntry,
@@ -32,19 +48,58 @@ import {
 type SqlRow = Record<string, unknown>;
 
 const now = () => new Date().toISOString();
+const isNewerTimestamp = (candidate: string, current: string): boolean =>
+  Date.parse(candidate) > Date.parse(current);
 
-const LEGACY_LEDGER_SCHEMA = `
-PRAGMA foreign_keys=OFF;
-ALTER TABLE ledger_transactions RENAME TO ledger_transactions_legacy_v3;
-ALTER TABLE ledger_orders RENAME TO ledger_orders_legacy_v3;
-`;
+// Capacitor's Android plugin stores connections in a native dictionary keyed
+// by database name. Two JavaScript adapter instances therefore still operate
+// on the same native SQLite connection. Keep the queue at module/database
+// scope instead of per adapter instance so duplicate store initialization,
+// WebView lifecycle races, or an accidental second adapter cannot overlap
+// BEGIN/COMMIT calls on that shared connection.
+const nativeDatabaseQueue = new SerialTaskQueue();
+
+function nativeErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object") {
+    const candidate = error as Record<string, unknown>;
+    for (const key of ["message", "error", "reason"]) {
+      const value = candidate[key];
+      if (typeof value === "string") return value;
+      if (value && value !== error) {
+        const nested = nativeErrorMessage(value);
+        if (nested && nested !== "[object Object]") return nested;
+      }
+    }
+    try {
+      return JSON.stringify(error);
+    } catch {
+      // Fall through to the safest generic representation.
+    }
+  }
+  return String(error);
+}
 
 export class CapacitorSqliteAdapter implements DatabaseAdapter {
   private readonly sqlite = new SQLiteConnection(CapacitorSQLite);
+  private readonly transactions = nativeDatabaseQueue;
   private connection?: SQLiteDBConnection;
+  private initializePromise?: Promise<void>;
+  private initialized = false;
 
   async initialize(): Promise<void> {
-    await prepareLegacyNativeDatabase(DATABASE_NAME);
+    if (this.initialized) return;
+    this.initializePromise ??= this.initializeOnce();
+    try {
+      await this.initializePromise;
+      this.initialized = true;
+    } finally {
+      this.initializePromise = undefined;
+    }
+  }
+
+  private async initializeOnce(): Promise<void> {
     const consistency = await this.sqlite.checkConnectionsConsistency();
     const existing = await this.sqlite.isConnection(DATABASE_NAME, false);
     if (consistency.result && existing.result) {
@@ -62,32 +117,150 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
       );
     }
     await this.db.open();
-    await this.migrateLegacyLedgerIfNeeded();
-    await this.db.execute(NATIVE_SCHEMA, true);
-    await this.db.run(
+    // Android may keep the native connection alive across a WebView reload. If
+    // the previous JS runtime disappeared while a transaction was open, the
+    // retrieved connection is still marked as being in that transaction.
+    // Clear it before schema/setup writes or every later beginTransaction will
+    // fail with "Already in transaction" until the app data is removed.
+    await this.rollbackDanglingTransaction();
+    // Do not let execute() create a second plugin-managed transaction. Schema
+    // setup uses the same serialized/recoverable path as all later writes.
+    await this.transaction(async () => {
+      await this.db.execute(NATIVE_SCHEMA, false);
+    });
+    await this.run(
       "INSERT OR IGNORE INTO schema_migrations(version,applied_at) VALUES(?,?)",
       [DATABASE_VERSION, now()],
     );
     await this.seedSettings();
-    await this.seedTags();
   }
 
   async close(): Promise<void> {
-    if (!this.connection) return;
-    await this.connection.close();
-    await this.sqlite.closeConnection(DATABASE_NAME, false);
-    this.connection = undefined;
+    await this.transactions.run(async () => {
+      if (!this.connection) return;
+      await this.connection.close();
+      await this.sqlite.closeConnection(DATABASE_NAME, false);
+      this.connection = undefined;
+      this.initialized = false;
+    });
   }
 
   async transaction<T>(action: () => Promise<T>): Promise<T> {
-    await this.db.beginTransaction();
+    return this.transactions.run(async () => {
+      // SerialTaskQueue prevents overlap in this adapter instance. The native
+      // connection can nevertheless outlive that instance (hot reload,
+      // interrupted app, restored Capacitor connection), so also recover its
+      // real transaction state before beginning a new unit of work.
+      await this.beginTransactionWithRecovery();
+      try {
+        const result = await action();
+        await this.db.commitTransaction();
+        return result;
+      } catch (error) {
+        await this.safeRollbackTransaction();
+        throw error;
+      }
+    });
+  }
+
+  private async beginTransactionWithRecovery(): Promise<void> {
+    await this.rollbackDanglingTransaction();
     try {
-      const result = await action();
-      await this.db.commitTransaction();
-      return result;
+      await this.db.beginTransaction();
+      return;
     } catch (error) {
+      // capacitor-community/sqlite can occasionally report no active
+      // transaction through isTransactionActive() while Android's underlying
+      // connection still rejects BEGIN with "Already in transaction". This
+      // happens most often after the app/WebView was interrupted during a
+      // previous sync. Roll back the native connection unconditionally and
+      // retry once so users do not have to clear the app data. Some Android
+      // versions of the plugin can remain stuck even after that rollback.
+      // Never execute a multi-statement action without a native transaction:
+      // doing so could save only half a plan, purchase or backup import.
+      if (!this.isAlreadyInTransactionError(error)) throw error;
+      await this.safeRollbackTransaction();
+      try {
+        await this.db.beginTransaction();
+        return;
+      } catch (retryError) {
+        if (!this.isAlreadyInTransactionError(retryError)) throw retryError;
+        await this.safeRollbackTransaction();
+        // A native connection can preserve a stale transaction even though
+        // rollbackTransaction() reports success. Reopening it is the only
+        // reliable way to reset that native state on affected Android builds.
+        await this.db.close();
+        await this.db.open();
+        try {
+          await this.db.beginTransaction();
+          return;
+        } catch (reopenError) {
+          if (!this.isAlreadyInTransactionError(reopenError)) throw reopenError;
+          await this.safeRollbackTransaction();
+          await this.recreateNativeConnection();
+          try {
+            await this.db.beginTransaction();
+          } catch (resetError) {
+            if (!this.isAlreadyInTransactionError(resetError)) throw resetError;
+            await this.safeRollbackTransaction();
+            throw new Error(
+              "数据库事务状态异常，已停止本次写入，请重新打开应用后重试",
+              { cause: resetError },
+            );
+          }
+        }
+      }
+    }
+  }
+
+  private async recreateNativeConnection(): Promise<void> {
+    try {
+      await this.db.close();
+    } catch (error) {
+      const message = nativeErrorMessage(error);
+      if (!/not\s+open|already\s+closed|database\s+not\s+opened/i.test(message)) {
+        throw error;
+      }
+    }
+    try {
+      await this.sqlite.closeConnection(DATABASE_NAME, false);
+    } catch (error) {
+      const message = nativeErrorMessage(error);
+      if (!/no\s+available\s+connection|does\s+not\s+exist/i.test(message)) {
+        throw error;
+      }
+    }
+    this.connection = await this.sqlite.createConnection(
+      DATABASE_NAME,
+      false,
+      "no-encryption",
+      DATABASE_VERSION,
+      false,
+    );
+    await this.db.open();
+  }
+
+  private isAlreadyInTransactionError(error: unknown): boolean {
+    // Capacitor's Android bridge does not guarantee an Error instance. On
+    // some devices plugin rejections arrive as { message: "..." }; String()
+    // turns that into "[object Object]" and used to bypass recovery entirely.
+    const message = nativeErrorMessage(error);
+    return /already\s+in\s+transaction/i.test(message);
+  }
+
+  private async rollbackDanglingTransaction(): Promise<void> {
+    const state = await this.db.isTransactionActive();
+    if (state.result) await this.safeRollbackTransaction();
+  }
+
+  private async safeRollbackTransaction(): Promise<void> {
+    try {
       await this.db.rollbackTransaction();
-      throw error;
+    } catch (error) {
+      const message = nativeErrorMessage(error);
+      if (!/no\s+transaction|not\s+in\s+(?:a\s+)?transaction/i.test(message)) {
+        throw error;
+      }
     }
   }
 
@@ -112,6 +285,7 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
   }
 
   async saveSettings(settings: AppSettings): Promise<void> {
+    validateSettings(settings);
     const entries: Array<[string, number]> = [
       ["history_limits", settings.historyLimits],
       ["workers", settings.workers],
@@ -121,7 +295,7 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
     ];
     await this.transaction(async () => {
       for (const [key, value] of entries) {
-        await this.db.run(
+        await this.runInTransaction(
           `INSERT INTO settings(key,value,updated_at) VALUES(?,?,?)
            ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at`,
           [key, JSON.stringify(value), now()],
@@ -144,11 +318,27 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
   }
 
   async saveTag(tag: PlanTag): Promise<PlanTag> {
-    await this.db.run(
-      `INSERT INTO tags(name,color,sort_order,created_at) VALUES(?,?,?,?)
-       ON CONFLICT(name) DO UPDATE SET color=excluded.color,sort_order=excluded.sort_order`,
-      [tag.name, tag.color, tag.sortOrder, tag.createdAt],
-    );
+    assertValidPlanTag(tag);
+    await this.transaction(async () => {
+      const [duplicate] = await this.query(
+        "SELECT name FROM tags WHERE lower(name)=lower(?) LIMIT 1",
+        [tag.name],
+      );
+      if (duplicate && String(duplicate.name) !== tag.name) {
+        throw new Error("已存在同名标签");
+      }
+      if (!duplicate) {
+        const [count] = await this.query("SELECT COUNT(*) count FROM tags");
+        if (Number(count?.count ?? 0) >= MAX_PLAN_TAGS) {
+          throw new Error("最多只能创建 8 个标签");
+        }
+      }
+      await this.runInTransaction(
+        `INSERT INTO tags(name,color,sort_order,created_at) VALUES(?,?,?,?)
+         ON CONFLICT(name) DO UPDATE SET color=excluded.color,sort_order=excluded.sort_order`,
+        [tag.name, tag.color, tag.sortOrder, tag.createdAt],
+      );
+    });
     const rows = await this.query(
       "SELECT id,name,color,sort_order,created_at FROM tags WHERE name=?",
       [tag.name],
@@ -164,14 +354,50 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
     };
   }
 
+  async renameTag(originalName: string, tag: PlanTag): Promise<PlanTag> {
+    let renamed: PlanTag | undefined;
+    await this.transaction(async () => {
+      const [existing] = await this.query(
+        "SELECT id,name,color,sort_order,created_at FROM tags WHERE name=?",
+        [originalName],
+      );
+      if (!existing) throw new Error("原标签不存在，请刷新后重试");
+      const [duplicate] = await this.query(
+        "SELECT id FROM tags WHERE lower(name)=lower(?)",
+        [tag.name],
+      );
+      if (duplicate && Number(duplicate.id) !== Number(existing.id)) {
+        throw new Error("已存在同名标签");
+      }
+      assertValidPlanTag({
+        ...tag,
+        id: Number(existing.id),
+        createdAt: String(existing.created_at),
+      });
+      await this.runInTransaction(
+        "UPDATE tags SET name=?,color=?,sort_order=? WHERE id=?",
+        [tag.name, tag.color, tag.sortOrder, existing.id],
+      );
+      renamed = {
+        id: Number(existing.id),
+        name: tag.name,
+        color: tag.color,
+        sortOrder: tag.sortOrder,
+        createdAt: String(existing.created_at),
+      };
+    });
+    if (!renamed) throw new Error("标签改名失败");
+    return renamed;
+  }
+
   async deleteTag(name: string): Promise<void> {
-    await this.db.run("DELETE FROM tags WHERE name=?", [name]);
+    await this.run("DELETE FROM tags WHERE name=?", [name]);
   }
 
   async reorderTags(names: string[]): Promise<void> {
     await this.transaction(async () => {
       for (const [index, name] of names.entries()) {
-        await this.db.run("UPDATE tags SET sort_order=? WHERE name=?", [
+        await this.runInTransaction("UPDATE tags SET sort_order=? WHERE name=?", [
           index + 1,
           name,
         ]);
@@ -191,56 +417,121 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
     return rows[0] ? this.hydratePlan(rows[0]) : undefined;
   }
 
-  async savePlan(plan: SavedPlan): Promise<void> {
+  async savePlan(plan: SavedPlan, expectedRevision?: number): Promise<void> {
     await this.transaction(async () => {
-      await this.db.run(
-        `INSERT INTO plans(id,name,pass_counts,multiplier,created_at,updated_at)
-         VALUES(?,?,?,?,?,?)
-         ON CONFLICT(id) DO UPDATE SET name=excluded.name,pass_counts=excluded.pass_counts,
-         multiplier=excluded.multiplier,updated_at=excluded.updated_at`,
-        [
-          plan.id,
-          plan.name,
-          JSON.stringify(plan.passCounts),
-          plan.multiplier,
-          plan.createdAt,
-          plan.updatedAt,
-        ],
+      await this.writePlanInTransaction(plan, expectedRevision);
+    });
+  }
+
+  async importPlans(
+    tags: PlanTag[],
+    plans: SavedPlan[],
+    matches: MatchSnapshot[] = [],
+    results: MatchResult[] = [],
+  ): Promise<{ tags: number; plans: number; matches: number; results: number }> {
+    let importedMatchCount = 0;
+    let importedResultCount = 0;
+    tags.forEach(assertValidPlanTag);
+    matches.forEach(assertValidMatchSnapshot);
+    results.forEach(assertValidMatchResult);
+    await this.transaction(async () => {
+      const existingTags = await this.query("SELECT name FROM tags");
+      const identities = new Set(
+        existingTags.map((tag) => normalizedTagIdentity(String(tag.name))),
       );
-      await this.db.run("DELETE FROM plan_selections WHERE plan_id=?", [
-        plan.id,
-      ]);
-      await this.db.run("DELETE FROM plan_tags WHERE plan_id=?", [plan.id]);
-      for (const selection of plan.selections) {
-        await this.db.run(
-          `INSERT INTO plan_selections(plan_id,match_id,market,outcome,odds,selection_key)
-           VALUES(?,?,?,?,?,?)`,
-          [
-            plan.id,
-            selection.matchId,
-            selection.market,
-            selection.outcome,
-            selection.odds,
-            selection.key,
-          ],
+      tags.forEach((tag) => identities.add(normalizedTagIdentity(tag.name)));
+      if (identities.size > MAX_PLAN_TAGS) {
+        throw new Error("最多只能创建 8 个标签");
+      }
+      for (const tag of tags) {
+        const caseDuplicate = existingTags.find(
+          (item) =>
+            normalizedTagIdentity(String(item.name)) ===
+              normalizedTagIdentity(tag.name) && String(item.name) !== tag.name,
+        );
+        if (caseDuplicate) throw new Error("已存在同名标签");
+        await this.runInTransaction(
+          `INSERT INTO tags(name,color,sort_order,created_at) VALUES(?,?,?,?)
+           ON CONFLICT(name) DO UPDATE SET color=excluded.color,sort_order=excluded.sort_order`,
+          [tag.name, tag.color, tag.sortOrder, tag.createdAt],
         );
       }
-      for (const [index, tagName] of plan.tags.entries()) {
-        await this.db.run(
-          "INSERT OR IGNORE INTO tags(name,color,sort_order,created_at) VALUES(?,?,?,?)",
-          [tagName, "#5797F5", index + 1, plan.createdAt],
+      for (const plan of plans) {
+        const [existing] = await this.query(
+          "SELECT revision FROM plans WHERE id=?",
+          [plan.id],
         );
-        await this.db.run(
-          `INSERT OR IGNORE INTO plan_tags(plan_id,tag_id)
-           SELECT ?,id FROM tags WHERE name=?`,
-          [plan.id, tagName],
+        await this.writePlanInTransaction({
+          ...plan,
+          revision: existing
+            ? Math.max(plan.revision, Number(existing.revision) + 1)
+            : plan.revision,
+        });
+      }
+      const newerMatches: MatchSnapshot[] = [];
+      for (const match of matches) {
+        const [existing] = await this.query(
+          "SELECT updated_at FROM match_snapshots WHERE match_id=?",
+          [match.matchId],
+        );
+        if (
+          !existing ||
+          isNewerTimestamp(match.updatedAt, String(existing.updated_at))
+        ) {
+          newerMatches.push(match);
+        }
+      }
+      for (const match of newerMatches) {
+        await this.writeMatchInTransaction(match);
+      }
+      importedMatchCount = newerMatches.length;
+      const newerResults: MatchResult[] = [];
+      for (const result of results) {
+        const [existing] = await this.query(
+          "SELECT fetched_at FROM match_results WHERE match_id=? ORDER BY julianday(fetched_at) DESC,id DESC LIMIT 1",
+          [result.matchId],
+        );
+        if (
+          !existing ||
+          isNewerTimestamp(result.fetchedAt, String(existing.fetched_at))
+        ) {
+          newerResults.push(result);
+        }
+      }
+      for (const matchId of new Set(
+        newerResults.map((result) => result.matchId),
+      )) {
+        await this.runInTransaction(
+          "DELETE FROM match_results WHERE match_id=?",
+          [matchId],
         );
       }
+      for (const result of newerResults) {
+        await this.writeResultInTransaction(result);
+      }
+      importedResultCount = newerResults.length;
+    });
+    return {
+      tags: tags.length,
+      plans: plans.length,
+      matches: importedMatchCount,
+      results: importedResultCount,
+    };
+  }
+
+  async savePlanWithLedgerOrder(
+    plan: SavedPlan,
+    order: LedgerOrder,
+    expectedRevision?: number,
+  ): Promise<void> {
+    await this.transaction(async () => {
+      await this.writePlanInTransaction(plan, expectedRevision);
+      await this.writeLedgerOrderInTransaction(order);
     });
   }
 
   async deletePlan(id: string): Promise<void> {
-    await this.db.run("DELETE FROM plans WHERE id=?", [id]);
+    await this.run("DELETE FROM plans WHERE id=?", [id]);
   }
 
   async listMatches(): Promise<MatchSnapshot[]> {
@@ -259,59 +550,68 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
   }
 
   async saveMatches(matches: MatchSnapshot[]): Promise<void> {
+    matches.forEach(assertValidMatchSnapshot);
     await this.transaction(async () => {
-      for (const match of matches) {
-        await this.db.run(
-          `INSERT INTO match_snapshots(match_id,match_num,match_datetime,home_team,away_team,payload,updated_at)
-           VALUES(?,?,?,?,?,?,?) ON CONFLICT(match_id) DO UPDATE SET
-           match_num=excluded.match_num,match_datetime=excluded.match_datetime,
-           home_team=excluded.home_team,away_team=excluded.away_team,
-           payload=excluded.payload,updated_at=excluded.updated_at`,
-          [
-            match.matchId,
-            match.matchNum,
-            match.matchDateTime,
-            match.homeTeam,
-            match.awayTeam,
-            JSON.stringify(match.payload),
-            match.updatedAt,
-          ],
-        );
-      }
+      for (const match of matches) await this.writeMatchInTransaction(match);
     });
+  }
+
+  private async writeMatchInTransaction(match: MatchSnapshot): Promise<void> {
+    await this.runInTransaction(
+      `INSERT INTO match_snapshots(match_id,match_num,match_datetime,home_team,away_team,payload,updated_at)
+       VALUES(?,?,?,?,?,?,?) ON CONFLICT(match_id) DO UPDATE SET
+       match_num=excluded.match_num,match_datetime=excluded.match_datetime,
+       home_team=excluded.home_team,away_team=excluded.away_team,
+       payload=excluded.payload,updated_at=excluded.updated_at`,
+      [
+        match.matchId,
+        match.matchNum,
+        match.matchDateTime,
+        match.homeTeam,
+        match.awayTeam,
+        JSON.stringify(match.payload),
+        match.updatedAt,
+      ],
+    );
   }
 
   async listLatestResults(): Promise<MatchResult[]> {
     const rows = await this.query(
       `SELECT r.* FROM match_results r
-       JOIN (SELECT match_id,MAX(id) id FROM match_results GROUP BY match_id) latest
-       ON latest.id=r.id ORDER BY r.match_id`,
+       WHERE r.id=(
+         SELECT latest.id FROM match_results latest
+         WHERE latest.match_id=r.match_id
+         ORDER BY julianday(latest.fetched_at) DESC,latest.id DESC LIMIT 1
+       ) ORDER BY r.match_id`,
     );
     return rows.map((row) => this.mapResult(row));
   }
 
   async saveResults(results: MatchResult[]): Promise<void> {
+    results.forEach(assertValidMatchResult);
     await this.transaction(async () => {
-      for (const result of results) {
-        await this.db.run(
-          `INSERT OR IGNORE INTO match_results(
-             match_id,match_num,home_team,away_team,half_time_score,full_time_score,
-             goal_line,official_results,fetched_at
-           ) VALUES(?,?,?,?,?,?,?,?,?)`,
-          [
-            result.matchId,
-            result.matchNum,
-            result.homeTeam,
-            result.awayTeam,
-            result.halfTimeScore,
-            result.fullTimeScore,
-            result.goalLine,
-            JSON.stringify(result.officialResults),
-            result.fetchedAt,
-          ],
-        );
-      }
+      for (const result of results) await this.writeResultInTransaction(result);
     });
+  }
+
+  private async writeResultInTransaction(result: MatchResult): Promise<void> {
+    await this.runInTransaction(
+      `INSERT OR IGNORE INTO match_results(
+         match_id,match_num,home_team,away_team,half_time_score,full_time_score,
+         goal_line,official_results,fetched_at
+       ) VALUES(?,?,?,?,?,?,?,?,?)`,
+      [
+        result.matchId,
+        result.matchNum,
+        result.homeTeam,
+        result.awayTeam,
+        result.halfTimeScore,
+        result.fullTimeScore,
+        result.goalLine,
+        JSON.stringify(result.officialResults),
+        result.fetchedAt,
+      ],
+    );
   }
 
   async listLedger(filter: LedgerFilter = {}): Promise<LedgerOrder[]> {
@@ -334,7 +634,20 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
   }
 
   async saveLedgerOrder(order: LedgerOrder): Promise<void> {
-    await this.db.run(
+    await this.run(
+      ...this.ledgerOrderStatement(order),
+    );
+  }
+
+  private async writeLedgerOrderInTransaction(order: LedgerOrder): Promise<void> {
+    await this.runInTransaction(...this.ledgerOrderStatement(order));
+  }
+
+  private ledgerOrderStatement(
+    order: LedgerOrder,
+  ): [string, unknown[]] {
+    assertPersistableLedgerOrder(order);
+    return [
       `INSERT INTO ledger_orders(
          id,plan_id,plan_name,plan_snapshot,purchased_at,stake_cents,return_cents,
          return_manual,status,notes,created_at,updated_at
@@ -357,41 +670,104 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
         order.createdAt,
         order.updatedAt,
       ],
-    );
+    ];
+  }
+
+  async updateLedgerNotes(
+    id: string,
+    notes: string,
+    expectedUpdatedAt?: string,
+  ): Promise<void> {
+    const normalizedNotes = normalizeLedgerNotes(notes);
+    await this.transaction(async () => {
+      const [existing] = await this.query(
+        "SELECT updated_at FROM ledger_orders WHERE id=?",
+        [id],
+      );
+      if (!existing) throw new Error("账单不存在");
+      if (
+        expectedUpdatedAt &&
+        String(existing.updated_at) !== expectedUpdatedAt
+      ) {
+        throw new Error("账单已在其他页面更新，请刷新后重试");
+      }
+      await this.runInTransaction(
+        "UPDATE ledger_orders SET notes=?,updated_at=? WHERE id=?",
+        [normalizedNotes, now(), id],
+      );
+    });
   }
 
   async updateLedgerReturn(
     id: string,
     returnCents: number,
-    manual: boolean,
     expectedUpdatedAt?: string,
   ): Promise<void> {
     if (!Number.isSafeInteger(returnCents) || returnCents < 0) {
       throw new TypeError("回款金额必须是非负整数分");
     }
-    const stamp = now();
-    const result = expectedUpdatedAt
-      ? await this.db.run(
-          "UPDATE ledger_orders SET return_cents=?,return_manual=?,updated_at=? WHERE id=? AND updated_at=?",
-          [returnCents, manual ? 1 : 0, stamp, id, expectedUpdatedAt],
-        )
-      : await this.db.run(
-          "UPDATE ledger_orders SET return_cents=?,return_manual=?,updated_at=? WHERE id=?",
-          [returnCents, manual ? 1 : 0, stamp, id],
-        );
-    if (!result.changes?.changes) {
-      const existing = await this.query(
-        "SELECT id FROM ledger_orders WHERE id=?",
+    await this.transaction(async () => {
+      const rows = await this.query("SELECT return_cents,updated_at FROM ledger_orders WHERE id=?", [id]);
+      const existing = rows[0];
+      if (!existing) throw new Error("账单不存在");
+      if (expectedUpdatedAt && String(existing.updated_at) !== expectedUpdatedAt) {
+        throw new Error("账单已在其他页面更新，请刷新后重试");
+      }
+      const stamp = now();
+      await this.runInTransaction(
+        "INSERT INTO ledger_adjustments(order_id,previous_return_cents,next_return_cents,occurred_at,note) VALUES(?,?,?,?,?)",
+        [id, Number(existing.return_cents), returnCents, stamp, "手工修改实际回款"],
+      );
+      await this.runInTransaction(
+        "UPDATE ledger_orders SET return_cents=?,return_manual=?,updated_at=? WHERE id=?",
+        [returnCents, 1, stamp, id],
+      );
+    });
+  }
+
+  async listLedgerAdjustments(orderId: string): Promise<LedgerAdjustment[]> {
+    const rows = await this.query(
+      "SELECT * FROM ledger_adjustments WHERE order_id=? ORDER BY occurred_at DESC,id DESC",
+      [orderId],
+    );
+    return rows.map((row) => ({
+      id: Number(row.id),
+      orderId: String(row.order_id),
+      previousReturnCents: Number(row.previous_return_cents),
+      nextReturnCents: Number(row.next_return_cents),
+      occurredAt: String(row.occurred_at),
+      note: String(row.note),
+    }));
+  }
+
+  async undoLatestLedgerAdjustment(id: string, expectedUpdatedAt?: string): Promise<void> {
+    await this.transaction(async () => {
+      const orders = await this.query("SELECT updated_at FROM ledger_orders WHERE id=?", [id]);
+      const order = orders[0];
+      if (!order) throw new Error("账单不存在");
+      if (expectedUpdatedAt && String(order.updated_at) !== expectedUpdatedAt) {
+        throw new Error("账单已在其他页面更新，请刷新后重试");
+      }
+      const adjustments = await this.query(
+        "SELECT * FROM ledger_adjustments WHERE order_id=? ORDER BY occurred_at DESC,id DESC LIMIT 1",
         [id],
       );
-      if (existing.length)
-        throw new Error("账单已在其他页面更新，请刷新后重试");
-      throw new Error("账单不存在");
-    }
+      const latest = adjustments[0];
+      if (!latest) throw new Error("没有可以撤销的回款修改");
+      const remaining = await this.query(
+        "SELECT COUNT(*) count FROM ledger_adjustments WHERE order_id=? AND id<>?",
+        [id, latest.id],
+      );
+      await this.runInTransaction(
+        "UPDATE ledger_orders SET return_cents=?,return_manual=?,updated_at=? WHERE id=?",
+        [Number(latest.previous_return_cents), Number(remaining[0]?.count ?? 0) > 0 ? 1 : 0, now(), id],
+      );
+      await this.runInTransaction("DELETE FROM ledger_adjustments WHERE id=?", [latest.id]);
+    });
   }
 
   async saveSyncJob(job: SyncJob): Promise<number> {
-    const result = await this.db.run(
+    const result = await this.run(
       `INSERT INTO sync_jobs(kind,status,added_count,updated_count,failed_count,error_message,started_at,finished_at)
        VALUES(?,?,?,?,?,?,?,?)`,
       [
@@ -404,7 +780,6 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
         job.startedAt,
         job.finishedAt ?? null,
       ],
-      true,
       "last",
     );
     return Number(result.changes?.lastId ?? 0);
@@ -413,7 +788,7 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
   async saveOddsHistory(entries: OddsHistoryEntry[]): Promise<void> {
     await this.transaction(async () => {
       for (const entry of entries) {
-        await this.db.run(
+        await this.runInTransaction(
           `INSERT OR IGNORE INTO odds_history(match_id,market,outcome,odds,captured_at)
            VALUES(?,?,?,?,?)`,
           [
@@ -429,13 +804,31 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
   }
 
   async recordEvent(event: AppEvent): Promise<number> {
-    const result = await this.db.run(
+    const result = await this.run(
       "INSERT INTO app_events(type,payload,created_at) VALUES(?,?,?)",
       [event.type, JSON.stringify(event.payload), event.createdAt],
-      true,
       "last",
     );
     return Number(result.changes?.lastId ?? 0);
+  }
+
+  async listEvents(type?: string, limit = 20): Promise<AppEvent[]> {
+    const safeLimit = Math.max(0, Math.trunc(limit));
+    const rows = type
+      ? await this.query(
+          "SELECT * FROM app_events WHERE type=? ORDER BY created_at DESC,id DESC LIMIT ?",
+          [type, safeLimit],
+        )
+      : await this.query(
+          "SELECT * FROM app_events ORDER BY created_at DESC,id DESC LIMIT ?",
+          [safeLimit],
+        );
+    return rows.map((row) => ({
+      id: Number(row.id),
+      type: String(row.type),
+      payload: JSON.parse(String(row.payload)) as Record<string, unknown>,
+      createdAt: String(row.created_at),
+    }));
   }
 
   async getCounts(): Promise<DatabaseCounts> {
@@ -480,6 +873,102 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
     return (result.values ?? []) as SqlRow[];
   }
 
+  private async writePlanInTransaction(
+    plan: SavedPlan,
+    expectedRevision?: number,
+  ): Promise<void> {
+    assertPersistablePlan(plan);
+    if (expectedRevision !== undefined) {
+      const [existing] = await this.query(
+        "SELECT revision FROM plans WHERE id=?",
+        [plan.id],
+      );
+      if (!existing || Number(existing.revision) !== expectedRevision) {
+        throw new Error("方案已在其他页面更新，请重新载入后再保存");
+      }
+    }
+    for (const tagName of plan.tags) {
+      const [tag] = await this.query("SELECT name FROM tags WHERE name=?", [
+        tagName,
+      ]);
+      if (!tag) {
+        throw new Error("方案包含已删除的标签，请刷新后重试");
+      }
+    }
+    await this.runInTransaction(
+      `INSERT INTO plans(id,source_plan_id,revision,status,name,pass_counts,multiplier,created_at,updated_at)
+       VALUES(?,?,?,?,?,?,?,?,?)
+       ON CONFLICT(id) DO UPDATE SET source_plan_id=excluded.source_plan_id,
+       revision=excluded.revision,status=excluded.status,name=excluded.name,
+       pass_counts=excluded.pass_counts,multiplier=excluded.multiplier,updated_at=excluded.updated_at`,
+      [
+        plan.id,
+        plan.sourcePlanId ?? null,
+        plan.revision,
+        plan.status,
+        plan.name,
+        JSON.stringify(plan.passCounts),
+        plan.multiplier,
+        plan.createdAt,
+        plan.updatedAt,
+      ],
+    );
+    await this.runInTransaction(
+      "DELETE FROM plan_selections WHERE plan_id=?",
+      [plan.id],
+    );
+    await this.runInTransaction("DELETE FROM plan_tags WHERE plan_id=?", [
+      plan.id,
+    ]);
+    for (const selection of plan.selections) {
+      await this.runInTransaction(
+        `INSERT INTO plan_selections(plan_id,match_id,market,outcome,odds,selection_key)
+         VALUES(?,?,?,?,?,?)`,
+        [
+          plan.id,
+          selection.matchId,
+          selection.market,
+          selection.outcome,
+          selection.odds,
+          selection.key,
+        ],
+      );
+    }
+    for (const tagName of plan.tags) {
+      await this.runInTransaction(
+        `INSERT OR IGNORE INTO plan_tags(plan_id,tag_id)
+         SELECT ?,id FROM tags WHERE name=?`,
+        [plan.id, tagName],
+      );
+    }
+  }
+
+  private run(
+    statement: string,
+    values: unknown[] = [],
+    returnMode: Parameters<SQLiteDBConnection["run"]>[3] = "no",
+  ) {
+    // Standalone writes share the same queue as multi-statement transactions.
+    // Otherwise a sync log/tag write could enter the native connection while
+    // saveMatches/saveResults owns a transaction and recreate the Android
+    // "Already in transaction" failure through a different call path.
+    return this.transactions.run(() =>
+      this.runInTransaction(statement, values, returnMode),
+    );
+  }
+
+  private runInTransaction(
+    statement: string,
+    values: unknown[] = [],
+    returnMode: Parameters<SQLiteDBConnection["run"]>[3] = "no",
+  ) {
+    // We manage multi-statement transactions explicitly in transaction().
+    // Passing the plugin default (`true`) here would make every statement try
+    // to open another native transaction and Android rejects it as nested.
+    // A standalone SQLite statement is atomic even with this flag disabled.
+    return this.db.run(statement, values, false, returnMode);
+  }
+
   private async seedSettings(): Promise<void> {
     const entries: Array<[string, number]> = [
       ["history_limits", DEFAULT_SETTINGS.historyLimits],
@@ -489,51 +978,11 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
       ["default_multiplier", DEFAULT_SETTINGS.defaultMultiplier],
     ];
     for (const [key, value] of entries) {
-      await this.db.run(
+      await this.run(
         "INSERT OR IGNORE INTO settings(key,value,updated_at) VALUES(?,?,?)",
         [key, JSON.stringify(value), now()],
       );
     }
-  }
-
-  private async seedTags(): Promise<void> {
-    const createdAt = now();
-    await this.db.run(
-      "INSERT OR IGNORE INTO tags(name,color,sort_order,created_at) VALUES(?,?,?,?)",
-      ["已购", "#5797F5", 1, createdAt],
-    );
-    await this.db.run(
-      "INSERT OR IGNORE INTO tags(name,color,sort_order,created_at) VALUES(?,?,?,?)",
-      ["AI", "#9A91F5", 2, createdAt],
-    );
-  }
-
-  private async migrateLegacyLedgerIfNeeded(): Promise<void> {
-    const tables = await this.query(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name='ledger_orders'",
-    );
-    if (!tables.length) return;
-    const columns = await this.query("PRAGMA table_info(ledger_orders)");
-    const names = new Set(columns.map((column) => String(column.name)));
-    if (!names.has("stake_amount") || names.has("stake_cents")) return;
-
-    await this.db.execute(LEGACY_LEDGER_SCHEMA, true);
-    await this.db.execute(NATIVE_SCHEMA, true);
-    await this.db.execute(
-      `INSERT INTO ledger_orders(
-         id,plan_id,plan_name,plan_snapshot,purchased_at,stake_cents,return_cents,
-         return_manual,status,notes,created_at,updated_at
-       ) SELECT id,plan_id,plan_name,plan_snapshot,purchased_at,
-         CAST(ROUND(stake_amount*100) AS INTEGER),CAST(ROUND(return_amount*100) AS INTEGER),
-         return_manual,status,notes,created_at,updated_at FROM ledger_orders_legacy_v3;
-       INSERT INTO ledger_transactions(order_id,type,amount_cents,occurred_at,note)
-       SELECT order_id,type,CAST(ROUND(amount*100) AS INTEGER),occurred_at,note
-       FROM ledger_transactions_legacy_v3;
-       DROP TABLE ledger_transactions_legacy_v3;
-       DROP TABLE ledger_orders_legacy_v3;
-       PRAGMA foreign_keys=ON;`,
-      true,
-    );
   }
 
   private async hydratePlan(row: SqlRow): Promise<SavedPlan> {
@@ -556,6 +1005,9 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
     }));
     return {
       id: String(row.id),
+      sourcePlanId: row.source_plan_id ? String(row.source_plan_id) : undefined,
+      revision: Number(row.revision),
+      status: "saved",
       name: String(row.name),
       selections,
       passCounts: JSON.parse(String(row.pass_counts)) as number[],

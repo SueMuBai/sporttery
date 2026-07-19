@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { showConfirmDialog, showFailToast, showSuccessToast } from "vant";
+import { showFailToast, showSuccessToast } from "vant";
 import { computed, onMounted, ref } from "vue";
 import { onBeforeRouteLeave } from "vue-router";
 
 import AppButton from "@/components/base/AppButton.vue";
+import AppBottomSheet from "@/components/base/AppBottomSheet.vue";
 import AppCard from "@/components/base/AppCard.vue";
 import AppState from "@/components/base/AppState.vue";
+import AppIcon, { type AppIconName } from "@/components/base/AppIcon.vue";
+import AppPage from "@/components/base/AppPage.vue";
 import SubpageHeader from "@/components/base/SubpageHeader.vue";
 import { useSettingsStore } from "@/stores/settings";
 import { DEFAULT_SETTINGS, type AppSettings } from "@/types/domain";
@@ -14,7 +17,7 @@ interface SettingDefinition {
   key: keyof AppSettings;
   title: string;
   description: string;
-  icon: string;
+  icon: AppIconName;
   suffix?: string;
   min: number;
   max: number;
@@ -24,13 +27,15 @@ const store = useSettingsStore();
 const draft = ref<AppSettings>({ ...DEFAULT_SETTINGS });
 const initial = ref<AppSettings>({ ...DEFAULT_SETTINGS });
 const saved = ref(false);
+const leaveSheetVisible = ref(false);
+let resolveLeaveDecision: ((allow: boolean) => void) | undefined;
 
 const definitions: SettingDefinition[] = [
   {
     key: "historyLimits",
     title: "每场历史条数",
     description: "历史交锋最多读取的比赛数量",
-    icon: "clock-o",
+    icon: "history",
     min: 1,
     max: 50,
   },
@@ -38,7 +43,7 @@ const definitions: SettingDefinition[] = [
     key: "workers",
     title: "并发请求数",
     description: "同时请求历史数据的任务数量",
-    icon: "cluster-o",
+    icon: "concurrency",
     min: 1,
     max: 12,
   },
@@ -46,7 +51,7 @@ const definitions: SettingDefinition[] = [
     key: "timeoutSeconds",
     title: "接口超时",
     description: "单次网络请求的最长等待时间",
-    icon: "underway-o",
+    icon: "timeout",
     suffix: "秒",
     min: 5,
     max: 120,
@@ -55,7 +60,7 @@ const definitions: SettingDefinition[] = [
     key: "retries",
     title: "失败重试次数",
     description: "网络失败后的自动重试次数",
-    icon: "replay",
+    icon: "retry",
     min: 0,
     max: 8,
   },
@@ -63,7 +68,7 @@ const definitions: SettingDefinition[] = [
     key: "defaultMultiplier",
     title: "默认倍数",
     description: "新选票默认使用的投注倍数",
-    icon: "balance-o",
+    icon: "multiplier",
     suffix: "倍",
     min: 1,
     max: 999,
@@ -84,19 +89,35 @@ onMounted(async () => {
 
 onBeforeRouteLeave(async () => {
   if (!dirty.value) return true;
-  try {
-    await showConfirmDialog({
-      title: "设置尚未保存",
-      message: "离开后本次修改将丢失。",
-      confirmButtonText: "放弃修改",
-      cancelButtonText: "继续编辑",
-      confirmButtonColor: "#EF5B67",
-    });
-    return true;
-  } catch {
-    return false;
-  }
+  return new Promise<boolean>((resolve) => {
+    resolveLeaveDecision?.(false);
+    resolveLeaveDecision = resolve;
+    leaveSheetVisible.value = true;
+  });
 });
+
+function finishLeaveDecision(allow: boolean): void {
+  leaveSheetVisible.value = false;
+  const resolve = resolveLeaveDecision;
+  resolveLeaveDecision = undefined;
+  resolve?.(allow);
+}
+
+function discardAndLeave(): void {
+  draft.value = { ...initial.value };
+  saved.value = false;
+  finishLeaveDecision(true);
+}
+
+async function saveAndLeave(): Promise<void> {
+  try {
+    await store.saveSettings(draft.value);
+    initial.value = { ...draft.value };
+    finishLeaveDecision(true);
+  } catch (reason) {
+    showFailToast(reason instanceof Error ? reason.message : String(reason));
+  }
+}
 
 function update(key: keyof AppSettings, value: number): void {
   draft.value = { ...draft.value, [key]: value };
@@ -116,74 +137,82 @@ async function save(): Promise<void> {
 </script>
 
 <template>
-  <div class="subpage settings-subpage">
-    <SubpageHeader title="系统设置" subtitle="调整数据获取与投注默认参数" />
-    <main class="subpage-content system-content">
-      <AppState
-        v-if="store.loading && !store.settings"
-        type="loading"
-        title="正在读取设置"
-      />
-      <AppState
-        v-else-if="store.error"
-        type="error"
-        title="设置读取失败"
-        :description="store.error"
-        action-text="重试"
-        @action="store.load"
-      />
-      <template v-else>
-        <AppCard class="info-banner">
-          <van-icon name="info-o" size="21" />
-          <p>并发数过高可能触发接口限制。修改会在下一次数据同步时生效。</p>
-        </AppCard>
-        <AppCard class="setting-list" :padded="false">
-          <div v-for="item in definitions" :key="item.key" class="setting-row">
-            <span class="setting-row__icon"><van-icon :name="item.icon" size="21" /></span>
-            <div class="setting-row__copy">
-              <strong>{{ item.title }}</strong>
-              <small>{{ item.description }}</small>
-            </div>
-            <van-stepper
-              :model-value="draft[item.key]"
-              :min="item.min"
-              :max="item.max"
-              integer
-              :aria-label="`${item.title}，当前 ${draft[item.key]}${item.suffix || ''}`"
-              @update:model-value="update(item.key, Number($event))"
-            />
-            <span v-if="item.suffix" class="setting-row__suffix">{{
-              item.suffix
-            }}</span>
+  <AppPage secondary content-class="system-content">
+    <template #header><SubpageHeader title="系统设置" subtitle="调整数据获取与投注默认参数" /></template>
+    <AppState
+      v-if="store.loading && !store.settings"
+      type="loading"
+      title="正在读取设置"
+    />
+    <AppState
+      v-else-if="store.error"
+      type="error"
+      title="设置读取失败"
+      :description="store.error"
+      action-text="重试"
+      @action="store.load"
+    />
+    <template v-else>
+      <AppCard class="setting-list" :padded="false">
+        <div v-for="item in definitions" :key="item.key" class="setting-row">
+          <span class="setting-row__icon"><AppIcon :name="item.icon" :size="20" /></span>
+          <div class="setting-row__copy">
+            <strong>{{ item.title }}</strong>
+            <small>{{ item.description }}</small>
           </div>
-        </AppCard>
-        <p v-if="dirty" class="save-state">有尚未保存的修改</p>
-        <p v-else-if="saved" class="save-state save-state--success">
-          所有设置已保存
-        </p>
-        <AppButton
-          block
-          :loading="store.saving"
-          :disabled="!dirty"
-          @click="save"
-        >
-          保存设置
+          <van-stepper
+            :model-value="draft[item.key]"
+            :min="item.min"
+            :max="item.max"
+            integer
+            :aria-label="`${item.title}，当前 ${draft[item.key]}${item.suffix || ''}`"
+            @update:model-value="update(item.key, Number($event))"
+          />
+          <span v-if="item.suffix" class="setting-row__suffix">{{
+            item.suffix
+          }}</span>
+        </div>
+      </AppCard>
+      <AppCard class="info-banner">
+        <AppIcon name="info" :size="21" />
+        <p>并发数过高可能触发接口限制。修改会在下一次数据同步或新建方案时生效。</p>
+      </AppCard>
+      <p v-if="dirty" class="save-state">有尚未保存的修改</p>
+      <p v-else-if="saved" class="save-state save-state--success">
+        所有设置已保存
+      </p>
+    </template>
+    <template #footer>
+      <div v-if="store.settings && !store.error" class="system-footer">
+        <AppButton block :loading="store.saving" :disabled="!dirty" @click="save">保存设置</AppButton>
+      </div>
+    </template>
+    <AppBottomSheet
+      :show="leaveSheetVisible"
+      title="设置尚未保存"
+      description="请选择如何处理本次修改"
+      close-label="继续编辑"
+      @update:show="!$event && finishLeaveDecision(false)"
+    >
+      <div class="leave-actions">
+        <AppButton block :loading="store.saving" @click="saveAndLeave">
+          保存修改后离开
         </AppButton>
-      </template>
-    </main>
-  </div>
+        <AppButton block variant="danger" @click="discardAndLeave">
+          放弃修改
+        </AppButton>
+        <AppButton block variant="secondary" @click="finishLeaveDecision(false)">
+          继续编辑
+        </AppButton>
+      </div>
+    </AppBottomSheet>
+  </AppPage>
 </template>
 
 <style scoped>
-.settings-subpage {
-  min-height: 100dvh;
-  background: var(--color-page);
-}
-
 .system-content {
-  display: grid;
-  gap: var(--space-4);
-  padding: var(--space-4) var(--page-gutter) var(--space-8);
+  align-content: start;
+  padding-bottom: calc(76px + env(safe-area-inset-bottom));
 }
 
 .info-banner {
@@ -207,11 +236,11 @@ async function save(): Promise<void> {
 
 .setting-row {
   display: grid;
-  grid-template-columns: 38px minmax(0, 1fr) auto auto;
+  grid-template-columns: 34px minmax(0, 1fr) auto auto;
   align-items: center;
-  min-height: 78px;
-  gap: var(--space-3);
-  padding: 10px var(--space-4);
+  min-height: 52px;
+  gap: 8px;
+  padding: 6px 10px;
 }
 
 .setting-row + .setting-row {
@@ -220,8 +249,8 @@ async function save(): Promise<void> {
 
 .setting-row__icon {
   display: grid;
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   border-radius: var(--radius-control);
   place-items: center;
   color: var(--color-primary);
@@ -275,6 +304,23 @@ async function save(): Promise<void> {
 
 .save-state--success {
   color: var(--color-success);
+}
+
+.leave-actions {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--page-gutter) calc(var(--space-4) + env(safe-area-inset-bottom));
+}
+
+.system-footer {
+  position: fixed;
+  z-index: 40;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 8px var(--page-gutter) calc(8px + env(safe-area-inset-bottom));
+  background: rgb(255 255 255 / 96%);
+  border-top: 1px solid var(--color-divider);
 }
 
 @media (max-width: 380px) {

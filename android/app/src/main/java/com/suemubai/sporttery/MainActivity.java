@@ -9,7 +9,6 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        registerPlugin(LegacyDatabaseMigrationPlugin.class);
         super.onCreate(savedInstanceState);
 
         // Keep the WebView below the phone status bar. Android 15 enables

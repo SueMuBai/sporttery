@@ -53,7 +53,7 @@ npm run android:sync
 
 新 App 直接加载打包后的 Vite 资源，不依赖 Chaquopy、Python 或 localhost HTTP 服务。
 
-从旧版本升级时，应用会在新数据库不存在的情况下，将旧版 `filesDir/caiguo.db` 一次性复制并迁移到 Capacitor SQLite。旧数据库不会被覆盖或删除。
+当前重构版使用独立的 `caiguo_app_v2` 数据库，不读取旧 Python 版本或前期重构测试包的数据。
 
 ## GitHub Actions
 
@@ -70,13 +70,19 @@ scripts\generate_android_key.cmd
 - `ANDROID_KEY_ALIAS`
 - `ANDROID_KEY_PASSWORD`
 
-进入 GitHub Actions，手动运行 `Build signed Android APK`，填写版本名称和 Android version code。工作流会执行迁移校验、测试、Lint、Web 构建、Capacitor 同步和签名 APK 构建。
+进入 GitHub Actions，手动运行 `Build signed Android APK`，填写版本名称和 Android version code。工作流会校验版本参数与全部签名 Secret，执行测试、Lint、Web 构建和 Capacitor 同步，并在构建后使用 Android `apksigner` 验证签名。
+
+成功构建会保留 30 天，并同时提供：
+
+- `app-release.apk`
+- `app-release.apk.sha256`
+- `build-info.txt`（提交 SHA、版本号、Workflow Run 地址及 APK 内嵌 Web 入口校验值）
 
 只有用户明确要求“提交构建”时才应推送并触发该工作流。
 
 ## 旧数据备份
 
-仓库根目录中的 `caiguo.db`、`sporttery_history.json`、`sporttery_plans.json`、`sporttery_results.jsonl` 和 `sporttery_tags.json` 是旧版迁移与运行数据备份。重构过程不会修改或删除这些用户数据文件。
+旧版数据库和 JSON 文件不再参与应用运行，且已从源码跟踪中移除。
 
 完整架构与阶段记录见：
 
@@ -84,4 +90,4 @@ scripts\generate_android_key.cmd
 - `docs/refactor/PROGRESS.md`
 - `docs/refactor/BASELINE.md`
 - `docs/refactor/ANDROID_ACCEPTANCE.md`
-- `docs/refactor/UPGRADE_GUIDE.md`
+- `docs/refactor/ACCEPTANCE_MATRIX.md`

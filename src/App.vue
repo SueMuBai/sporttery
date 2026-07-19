@@ -10,13 +10,22 @@ const showBottomNav = computed(() => !route.meta.hideNav)
 
 <template>
   <div class="app-shell">
-    <main class="app-main">
-      <RouterView v-slot="{ Component }">
+    <div class="app-main">
+      <RouterView v-slot="{ Component, route: renderedRoute }">
         <KeepAlive>
-          <component :is="Component" />
+          <component
+            :is="Component"
+            v-if="renderedRoute.meta.keepAlive"
+            :key="String(renderedRoute.name)"
+          />
         </KeepAlive>
+        <component
+          :is="Component"
+          v-if="!renderedRoute.meta.keepAlive"
+          :key="renderedRoute.fullPath"
+        />
       </RouterView>
-    </main>
+    </div>
     <AppBottomNav v-if="showBottomNav" />
   </div>
 </template>

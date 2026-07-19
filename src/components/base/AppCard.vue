@@ -31,7 +31,7 @@ withDefaults(
 }
 
 .app-card--padded {
-  padding: var(--space-4);
+  padding: 10px;
 }
 
 .app-card--interactive {

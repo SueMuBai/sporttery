@@ -173,7 +173,7 @@ function selected(option: Option): boolean {
 
 .odds-cell--selected {
   color: #fff;
-  background: var(--color-accent);
+  background: linear-gradient(145deg, #ff8fb3, #ff727c);
   box-shadow: var(--outline-accent);
 }
 

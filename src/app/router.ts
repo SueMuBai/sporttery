@@ -16,10 +16,22 @@ const routes: RouteRecordRaw[] = [
     meta: { keepAlive: true },
   },
   {
+    path: "/ledger/:id",
+    name: "ledger-detail",
+    component: () => import("@/views/LedgerDetailView.vue"),
+    meta: { hideNav: true },
+  },
+  {
     path: "/ticket",
     name: "ticket",
     component: () => import("@/views/TicketView.vue"),
     meta: { keepAlive: true },
+  },
+  {
+    path: "/ticket/current",
+    name: "current-ticket",
+    component: () => import("@/views/CurrentTicketView.vue"),
+    meta: { hideNav: true },
   },
   {
     path: "/settings",
@@ -37,6 +49,18 @@ const routes: RouteRecordRaw[] = [
     path: "/plans/:id",
     name: "plan-detail",
     component: () => import("@/views/PlanDetailView.vue"),
+    meta: { hideNav: true },
+  },
+  {
+    path: "/plans/:id/tags",
+    name: "plan-tags",
+    component: () => import("@/views/PlanTagsView.vue"),
+    meta: { hideNav: true },
+  },
+  {
+    path: "/plans/:id/combinations",
+    name: "plan-combinations",
+    component: () => import("@/views/PlanCombinationsView.vue"),
     meta: { hideNav: true },
   },
   {
@@ -61,6 +85,12 @@ const routes: RouteRecordRaw[] = [
     path: "/settings/about",
     name: "about",
     component: () => import("@/views/settings/AboutView.vue"),
+    meta: { hideNav: true },
+  },
+  {
+    path: "/settings/data",
+    name: "data-management",
+    component: () => import("@/views/settings/DataManagementView.vue"),
     meta: { hideNav: true },
   },
 ];

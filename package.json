@@ -10,7 +10,6 @@
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "verify:migration": "python3 scripts/verify_legacy_sqlite_migration.py",
     "verify:runtime": "node scripts/verify_no_legacy_runtime.mjs",
     "lint": "eslint . && stylelint \"src/**/*.{css,vue}\"",
     "format": "prettier --write .",

@@ -16,7 +16,14 @@ function requestUrl(path: string, params: Record<string, string | number>): stri
   return Capacitor.isNativePlatform() ? url.toString() : `${url.pathname}${url.search}`
 }
 
-function validatePayload<T>(payload: unknown): T {
+export function validateSportteryPayload<T>(payload: unknown): T {
+  if (typeof payload === 'string') {
+    try {
+      payload = JSON.parse(payload)
+    } catch {
+      throw new Error('接口返回的 JSON 文本无法解析')
+    }
+  }
   if (!payload || typeof payload !== 'object') throw new Error('接口返回的不是有效 JSON')
   const response = payload as Record<string, unknown>
   if (response.success !== true || String(response.errorCode) !== '0') {
@@ -60,7 +67,7 @@ export async function requestSportteryJson<T>(
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
         payload = await response.json()
       }
-      return validatePayload<T>(payload)
+      return validateSportteryPayload<T>(payload)
     } catch (error) {
       lastError = error
       if (attempt < options.retries) {

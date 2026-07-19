@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AppButton from '@/components/base/AppButton.vue'
+import AppIcon from '@/components/base/AppIcon.vue'
 
 type StateType = 'loading' | 'empty' | 'error' | 'offline'
 
@@ -25,13 +26,7 @@ const emit = defineEmits<{
 <template>
   <div class="app-state" role="status" aria-live="polite">
     <van-loading v-if="type === 'loading'" size="32" color="var(--color-primary)" />
-    <van-icon
-      v-else
-      :name="type === 'error' ? 'warning-o' : type === 'offline' ? 'closed-eye' : 'orders-o'"
-      size="44"
-      color="var(--color-primary)"
-      aria-hidden="true"
-    />
+    <AppIcon v-else :name="type === 'error' || type === 'offline' ? 'warning' : 'folder'" :size="44" />
     <strong>{{ title }}</strong>
     <p v-if="description">{{ description }}</p>
     <AppButton v-if="actionText" size="small" variant="secondary" @click="emit('action')">

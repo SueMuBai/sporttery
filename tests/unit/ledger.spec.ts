@@ -8,6 +8,8 @@ const stamp = "2026-07-18T12:00:00+08:00";
 function plan(): SavedPlan {
   return {
     id: "ledger-plan",
+    revision: 1,
+    status: "saved",
     name: "账单测试方案",
     selections: [
       { key: "1|had|h", matchId: 1, market: "had", outcome: "h", odds: "1.78" },
@@ -15,7 +17,7 @@ function plan(): SavedPlan {
     ],
     passCounts: [1],
     multiplier: 1,
-    tags: ["已购"],
+    tags: ["AI"],
     createdAt: stamp,
     updatedAt: stamp,
   };
@@ -70,10 +72,12 @@ describe("ledger domain", () => {
     expect(automatic.status).toBe("pending");
     expect(automatic.evaluation.settledMatches).toBe(1);
     expect(automatic.evaluation.correctMatches).toBe(1);
+    expect(automatic.automaticReturnCents).toBe(356);
     expect(automatic.displayedReturnCents).toBe(356);
     expect(automatic.profitCents).toBe(-44);
 
     const manual = evaluateLedgerOrder(order(true), [firstResult]);
+    expect(manual.automaticReturnCents).toBe(356);
     expect(manual.displayedReturnCents).toBe(500);
     expect(manual.profitCents).toBe(100);
   });

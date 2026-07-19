@@ -5,20 +5,78 @@ import {
   evaluatePlan,
   type PlanEvaluation,
 } from "@/features/betting/calculator";
+import {
+  copiedPlanName,
+  normalizePlanName,
+} from "@/features/plans/planName";
 import type { NormalizedMatch } from "@/features/matches/types";
 import { getDatabase } from "@/services/database/createDatabase";
 import { useTicketStore } from "@/stores/ticket";
-import type { MatchResult, PlanTag, SavedPlan } from "@/types/domain";
+import type { LedgerOrder, MatchResult, PlanTag, SavedPlan } from "@/types/domain";
 
 export type PlanStatusFilter =
-  "all" | "pending" | "settled" | "profit" | "loss";
+  "all" | "saved" | "purchased" | "pending" | "settled" | "profit" | "loss";
 export type PlanSort =
   "updated-desc" | "updated-asc" | "stake-desc" | "profit-desc";
 
 export interface EvaluatedPlan {
   plan: SavedPlan;
+  purchaseCount: number;
+  purchaseSummary: PlanPurchaseSummary;
   evaluation?: PlanEvaluation;
   error?: string;
+}
+
+export interface PlanPurchaseSummary {
+  count: number;
+  pendingCount: number;
+  settledCount: number;
+  status: "none" | "pending" | "settled";
+  stakeCents: number;
+  returnCents: number;
+  profitCents: number;
+}
+
+export function summarizePlanPurchases(
+  planId: string,
+  ledger: readonly LedgerOrder[],
+  results: readonly MatchResult[],
+): PlanPurchaseSummary {
+  const purchases = ledger.filter((order) => order.planId === planId);
+  const evaluated = purchases.map((order) => {
+    const evaluation = evaluatePlan(order.planSnapshot, results);
+    return {
+      status: evaluation.status,
+      stakeCents: order.stakeCents,
+      returnCents: order.returnManual
+        ? order.returnCents
+        : evaluation.currentReturnCents,
+    };
+  });
+  const settledCount = evaluated.filter(
+    (item) => item.status === "settled",
+  ).length;
+  const stakeCents = evaluated.reduce(
+    (total, item) => total + item.stakeCents,
+    0,
+  );
+  const returnCents = evaluated.reduce(
+    (total, item) => total + item.returnCents,
+    0,
+  );
+  return {
+    count: evaluated.length,
+    pendingCount: evaluated.length - settledCount,
+    settledCount,
+    status: !evaluated.length
+      ? "none"
+      : settledCount === evaluated.length
+        ? "settled"
+        : "pending",
+    stakeCents,
+    returnCents,
+    profitCents: returnCents - stakeCents,
+  };
 }
 
 export const usePlanStore = defineStore("plans", () => {
@@ -29,6 +87,7 @@ export const usePlanStore = defineStore("plans", () => {
   const plans = ref<SavedPlan[]>([]);
   const tags = ref<PlanTag[]>([]);
   const results = ref<MatchResult[]>([]);
+  const ledger = ref<LedgerOrder[]>([]);
   const matches = ref<NormalizedMatch[]>([]);
   const search = ref("");
   const statusFilter = ref<PlanStatusFilter>("all");
@@ -42,10 +101,22 @@ export const usePlanStore = defineStore("plans", () => {
   const evaluatedPlans = computed<EvaluatedPlan[]>(() =>
     plans.value.map((plan) => {
       try {
-        return { plan, evaluation: evaluatePlan(plan, results.value) };
+        const purchaseSummary = summarizePlanPurchases(
+          plan.id,
+          ledger.value,
+          results.value,
+        );
+        return {
+          plan,
+          purchaseCount: purchaseSummary.count,
+          purchaseSummary,
+          evaluation: evaluatePlan(plan, results.value),
+        };
       } catch (reason) {
         return {
           plan,
+          purchaseCount: 0,
+          purchaseSummary: summarizePlanPurchases(plan.id, [], results.value),
           error: reason instanceof Error ? reason.message : String(reason),
         };
       }
@@ -53,7 +124,8 @@ export const usePlanStore = defineStore("plans", () => {
   );
   const filteredPlans = computed(() => {
     const keyword = search.value.trim().toLowerCase();
-    const values = evaluatedPlans.value.filter(({ plan, evaluation }) => {
+    const values = evaluatedPlans.value.filter(
+      ({ plan, purchaseCount, purchaseSummary }) => {
       if (
         keyword &&
         !`${plan.name} ${plan.tags.join(" ")}`.toLowerCase().includes(keyword)
@@ -63,34 +135,53 @@ export const usePlanStore = defineStore("plans", () => {
         return false;
       if (passFilter.value && !plan.passCounts.includes(passFilter.value))
         return false;
-      if (statusFilter.value === "pending" && evaluation?.status !== "pending")
+      if (statusFilter.value === "saved" && purchaseCount !== 0) return false;
+      if (statusFilter.value === "purchased" && purchaseCount === 0) return false;
+      if (
+        statusFilter.value === "pending" &&
+        purchaseSummary.status !== "pending"
+      )
         return false;
-      if (statusFilter.value === "settled" && evaluation?.status !== "settled")
+      if (
+        statusFilter.value === "settled" &&
+        purchaseSummary.status !== "settled"
+      )
         return false;
       if (
         statusFilter.value === "profit" &&
-        (evaluation?.finalProfitCents ?? 0) <= 0
+        (purchaseSummary.status !== "settled" ||
+          purchaseSummary.profitCents <= 0)
       )
         return false;
       if (
         statusFilter.value === "loss" &&
-        (evaluation?.finalProfitCents ?? 0) >= 0
+        (purchaseSummary.status !== "settled" ||
+          purchaseSummary.profitCents >= 0)
       )
         return false;
       return true;
-    });
+      },
+    );
     return [...values].sort((left, right) => {
       if (sort.value === "updated-asc")
         return left.plan.updatedAt.localeCompare(right.plan.updatedAt);
       if (sort.value === "stake-desc")
         return (
-          (right.evaluation?.stakeCents ?? 0) -
-          (left.evaluation?.stakeCents ?? 0)
+          (right.purchaseCount
+            ? right.purchaseSummary.stakeCents
+            : (right.evaluation?.stakeCents ?? 0)) -
+          (left.purchaseCount
+            ? left.purchaseSummary.stakeCents
+            : (left.evaluation?.stakeCents ?? 0))
         );
       if (sort.value === "profit-desc")
         return (
-          (right.evaluation?.finalProfitCents ?? -Infinity) -
-          (left.evaluation?.finalProfitCents ?? -Infinity)
+          (right.purchaseCount
+            ? right.purchaseSummary.profitCents
+            : (right.evaluation?.finalProfitCents ?? -Infinity)) -
+          (left.purchaseCount
+            ? left.purchaseSummary.profitCents
+            : (left.evaluation?.finalProfitCents ?? -Infinity))
         );
       return right.plan.updatedAt.localeCompare(left.plan.updatedAt);
     });
@@ -106,17 +197,19 @@ export const usePlanStore = defineStore("plans", () => {
     error.value = "";
     try {
       await database.initialize();
-      const [storedPlans, storedTags, storedResults, storedMatches] =
+      const [storedPlans, storedTags, storedResults, storedMatches, storedLedger] =
         await Promise.all([
           database.listPlans(),
           database.listTags(),
           database.listLatestResults(),
           database.listMatches(),
+          database.listLedger(),
         ]);
       plans.value = storedPlans;
       tags.value = storedTags;
       results.value = storedResults;
       matches.value = storedMatches as NormalizedMatch[];
+      ledger.value = storedLedger;
     } catch (reason) {
       error.value = reason instanceof Error ? reason.message : String(reason);
     } finally {
@@ -130,20 +223,16 @@ export const usePlanStore = defineStore("plans", () => {
 
   async function rename(plan: SavedPlan, name: string): Promise<void> {
     const stamp = new Date().toISOString();
-    const nextName = name.trim();
-    await database.savePlan({ ...plan, name: nextName, updatedAt: stamp });
-    const linkedOrders = (await database.listLedger()).filter(
-      (order) => order.planId === plan.id,
-    );
-    await Promise.all(
-      linkedOrders.map((order) =>
-        database.saveLedgerOrder({
-          ...order,
-          planName: nextName,
-          updatedAt: stamp,
-        }),
-      ),
-    );
+    const nextName = normalizePlanName(name);
+    const latest = await database.getPlan(plan.id);
+    if (!latest || latest.revision !== plan.revision)
+      throw new Error("方案已在其他页面更新，请刷新后重试");
+    await database.savePlan({
+      ...plan,
+      name: nextName,
+      revision: plan.revision + 1,
+      updatedAt: stamp,
+    }, plan.revision);
     await load();
   }
 
@@ -151,11 +240,20 @@ export const usePlanStore = defineStore("plans", () => {
     plan: SavedPlan,
     selectedTags: string[],
   ): Promise<void> {
+    if (selectedTags.length > 3) throw new RangeError("每个方案最多选择3个标签");
+    const available = new Set(tags.value.map((tag) => tag.name));
+    if (selectedTags.some((tag) => !available.has(tag))) {
+      throw new Error("方案包含已删除的标签，请刷新后重试");
+    }
+    const latest = await database.getPlan(plan.id);
+    if (!latest || latest.revision !== plan.revision)
+      throw new Error("方案已在其他页面更新，请刷新后重试");
     await database.savePlan({
       ...plan,
       tags: [...selectedTags],
+      revision: plan.revision + 1,
       updatedAt: new Date().toISOString(),
-    });
+    }, plan.revision);
     await load();
   }
 
@@ -164,12 +262,51 @@ export const usePlanStore = defineStore("plans", () => {
     await load();
   }
 
-  function mergeConflicts(plan: SavedPlan) {
-    return ticketStore.mergeConflicts(plan);
+  async function duplicate(plan: SavedPlan): Promise<SavedPlan> {
+    const stamp = new Date().toISOString();
+    const copy: SavedPlan = {
+      ...structuredClone(plan),
+      id: crypto.randomUUID(),
+      sourcePlanId: plan.id,
+      revision: 1,
+      status: "saved",
+      name: copiedPlanName(plan.name),
+      createdAt: stamp,
+      updatedAt: stamp,
+    };
+    await database.savePlan(copy);
+    await load();
+    return copy;
   }
 
-  function loadIntoTicket(plan: SavedPlan, mode: "replace" | "merge"): void {
-    ticketStore.loadPlan(plan, mode);
+  async function recordPurchase(
+    plan: SavedPlan,
+    value: { stakeCents: number; notes?: string; purchasedAt?: string },
+  ): Promise<string> {
+    const stamp = new Date().toISOString();
+    const id = crypto.randomUUID();
+    const purchaseName = normalizePlanName(plan.name);
+    const snapshot = structuredClone({ ...plan, name: purchaseName });
+    await database.saveLedgerOrder({
+      id,
+      planId: plan.id,
+      planName: purchaseName,
+      planSnapshot: snapshot,
+      purchasedAt: value.purchasedAt || stamp,
+      stakeCents: value.stakeCents,
+      returnCents: 0,
+      returnManual: false,
+      status: "pending",
+      notes: value.notes?.trim() ?? "",
+      createdAt: stamp,
+      updatedAt: stamp,
+    });
+    await load();
+    return id;
+  }
+
+  function loadIntoTicket(plan: SavedPlan): void {
+    ticketStore.loadPlan(plan);
   }
 
   return {
@@ -178,6 +315,7 @@ export const usePlanStore = defineStore("plans", () => {
     plans,
     tags,
     results,
+    ledger,
     matches,
     search,
     statusFilter,
@@ -193,7 +331,8 @@ export const usePlanStore = defineStore("plans", () => {
     rename,
     updateTags,
     remove,
-    mergeConflicts,
+    duplicate,
+    recordPurchase,
     loadIntoTicket,
   };
 });

@@ -7,6 +7,7 @@ import type {
   NormalizedMatchPayload,
   OddsPool,
 } from '@/features/matches/types'
+import { isValidMarketOutcome } from '@/features/betting/outcomes'
 import { mapWithConcurrency } from '@/services/api/concurrency'
 import { requestSportteryJson } from '@/services/api/httpClient'
 
@@ -35,6 +36,28 @@ const MATCH_PATH = '/gateway/uniform/football/getMatchCalculatorV1.qry'
 const HISTORY_PATH = '/gateway/uniform/football/getResultHistoryV1.qry'
 const RESULT_PATH = '/gateway/uniform/fb/getMatchDataPageListV1.qry'
 const GENERAL_PATH = '/gateway/uniform/fb/getMatchGeneral.qry'
+
+function envelopeValue<T>(payload: ApiEnvelope<T>, endpoint: string): T {
+  if (!payload.value || typeof payload.value !== 'object') {
+    throw new Error(`${endpoint}响应缺少有效 value`)
+  }
+  return payload.value
+}
+
+function optionalRows(value: unknown, endpoint: string): RawRecord[] {
+  if (value === undefined || value === null) return []
+  if (!Array.isArray(value)) throw new Error(`${endpoint}列表字段格式已变化`)
+  return value.filter((row): row is RawRecord => Boolean(row) && typeof row === 'object')
+}
+
+function groupedRows(value: unknown, endpoint: string): RawRecord[] {
+  if (value === undefined || value === null) return []
+  if (!Array.isArray(value)) throw new Error(`${endpoint}分组字段格式已变化`)
+  return value.flatMap((group) => {
+    if (!group || typeof group !== 'object') return []
+    return optionalRows((group as RawRecord).subMatchList, endpoint)
+  })
+}
 
 function text(value: unknown): string {
   return value === null || value === undefined ? '' : String(value)
@@ -134,19 +157,32 @@ function normalizeMatch(match: RawRecord, historyRows: RawRecord[], updatedAt: s
   }
 }
 
-function parseOfficialResults(rows: RawRecord[]): MatchResult['officialResults'] {
+function validateCurrentMatch(match: RawRecord): void {
+  const matchId = integer(match.matchId)
+  if (matchId <= 0) throw new Error('比赛数据缺少有效 matchId')
+  if (!text(match.matchNumStr)) throw new Error(`比赛 ${matchId} 缺少场次编号`)
+  if (!text(match.homeTeamAbbName) || !text(match.awayTeamAbbName)) {
+    throw new Error(`比赛 ${matchId} 缺少主客队名称`)
+  }
+}
+
+export function parseOfficialResults(rows: RawRecord[]): MatchResult['officialResults'] {
   const results: MatchResult['officialResults'] = {}
   for (const row of rows) {
     const code = text(row.poolCode).toLowerCase() as keyof MatchResult['officialResults']
     let combination = text(row.combination)
     if (code === 'had' || code === 'hhad') combination = combination.toLowerCase()
     else if (code === 'hafu') combination = combination.toLowerCase().replace(':', '-')
+    else if (code === 'ttg' && Number(combination) >= 7) combination = '7+'
     else if (code === 'crs') {
       if (combination === '-1:-H') combination = 'home_other'
       else if (combination === '-1:-D') combination = 'draw_other'
       else if (combination === '-1:-A') combination = 'away_other'
     }
-    if (['had', 'hhad', 'hafu', 'ttg', 'crs'].includes(code)) results[code] = combination
+    if (isValidMarketOutcome(code, combination)) results[code] = combination
+    else if (['had', 'hhad', 'hafu', 'ttg', 'crs'].includes(code)) {
+      throw new Error(`官方结果接口返回未知结果：${code}/${combination}`)
+    }
   }
   return results
 }
@@ -158,7 +194,10 @@ export class SportteryGateway {
       timeoutSeconds: settings.timeoutSeconds,
       retries: settings.retries,
     })
-    return (payload.value.matchInfoList ?? []).flatMap((group) => group.subMatchList ?? [])
+    return groupedRows(
+      envelopeValue(payload, '比赛接口').matchInfoList,
+      '比赛接口',
+    )
   }
 
   async fetchHistory(matchId: number, settings: AppSettings): Promise<RawRecord[]> {
@@ -172,24 +211,47 @@ export class SportteryGateway {
       timeoutSeconds: settings.timeoutSeconds,
       retries: settings.retries,
     })
-    return payload.value.matchList ?? []
+    return optionalRows(
+      envelopeValue(payload, '历史交锋接口').matchList,
+      '历史交锋接口',
+    )
   }
 
   async collectMatches(
     settings: AppSettings,
     onProgress?: (progress: MatchSyncProgress) => void,
+    onlyMatchIds?: ReadonlySet<number>,
   ): Promise<{ matches: NormalizedMatch[]; errors: Array<{ matchId: number; message: string }> }> {
-    const rawMatches = await this.fetchCurrentMatches(settings)
+    const currentMatches = await this.fetchCurrentMatches(settings)
+    const requestedMatches = onlyMatchIds
+      ? currentMatches.filter((match) => onlyMatchIds.has(integer(match.matchId)))
+      : currentMatches
+    const invalidMatches = requestedMatches.filter((match) => integer(match.matchId) <= 0)
+    const rawMatches = requestedMatches.filter((match) => integer(match.matchId) > 0)
     let completed = 0
     let failed = 0
     const updatedAt = new Date().toISOString()
     const results = await mapWithConcurrency(rawMatches, settings.workers, async (match) => {
       const matchId = integer(match.matchId)
+      let history: RawRecord[] = []
+      let historyError: { matchId: number; message: string } | undefined
       try {
-        const history = await this.fetchHistory(matchId, settings)
-        return { match: normalizeMatch(match, history, updatedAt) }
+        validateCurrentMatch(match)
+        try {
+          history = await this.fetchHistory(matchId, settings)
+        } catch (error) {
+          failed += 1
+          historyError = {
+            matchId,
+            message: `历史交锋：${error instanceof Error ? error.message : String(error)}`,
+          }
+        }
+        return {
+          match: normalizeMatch(match, history, updatedAt),
+          error: historyError,
+        }
       } catch (error) {
-        failed += 1
+        if (!historyError) failed += 1
         return { error: { matchId, message: error instanceof Error ? error.message : String(error) } }
       } finally {
         completed += 1
@@ -198,7 +260,13 @@ export class SportteryGateway {
     })
     return {
       matches: results.flatMap((item) => (item.match ? [item.match] : [])),
-      errors: results.flatMap((item) => (item.error ? [item.error] : [])),
+      errors: [
+        ...invalidMatches.map((match) => ({
+          matchId: 0,
+          message: `比赛数据缺少有效 matchId：${text(match.matchNumStr) || '未知场次'}`,
+        })),
+        ...results.flatMap((item) => (item.error ? [item.error] : [])),
+      ],
     }
   }
 
@@ -208,7 +276,10 @@ export class SportteryGateway {
       timeoutSeconds: settings.timeoutSeconds,
       retries: settings.retries,
     })
-    return (payload.value.matchInfoList ?? []).flatMap((group) => group.subMatchList ?? [])
+    return groupedRows(
+      envelopeValue(payload, '赛果接口').matchInfoList,
+      '赛果接口',
+    )
   }
 
   async fetchOfficialResults(
@@ -221,7 +292,12 @@ export class SportteryGateway {
       timeoutSeconds: settings.timeoutSeconds,
       retries: settings.retries,
     })
-    return parseOfficialResults(payload.value.matchResultList ?? [])
+    return parseOfficialResults(
+      optionalRows(
+        envelopeValue(payload, '官方结果接口').matchResultList,
+        '官方结果接口',
+      ),
+    )
   }
 
   async normalizeResult(
@@ -230,8 +306,9 @@ export class SportteryGateway {
     settings: AppSettings,
   ): Promise<MatchResult | undefined> {
     const fullTimeScore = text(row.sectionsNo999)
-    if (!fullTimeScore) return undefined
+    if (!fullTimeScore || !/^\d+\s*:\s*\d+$/.test(fullTimeScore)) return undefined
     const matchId = integer(row.matchId)
+    if (matchId <= 0) throw new Error('赛果数据缺少有效 matchId')
     let officialResults: MatchResult['officialResults'] = {}
     try {
       officialResults = await this.fetchOfficialResults(matchId, text(row.matchStatus || '11'), settings)

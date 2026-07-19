@@ -128,7 +128,7 @@ const emit = defineEmits<{
 
 .app-button--primary {
   color: #fff;
-  background: var(--color-primary);
+  background: linear-gradient(135deg, #69b5ff, #8f91f5);
   box-shadow: var(--outline-primary);
 }
 
@@ -140,7 +140,7 @@ const emit = defineEmits<{
 
 .app-button--accent {
   color: #fff;
-  background: var(--color-accent);
+  background: linear-gradient(135deg, #ff8fb3, #ff727c);
   box-shadow: var(--outline-accent);
 }
 

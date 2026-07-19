@@ -20,6 +20,7 @@
   --color-text-secondary: #6f7b8b;
   --color-text-tertiary: #8f9bad;
   --color-placeholder: #a5afbd;
+  --color-disabled: #edf1f6;
   --color-border: #dce6f2;
   --color-border-strong: #c8d8ea;
   --color-divider: #e8eef6;
@@ -31,13 +32,13 @@
   --font-size-sm: 13px;
   --font-size-md: 15px;
   --font-size-lg: 17px;
-  --font-size-title: 24px;
+  --font-size-title: 22px;
 
   --radius-xs: 8px;
-  --radius-sm: 10px;
-  --radius-control: 12px;
-  --radius-card: 16px;
-  --radius-sheet: 22px;
+  --radius-sm: 8px;
+  --radius-control: 10px;
+  --radius-card: 10px;
+  --radius-sheet: 20px;
   --radius-pill: 999px;
 
   --space-1: 4px;
@@ -48,14 +49,14 @@
   --space-6: 24px;
   --space-8: 32px;
 
-  --control-height-sm: 36px;
-  --control-height: 44px;
-  --control-height-lg: 48px;
+  --control-height-sm: 34px;
+  --control-height: 40px;
+  --control-height-lg: 44px;
   --touch-target: 44px;
-  --page-gutter: 16px;
+  --page-gutter: 12px;
   --bottom-nav-height: 66px;
 
-  --shadow-card: 0 6px 20px rgb(70 112 164 / 7%);
+  --shadow-card: 0 3px 12px rgb(70 112 164 / 5%);
   --shadow-float: 0 12px 32px rgb(44 77 119 / 14%);
   --outline-default: inset 0 0 0 1px var(--color-border);
   --outline-strong: inset 0 0 0 1px var(--color-border-strong);

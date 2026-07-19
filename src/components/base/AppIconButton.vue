@@ -1,16 +1,19 @@
 <script setup lang="ts">
+import AppIcon, { type AppIconName } from '@/components/base/AppIcon.vue'
+
 type IconButtonVariant = 'primary' | 'secondary' | 'plain' | 'danger'
 
 withDefaults(
   defineProps<{
     label: string
-    icon: string
+    icon?: AppIconName
     variant?: IconButtonVariant
     loading?: boolean
     disabled?: boolean
   }>(),
   {
     variant: 'secondary',
+    icon: undefined,
     loading: false,
     disabled: false,
   },
@@ -30,7 +33,9 @@ const emit = defineEmits<{
     @click="emit('click', $event)"
   >
     <van-loading v-if="loading" size="22" aria-hidden="true" />
-    <van-icon v-else :name="icon" size="24" aria-hidden="true" />
+    <slot v-else>
+      <AppIcon v-if="icon" :name="icon" />
+    </slot>
   </button>
 </template>
 

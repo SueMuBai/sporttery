@@ -1,11 +1,11 @@
 # 彩果长期账单 App 全量重构方案
 
-> 文档状态：待确认后执行
+> 文档状态：第一阶段历史方案（已执行完毕，不再作为当前需求来源）
 > 编制日期：2026-07-18
 > 目标平台：Android App、桌面浏览器开发环境
-> 核心原则：保留用户数据与业务能力，推翻旧的单文件 Web 实现和 Python 本地网页服务架构。
+> 当前方案：以 [`refactor/INTERACTION_AND_CLEANUP_PLAN.md`](refactor/INTERACTION_AND_CLEANUP_PLAN.md) 为准。用户已确认不兼容旧数据，当前 App 使用全新数据库。
 
-执行状态与逐项证据见 [`docs/refactor/PROGRESS.md`](refactor/PROGRESS.md)，旧版冻结基线见 [`docs/refactor/BASELINE.md`](refactor/BASELINE.md)。
+本文只保留第一阶段架构决策和历史背景。当前执行状态与逐项证据见 [`docs/refactor/PROGRESS.md`](refactor/PROGRESS.md)，旧版冻结基线仅供追溯，不能作为当前迁移要求。
 
 ## 1. 重构结论
 

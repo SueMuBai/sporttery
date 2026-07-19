@@ -6,15 +6,16 @@ on:
       version_name:
         description: Version name
         required: true
-        default: "2.0.0"
+        default: "2.0.2"
       version_code:
         description: Android version code
         required: true
-        default: "2"
+        default: "4"
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     permissions:
       contents: read
     steps:
@@ -23,18 +24,31 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
           cache: gradle
+      - name: Validate release inputs and signing secrets
+        env:
+          APP_VERSION_NAME: ${{ inputs.version_name }}
+          APP_VERSION_CODE: ${{ inputs.version_code }}
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          [[ "$APP_VERSION_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]
+          [[ "$APP_VERSION_CODE" =~ ^[1-9][0-9]*$ ]]
+          (( APP_VERSION_CODE <= 2100000000 ))
+          test -n "$KEYSTORE_BASE64"
+          test -n "$KEYSTORE_PASSWORD"
+          test -n "$KEY_ALIAS"
+          test -n "$KEY_PASSWORD"
       - name: Install dependencies and verify web app
         run: |
           npm ci
-          npm run verify:migration
           npm test
           npm run lint
       - name: Build web app and synchronize Capacitor
@@ -44,9 +58,15 @@ jobs:
       - name: Restore release keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
-          test -n "$KEYSTORE_BASE64"
-          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/caiguo-release.jks"
+          set -euo pipefail
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/caiguo-release.jks"
+          keytool -list \
+            -keystore "$RUNNER_TEMP/caiguo-release.jks" \
+            -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+            -alias "$ANDROID_KEY_ALIAS" >/dev/null
       - name: Build signed release APK
         working-directory: android
         env:
@@ -57,14 +77,43 @@ jobs:
           APP_VERSION_NAME: ${{ inputs.version_name }}
           APP_VERSION_CODE: ${{ inputs.version_code }}
         run: |
+          set -euo pipefail
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
+      - name: Verify APK signature and release metadata
+        env:
+          APP_VERSION_NAME: ${{ inputs.version_name }}
+          APP_VERSION_CODE: ${{ inputs.version_code }}
+        run: |
+          set -euo pipefail
+          APK="android/app/build/outputs/apk/release/app-release.apk"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          WEB_ENTRY="$(sed -nE 's/.*src="\.\/(assets\/[^"[:space:]]+\.js)".*/\1/p' dist/index.html | head -n 1)"
+          test -f "$APK"
+          test -x "$APKSIGNER"
+          test -n "$WEB_ENTRY"
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+          unzip -Z1 "$APK" | grep -Fx "assets/public/${WEB_ENTRY}"
+          DIST_WEB_SHA256="$(sha256sum "dist/${WEB_ENTRY}" | cut -d' ' -f1)"
+          APK_WEB_SHA256="$(unzip -p "$APK" "assets/public/${WEB_ENTRY}" | sha256sum | cut -d' ' -f1)"
+          test "$DIST_WEB_SHA256" = "$APK_WEB_SHA256"
+          {
+            echo "commit=${GITHUB_SHA}"
+            echo "version_name=${APP_VERSION_NAME}"
+            echo "version_code=${APP_VERSION_CODE}"
+            echo "web_entry=${WEB_ENTRY}"
+            echo "web_entry_sha256=${DIST_WEB_SHA256}"
+            echo "workflow_run=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          } > android/app/build/outputs/apk/release/build-info.txt
       - name: Generate checksum
-        run: sha256sum android/app/build/outputs/apk/release/app-release.apk > android/app/build/outputs/apk/release/app-release.apk.sha256
+        working-directory: android/app/build/outputs/apk/release
+        run: sha256sum app-release.apk > app-release.apk.sha256
       - uses: actions/upload-artifact@v4
         with:
           name: caiguo-${{ inputs.version_name }}-signed
+          retention-days: 30
           path: |
             android/app/build/outputs/apk/release/app-release.apk
             android/app/build/outputs/apk/release/app-release.apk.sha256
+            android/app/build/outputs/apk/release/build-info.txt
           if-no-files-found: error

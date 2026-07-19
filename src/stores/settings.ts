@@ -1,7 +1,9 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 
-import { SyncService } from "@/features/sync/SyncService";
+import { getSyncService } from "@/features/sync/getSyncService";
+import type { SyncSnapshot } from "@/features/sync/SyncService";
+import { validateSettings } from "@/features/settings/validation";
 import { getDatabase } from "@/services/database/createDatabase";
 import type { AppSettings, PlanTag } from "@/types/domain";
 
@@ -14,11 +16,9 @@ const TAG_COLORS = [
   "#FF7D7D",
 ];
 
-type FullSyncReport = Awaited<ReturnType<SyncService["fullSync"]>>;
-
 export const useSettingsStore = defineStore("settings", () => {
   const database = getDatabase();
-  const syncService = new SyncService(database);
+  const syncService = getSyncService();
   const loading = ref(false);
   const saving = ref(false);
   const syncing = ref(false);
@@ -26,7 +26,7 @@ export const useSettingsStore = defineStore("settings", () => {
   const settings = ref<AppSettings>();
   const tags = ref<PlanTag[]>([]);
   const tagUsage = ref<Record<string, number>>({});
-  const syncReport = ref<FullSyncReport>();
+  const syncReport = ref<SyncSnapshot>();
   const syncProgress = ref({ completed: 0, total: 0, failed: 0 });
 
   const settingsSummary = computed(() =>
@@ -40,11 +40,13 @@ export const useSettingsStore = defineStore("settings", () => {
     error.value = "";
     try {
       await database.initialize();
-      const [storedSettings, storedTags, storedPlans] = await Promise.all([
-        database.getSettings(),
-        database.listTags(),
-        database.listPlans(),
-      ]);
+      const [storedSettings, storedTags, storedPlans, latestSync] =
+        await Promise.all([
+          database.getSettings(),
+          database.listTags(),
+          database.listPlans(),
+          syncService.latestSnapshot(),
+        ]);
       settings.value = storedSettings;
       tags.value = storedTags;
       tagUsage.value = Object.fromEntries(
@@ -53,6 +55,7 @@ export const useSettingsStore = defineStore("settings", () => {
           storedPlans.filter((plan) => plan.tags.includes(tag.name)).length,
         ]),
       );
+      syncReport.value = latestSync;
     } catch (reason) {
       error.value = reason instanceof Error ? reason.message : String(reason);
     } finally {
@@ -79,6 +82,8 @@ export const useSettingsStore = defineStore("settings", () => {
     const normalized = name.trim();
     if (!normalized) throw new TypeError("请输入标签名称");
     if (normalized.length > 12) throw new RangeError("标签名称最多 12 个字符");
+    if (!originalName && tags.value.length >= 8)
+      throw new RangeError("最多只能创建 8 个标签");
     const duplicate = tags.value.find(
       (tag) =>
         tag.name.toLocaleLowerCase() === normalized.toLocaleLowerCase() &&
@@ -88,33 +93,20 @@ export const useSettingsStore = defineStore("settings", () => {
 
     saving.value = true;
     try {
-      if (originalName && originalName !== normalized) {
-        const plans = await database.listPlans();
-        await Promise.all(
-          plans
-            .filter((plan) => plan.tags.includes(originalName))
-            .map((plan) =>
-              database.savePlan({
-                ...plan,
-                tags: plan.tags.map((tag) =>
-                  tag === originalName ? normalized : tag,
-                ),
-                updatedAt: new Date().toISOString(),
-              }),
-            ),
-        );
-        await database.deleteTag(originalName);
-      }
       const existing = tags.value.find(
         (tag) => tag.name === originalName || tag.name === normalized,
       );
-      const saved = await database.saveTag({
-        id: originalName === normalized ? existing?.id : undefined,
+      const nextTag: PlanTag = {
+        id: existing?.id,
         name: normalized,
         color: color || TAG_COLORS[tags.value.length % TAG_COLORS.length]!,
         sortOrder: existing?.sortOrder ?? tags.value.length + 1,
         createdAt: existing?.createdAt ?? new Date().toISOString(),
-      });
+      };
+      const saved =
+        originalName && originalName !== normalized
+          ? await database.renameTag(originalName, nextTag)
+          : await database.saveTag(nextTag);
       await load();
       return saved;
     } finally {
@@ -137,16 +129,25 @@ export const useSettingsStore = defineStore("settings", () => {
   }
 
   async function moveTag(name: string, direction: -1 | 1): Promise<void> {
-    const names = tags.value.map((tag) => tag.name);
+    const previous = [...tags.value];
+    const names = previous.map((tag) => tag.name);
     const index = names.indexOf(name);
     const target = index + direction;
     if (index < 0 || target < 0 || target >= names.length) return;
     [names[index], names[target]] = [names[target]!, names[index]!];
-    await database.reorderTags(names);
-    await load();
+    tags.value = names.map((item, sortIndex) => ({
+      ...previous.find((tag) => tag.name === item)!,
+      sortOrder: sortIndex + 1,
+    }));
+    try {
+      await database.reorderTags(names);
+    } catch (reason) {
+      tags.value = previous;
+      throw reason;
+    }
   }
 
-  async function synchronize(): Promise<FullSyncReport> {
+  async function synchronize(): Promise<SyncSnapshot> {
     if (syncing.value) throw new Error("数据更新正在进行中");
     syncing.value = true;
     syncProgress.value = { completed: 0, total: 0, failed: 0 };
@@ -154,6 +155,25 @@ export const useSettingsStore = defineStore("settings", () => {
       const report = await syncService.fullSync((progress) => {
         syncProgress.value = progress;
       });
+      syncReport.value = report;
+      return report;
+    } finally {
+      syncing.value = false;
+    }
+  }
+
+  async function retryFailed(): Promise<SyncSnapshot> {
+    if (!syncReport.value) return synchronize();
+    if (syncing.value) throw new Error("数据更新正在进行中");
+    syncing.value = true;
+    syncProgress.value = { completed: 0, total: 0, failed: 0 };
+    try {
+      const report = await syncService.retryFailed(
+        syncReport.value,
+        (progress) => {
+          syncProgress.value = progress;
+        },
+      );
       syncReport.value = report;
       return report;
     } finally {
@@ -178,23 +198,8 @@ export const useSettingsStore = defineStore("settings", () => {
     deleteTag,
     moveTag,
     synchronize,
+    retryFailed,
   };
 });
 
-export function validateSettings(value: AppSettings): void {
-  const limits: Record<keyof AppSettings, [number, number, string]> = {
-    historyLimits: [1, 50, "每场历史条数"],
-    workers: [1, 12, "并发请求数"],
-    timeoutSeconds: [5, 120, "接口超时"],
-    retries: [0, 8, "失败重试次数"],
-    defaultMultiplier: [1, 999, "默认倍数"],
-  };
-  for (const [key, [minimum, maximum, label]] of Object.entries(
-    limits,
-  ) as Array<[keyof AppSettings, [number, number, string]]>) {
-    const current = value[key];
-    if (!Number.isInteger(current) || current < minimum || current > maximum) {
-      throw new RangeError(`${label}必须是 ${minimum}～${maximum} 的整数`);
-    }
-  }
-}
+export { validateSettings } from "@/features/settings/validation";

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 import AppCard from '@/components/base/AppCard.vue'
-import AppChip from '@/components/base/AppChip.vue'
+import AppIcon from '@/components/base/AppIcon.vue'
 import MarketGrid from '@/components/ticket/MarketGrid.vue'
 import type { NormalizedMatch } from '@/features/matches/types'
 import type { TicketMarket } from '@/stores/ticket'
@@ -23,13 +23,38 @@ const emit = defineEmits<{
 }>()
 
 const summary = computed(() => props.match.payload.historySummary)
-const mixedMarkets: Array<{ market: MarketCode; label: string }> = [
-  { market: 'had', label: '胜平负' },
-  { market: 'hhad', label: '让球' },
-  { market: 'crs', label: '比分' },
-  { market: 'ttg', label: '进球' },
-  { market: 'hafu', label: '半全场' },
+const mixedSections: Array<{
+  key: string
+  label: string
+  markets: MarketCode[]
+  openMarket: MarketCode
+}> = [
+  { key: 'result', label: 'A. 胜平负/让球', markets: ['had', 'hhad'], openMarket: 'had' },
+  { key: 'score', label: 'B. 比分', markets: ['crs'], openMarket: 'crs' },
+  { key: 'goals', label: 'C. 总进球', markets: ['ttg'], openMarket: 'ttg' },
+  { key: 'half-full', label: 'D. 半全场', markets: ['hafu'], openMarket: 'hafu' },
 ]
+const expandedMixedSection = ref(
+  mixedSections.find((section) => section.markets.includes(props.mixedMarket))?.key ?? 'result',
+)
+
+function toggleMixedSection(section: (typeof mixedSections)[number]): void {
+  if (expandedMixedSection.value === section.key) {
+    expandedMixedSection.value = ''
+    return
+  }
+  expandedMixedSection.value = section.key
+  emit('changeMixedMarket', section.openMarket)
+}
+
+function mixedSelectedCount(markets: MarketCode[]): number {
+  const prefix = `${props.match.matchId}|`
+  return props.selectedKeys.filter((key) => {
+    if (!key.startsWith(prefix)) return false
+    const market = key.split('|')[1] as MarketCode | undefined
+    return market ? markets.includes(market) : false
+  }).length
+}
 </script>
 
 <template>
@@ -51,7 +76,7 @@ const mixedMarkets: Array<{ market: MarketCode; label: string }> = [
         </strong>
         <small>{{ summary.perspective }}视角 · 胜率 {{ summary.winRate }}%</small>
       </span>
-      <van-icon :name="expanded ? 'arrow-up' : 'arrow-down'" size="16" color="var(--color-text-tertiary)" />
+      <AppIcon :name="expanded ? 'chevron-up' : 'chevron-down'" :size="16" />
     </button>
 
     <div v-if="expanded" class="history-panel">
@@ -104,23 +129,33 @@ const mixedMarkets: Array<{ market: MarketCode; label: string }> = [
     </section>
 
     <div v-else class="mixed-market">
-      <div class="mixed-market__tabs">
-        <AppChip
-          v-for="item in mixedMarkets"
-          :key="item.market"
-          :selected="mixedMarket === item.market"
-          @click="emit('changeMixedMarket', item.market)"
-        >
-          {{ item.label }}
-        </AppChip>
-      </div>
-      <MarketGrid
-        :match-id="match.matchId"
-        :market="mixedMarket"
-        :pool="match.payload.odds[mixedMarket]"
-        :selected-keys="selectedKeys"
-        @select="emit('select', $event)"
-      />
+      <section v-for="section in mixedSections" :key="section.key" class="mixed-section">
+        <button type="button" class="mixed-section__header" @click="toggleMixedSection(section)">
+          <strong>{{ section.label }}</strong>
+          <span>{{ mixedSelectedCount(section.markets) ? `已选 ${mixedSelectedCount(section.markets)}` : '未选' }}</span>
+          <AppIcon :name="expandedMixedSection === section.key ? 'chevron-up' : 'chevron-down'" :size="16" />
+        </button>
+        <div v-if="expandedMixedSection === section.key" class="mixed-section__content">
+          <div v-if="section.key === 'result'" class="dual-market">
+            <section class="market-section">
+              <h3>胜平负</h3>
+              <MarketGrid :match-id="match.matchId" market="had" :pool="match.payload.odds.had" :selected-keys="selectedKeys" @select="emit('select', $event)" />
+            </section>
+            <section class="market-section">
+              <h3>让球 <span>{{ match.payload.odds.hhad.goalLine || match.payload.odds.hhad.goalLineValue }}</span></h3>
+              <MarketGrid :match-id="match.matchId" market="hhad" :pool="match.payload.odds.hhad" :selected-keys="selectedKeys" @select="emit('select', $event)" />
+            </section>
+          </div>
+          <MarketGrid
+            v-else
+            :match-id="match.matchId"
+            :market="section.openMarket"
+            :pool="match.payload.odds[section.openMarket]"
+            :selected-keys="selectedKeys"
+            @select="emit('select', $event)"
+          />
+        </div>
+      </section>
     </div>
   </AppCard>
 </template>
@@ -128,7 +163,7 @@ const mixedMarkets: Array<{ market: MarketCode; label: string }> = [
 <style scoped>
 .match-card {
   display: grid;
-  gap: var(--space-4);
+  gap: var(--space-2);
 }
 
 .match-card__header {
@@ -181,7 +216,7 @@ const mixedMarkets: Array<{ market: MarketCode; label: string }> = [
 
 .team-name {
   overflow: hidden;
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -245,7 +280,7 @@ const mixedMarkets: Array<{ market: MarketCode; label: string }> = [
 .dual-market {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 
 .market-section {
@@ -319,18 +354,50 @@ const mixedMarkets: Array<{ market: MarketCode; label: string }> = [
 
 .mixed-market {
   display: grid;
-  gap: var(--space-3);
+  gap: 5px;
 }
 
-.mixed-market__tabs {
-  display: flex;
+.mixed-section {
+  overflow: hidden;
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-soft);
+  box-shadow: var(--outline-default);
+}
+
+.mixed-section__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 16px;
+  align-items: center;
+  width: 100%;
+  min-height: 40px;
   gap: 6px;
-  overflow-x: auto;
-  scrollbar-width: none;
+  padding: 0 10px;
+  border: 0;
+  color: var(--color-text);
+  background: transparent;
+  text-align: left;
 }
 
-.mixed-market__tabs::-webkit-scrollbar {
-  display: none;
+.mixed-section__header strong {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mixed-section__header span {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+}
+
+.mixed-section__content {
+  padding: 6px;
+  border-top: 1px solid var(--color-divider);
+  background: var(--color-surface);
+}
+
+.mixed-section__content > .dual-market {
+  gap: 5px;
 }
 
 @media (max-width: 374px) {

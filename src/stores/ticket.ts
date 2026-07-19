@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import {
   calculateBetCount,
@@ -7,10 +7,15 @@ import {
   calculateStakeCents,
   groupSelections,
 } from '@/features/betting/calculator'
+import {
+  copiedPlanName,
+  fitGeneratedPlanName,
+  normalizePlanName,
+} from '@/features/plans/planName'
 import type { NormalizedMatch } from '@/features/matches/types'
-import { SyncService } from '@/features/sync/SyncService'
+import { getSyncService } from '@/features/sync/getSyncService'
 import { getDatabase } from '@/services/database/createDatabase'
-import type { MarketCode, PlanSelection, PlanTag, SavedPlan } from '@/types/domain'
+import type { LedgerOrder, MarketCode, PlanSelection, SavedPlan } from '@/types/domain'
 
 export type TicketMarket = 'had-hhad' | 'crs' | 'ttg' | 'hafu' | 'mixed'
 
@@ -20,9 +25,30 @@ export interface SelectionConflict {
   nextMarket: MarketCode
 }
 
+function ticketFingerprint(
+  currentSelections: PlanSelection[],
+  currentPassCounts: number[],
+  currentMultiplier: number,
+): string {
+  return JSON.stringify({
+    selections: currentSelections
+      .map(({ key, matchId, market, outcome, odds }) => ({
+        key,
+        matchId,
+        market,
+        outcome,
+        odds,
+      }))
+      .sort((left, right) => left.key.localeCompare(right.key)),
+    passCounts: [...currentPassCounts].sort((left, right) => left - right),
+    multiplier: currentMultiplier,
+  })
+}
+
 export const useTicketStore = defineStore('ticket', () => {
+  const draftKey = 'caiguo.ticket-draft.v1'
   const database = getDatabase()
-  const syncService = new SyncService(database)
+  const syncService = getSyncService()
   const initialized = ref(false)
   const loading = ref(false)
   const refreshing = ref(false)
@@ -30,7 +56,6 @@ export const useTicketStore = defineStore('ticket', () => {
   const statusMessage = ref('')
   const syncProgress = ref({ completed: 0, total: 0, failed: 0 })
   const matches = ref<NormalizedMatch[]>([])
-  const tags = ref<PlanTag[]>([])
   const activeMarket = ref<TicketMarket>('had-hhad')
   const search = ref('')
   const expandedHistory = ref<Record<number, boolean>>({})
@@ -42,6 +67,10 @@ export const useTicketStore = defineStore('ticket', () => {
   const editingPlanId = ref<string>()
   const editingPlanName = ref('')
   const editingPlanCreatedAt = ref('')
+  const editingPlanTags = ref<string[]>([])
+  const editingPlanRevision = ref(0)
+  const editingPlanSourceId = ref<string>()
+  const editingPlanBaseline = ref('')
 
   const selectedSelections = computed(() => Object.values(selections.value))
   const selectedMatchCount = computed(() => groupSelections(selectedSelections.value).size)
@@ -51,6 +80,18 @@ export const useTicketStore = defineStore('ticket', () => {
   )
   const prizeRange = computed(() =>
     calculatePrizeRange(selectedSelections.value, passCounts.value, multiplier.value),
+  )
+  const currentFingerprint = computed(() =>
+    ticketFingerprint(selectedSelections.value, passCounts.value, multiplier.value),
+  )
+  const hasUnsavedChanges = computed(() =>
+    Boolean(selectedSelections.value.length) &&
+    (!editingPlanId.value || currentFingerprint.value !== editingPlanBaseline.value),
+  )
+  const canSavePlan = computed(
+    () =>
+      Boolean(selectedSelections.value.length && passCounts.value.length) &&
+      (!editingPlanId.value || hasUnsavedChanges.value),
   )
   const availablePasses = computed(() =>
     Array.from({ length: Math.min(8, selectedMatchCount.value) }, (_, index) => index + 1),
@@ -73,6 +114,8 @@ export const useTicketStore = defineStore('ticket', () => {
     try {
       await database.initialize()
       await reloadLocalData()
+      restoreDraft()
+      await restoreEditingBaseline()
       initialized.value = true
       statusMessage.value = matches.value.length
         ? `已从本地读取 ${matches.value.length} 场比赛`
@@ -85,12 +128,23 @@ export const useTicketStore = defineStore('ticket', () => {
   }
 
   async function reloadLocalData(): Promise<void> {
-    const [storedMatches, storedTags] = await Promise.all([
-      database.listMatches(),
-      database.listTags(),
-    ])
+    const storedMatches = await database.listMatches()
     matches.value = storedMatches as NormalizedMatch[]
-    tags.value = storedTags
+  }
+
+  async function activate(): Promise<void> {
+    if (!initialized.value) {
+      await initialize()
+      return
+    }
+    try {
+      await reloadLocalData()
+      statusMessage.value = matches.value.length
+        ? `已从本地读取 ${matches.value.length} 场比赛`
+        : '本地暂无比赛，点击右上角刷新获取最新数据'
+    } catch (reason) {
+      error.value = reason instanceof Error ? reason.message : String(reason)
+    }
   }
 
   async function refresh(): Promise<void> {
@@ -182,7 +236,86 @@ export const useTicketStore = defineStore('ticket', () => {
     editingPlanId.value = undefined
     editingPlanName.value = ''
     editingPlanCreatedAt.value = ''
+    editingPlanTags.value = []
+    editingPlanRevision.value = 0
+    editingPlanSourceId.value = undefined
+    editingPlanBaseline.value = ''
+    localStorage.removeItem(draftKey)
   }
+
+  function restoreDraft(): void {
+    const raw = localStorage.getItem(draftKey)
+    if (!raw) return
+    try {
+      const draft = JSON.parse(raw) as {
+        selections?: Record<string, PlanSelection>
+        passCounts?: number[]
+        multiplier?: number
+        editingPlanId?: string
+        editingPlanName?: string
+        editingPlanCreatedAt?: string
+        editingPlanTags?: string[]
+        editingPlanRevision?: number
+        editingPlanSourceId?: string
+        editingPlanBaseline?: string
+      }
+      selections.value = draft.selections ?? {}
+      passCounts.value = draft.passCounts ?? []
+      multiplier.value = draft.multiplier ?? 1
+      editingPlanId.value = draft.editingPlanId
+      editingPlanName.value = draft.editingPlanName ?? ''
+      editingPlanCreatedAt.value = draft.editingPlanCreatedAt ?? ''
+      editingPlanTags.value = draft.editingPlanTags ?? []
+      editingPlanRevision.value = draft.editingPlanRevision ?? 0
+      editingPlanSourceId.value = draft.editingPlanSourceId
+      editingPlanBaseline.value = draft.editingPlanBaseline ?? ''
+      passTouched.value = Boolean(passCounts.value.length)
+      normalizePassCounts()
+    } catch {
+      localStorage.removeItem(draftKey)
+    }
+  }
+
+  async function restoreEditingBaseline(): Promise<void> {
+    if (!editingPlanId.value || editingPlanBaseline.value) return
+    const stored = await database.getPlan(editingPlanId.value)
+    if (!stored) return
+    const storedFingerprint = ticketFingerprint(
+      stored.selections,
+      stored.passCounts,
+      stored.multiplier,
+    )
+    if (storedFingerprint === currentFingerprint.value) {
+      editingPlanBaseline.value = storedFingerprint
+    }
+  }
+
+  watch(
+    [selections, passCounts, multiplier, editingPlanId, editingPlanName, editingPlanCreatedAt, editingPlanTags, editingPlanRevision, editingPlanSourceId, editingPlanBaseline],
+    () => {
+      if (!initialized.value) return
+      if (!selectedSelections.value.length) {
+        localStorage.removeItem(draftKey)
+        return
+      }
+      localStorage.setItem(
+        draftKey,
+        JSON.stringify({
+          selections: selections.value,
+          passCounts: passCounts.value,
+          multiplier: multiplier.value,
+          editingPlanId: editingPlanId.value,
+          editingPlanName: editingPlanName.value,
+          editingPlanCreatedAt: editingPlanCreatedAt.value,
+          editingPlanTags: editingPlanTags.value,
+          editingPlanRevision: editingPlanRevision.value,
+          editingPlanSourceId: editingPlanSourceId.value,
+          editingPlanBaseline: editingPlanBaseline.value,
+        }),
+      )
+    },
+    { deep: true },
+  )
 
   function toggleHistory(matchId: number): void {
     expandedHistory.value = {
@@ -200,88 +333,181 @@ export const useTicketStore = defineStore('ticket', () => {
     return selected?.market ?? mixedMarket.value[matchId] ?? 'had'
   }
 
-  async function savePlan(name: string, selectedTags: string[]): Promise<SavedPlan> {
+  function defaultPlanName(): string {
+    const date = new Date()
+    const weekday = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][date.getDay()]
+    const time = `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+    return fitGeneratedPlanName(`${weekday}${selectedMatchCount.value}场 · ${time}`)
+  }
+
+  const suggestedPlanName = computed(() => editingPlanName.value || defaultPlanName())
+
+  async function preparePlan(name = ''): Promise<{
+    plan: SavedPlan
+    expectedRevision?: number
+    unchanged: boolean
+  }> {
     if (!selectedSelections.value.length) throw new Error('请先选择投注项')
     if (!passCounts.value.length) throw new Error('请至少选择一种过关方式')
     const stamp = new Date().toISOString()
+    const existing = editingPlanId.value
+      ? await database.getPlan(editingPlanId.value)
+      : undefined
+    if (editingPlanId.value && !existing) {
+      throw new Error('原方案已被删除，请另存为新方案')
+    }
+    if (existing && existing.revision !== editingPlanRevision.value) {
+      throw new Error('方案已在其他页面更新，请重新载入后再保存')
+    }
+    const resolvedName = normalizePlanName(
+      name.trim() || editingPlanName.value || defaultPlanName(),
+    )
+    const availableTagNames = new Set(
+      (await database.listTags()).map((tag) => tag.name),
+    )
+    const existingFingerprint = existing
+      ? ticketFingerprint(existing.selections, existing.passCounts, existing.multiplier)
+      : ''
+    if (
+      existing &&
+      existing.name === resolvedName &&
+      existingFingerprint === currentFingerprint.value
+    ) {
+      return {
+        plan: existing,
+        expectedRevision: existing.revision,
+        unchanged: true,
+      }
+    }
+    const resolvedTags = existing
+      ? [...existing.tags]
+      : editingPlanTags.value.filter(
+          (tag) => availableTagNames.has(tag),
+        )
     const plan: SavedPlan = {
       id: editingPlanId.value ?? crypto.randomUUID(),
-      name: name.trim() || `方案 ${new Date().toLocaleString('zh-CN')}`,
+      sourcePlanId: editingPlanSourceId.value,
+      revision: (existing?.revision ?? 0) + 1,
+      status: 'saved',
+      name: resolvedName,
       selections: selectedSelections.value.map((selection) => ({ ...selection })),
       passCounts: [...passCounts.value],
       multiplier: multiplier.value,
-      tags: [...selectedTags],
+      tags: resolvedTags,
       createdAt: editingPlanCreatedAt.value || stamp,
       updatedAt: stamp,
     }
-    await database.savePlan(plan)
-    const linkedLedger = (await database.listLedger()).find((order) => order.planId === plan.id)
-    if (linkedLedger) {
-      await database.saveLedgerOrder({
-        ...linkedLedger,
-        planName: plan.name,
-        updatedAt: stamp,
-      })
-    } else if (selectedTags.includes('已购')) {
-      await database.saveLedgerOrder({
-        id: crypto.randomUUID(),
-        planId: plan.id,
-        planName: plan.name,
-        planSnapshot: plan,
-        purchasedAt: stamp,
-        stakeCents: stakeCents.value,
-        returnCents: 0,
-        returnManual: false,
-        status: 'pending',
-        notes: '',
-        createdAt: stamp,
-        updatedAt: stamp,
-      })
+    return {
+      plan,
+      expectedRevision: existing?.revision,
+      unchanged: false,
     }
+  }
+
+  function adoptPlan(plan: SavedPlan): void {
     editingPlanId.value = plan.id
     editingPlanName.value = plan.name
     editingPlanCreatedAt.value = plan.createdAt
+    editingPlanRevision.value = plan.revision
+    editingPlanSourceId.value = plan.sourcePlanId
+    editingPlanBaseline.value = currentFingerprint.value
+  }
+
+  async function savePlan(name = ''): Promise<SavedPlan> {
+    const prepared = await preparePlan(name)
+    if (!prepared.unchanged) {
+      await database.savePlan(prepared.plan, prepared.expectedRevision)
+    }
+    adoptPlan(prepared.plan)
+    const plan = prepared.plan
     return plan
   }
 
-  function mergeConflicts(plan: SavedPlan): Array<{ matchId: number; current: MarketCode; incoming: MarketCode }> {
-    const currentByMatch = new Map(
-      selectedSelections.value.map((selection) => [selection.matchId, selection.market]),
-    )
-    return plan.selections.flatMap((selection) => {
-      const current = currentByMatch.get(selection.matchId)
-      return current && current !== selection.market
-        ? [{ matchId: selection.matchId, current, incoming: selection.market }]
-        : []
-    })
+  async function purchaseCurrentPlan(value: {
+    name?: string
+    stakeCents?: number
+    purchasedAt?: string
+    notes?: string
+  } = {}): Promise<{ plan: SavedPlan; orderId: string }> {
+    const prepared = await preparePlan(editingPlanId.value ? '' : value.name)
+    const plan = prepared.plan
+    const purchaseName = normalizePlanName(value.name?.trim() || plan.name)
+    const frozenPlan = structuredClone({ ...plan, name: purchaseName })
+    const stamp = new Date().toISOString()
+    const orderId = crypto.randomUUID()
+    const order: LedgerOrder = {
+      id: orderId,
+      planId: plan.id,
+      planName: purchaseName,
+      planSnapshot: frozenPlan,
+      purchasedAt: value.purchasedAt || stamp,
+      stakeCents: value.stakeCents ?? stakeCents.value,
+      returnCents: 0,
+      returnManual: false,
+      status: 'pending',
+      notes: value.notes?.trim() ?? '',
+      createdAt: stamp,
+      updatedAt: stamp,
+    }
+    if (prepared.unchanged) {
+      await database.saveLedgerOrder(order)
+    } else {
+      await database.savePlanWithLedgerOrder(
+        plan,
+        order,
+        prepared.expectedRevision,
+      )
+    }
+    adoptPlan(plan)
+    return { plan, orderId }
   }
 
-  function loadPlan(plan: SavedPlan, mode: 'replace' | 'merge'): void {
-    if (mode === 'replace') {
-      selections.value = Object.fromEntries(plan.selections.map((selection) => [selection.key, { ...selection }]))
-      passCounts.value = [...plan.passCounts]
-      multiplier.value = plan.multiplier
-      passTouched.value = true
-      editingPlanId.value = plan.id
-      editingPlanName.value = plan.name
-      editingPlanCreatedAt.value = plan.createdAt
-      return
+  async function saveAsNewPlan(name = ''): Promise<SavedPlan> {
+    const previous = {
+      id: editingPlanId.value,
+      name: editingPlanName.value,
+      createdAt: editingPlanCreatedAt.value,
+      revision: editingPlanRevision.value,
+      sourceId: editingPlanSourceId.value,
+      baseline: editingPlanBaseline.value,
     }
-    const conflicts = mergeConflicts(plan)
-    if (conflicts.length) throw new Error('合并方案存在同场不同玩法冲突')
-    selections.value = {
-      ...selections.value,
-      ...Object.fromEntries(plan.selections.map((selection) => [selection.key, { ...selection }])),
-    }
-    passCounts.value = [...new Set([...passCounts.value, ...plan.passCounts])].sort(
-      (left, right) => left - right,
-    )
-    multiplier.value = Math.max(multiplier.value, plan.multiplier)
-    passTouched.value = true
     editingPlanId.value = undefined
-    editingPlanName.value = `${editingPlanName.value || '当前方案'} + ${plan.name}`
+    editingPlanName.value = ''
     editingPlanCreatedAt.value = ''
-    normalizePassCounts()
+    editingPlanRevision.value = 0
+    editingPlanSourceId.value = previous.id ?? previous.sourceId
+    editingPlanBaseline.value = ''
+    try {
+      return await savePlan(
+        name.trim() || copiedPlanName(previous.name || defaultPlanName()),
+      )
+    } catch (error) {
+      editingPlanId.value = previous.id
+      editingPlanName.value = previous.name
+      editingPlanCreatedAt.value = previous.createdAt
+      editingPlanRevision.value = previous.revision
+      editingPlanSourceId.value = previous.sourceId
+      editingPlanBaseline.value = previous.baseline
+      throw error
+    }
+  }
+
+  function loadPlan(plan: SavedPlan): void {
+    selections.value = Object.fromEntries(plan.selections.map((selection) => [selection.key, { ...selection }]))
+    passCounts.value = [...plan.passCounts]
+    multiplier.value = plan.multiplier
+    passTouched.value = true
+    editingPlanId.value = plan.id
+    editingPlanName.value = plan.name
+    editingPlanCreatedAt.value = plan.createdAt
+    editingPlanTags.value = [...plan.tags]
+    editingPlanRevision.value = plan.revision
+    editingPlanSourceId.value = plan.sourcePlanId
+    editingPlanBaseline.value = ticketFingerprint(
+      plan.selections,
+      plan.passCounts,
+      plan.multiplier,
+    )
   }
 
   return {
@@ -292,7 +518,6 @@ export const useTicketStore = defineStore('ticket', () => {
     statusMessage,
     syncProgress,
     matches,
-    tags,
     activeMarket,
     search,
     expandedHistory,
@@ -301,6 +526,9 @@ export const useTicketStore = defineStore('ticket', () => {
     multiplier,
     editingPlanId,
     editingPlanName,
+    suggestedPlanName,
+    hasUnsavedChanges,
+    canSavePlan,
     selectedSelections,
     selectedMatchCount,
     betCount,
@@ -308,6 +536,7 @@ export const useTicketStore = defineStore('ticket', () => {
     prizeRange,
     availablePasses,
     filteredMatches,
+    activate,
     initialize,
     refresh,
     selectionFor,
@@ -318,7 +547,8 @@ export const useTicketStore = defineStore('ticket', () => {
     setMixedMarket,
     mixedMarketFor,
     savePlan,
-    mergeConflicts,
+    saveAsNewPlan,
+    purchaseCurrentPlan,
     loadPlan,
   }
 })

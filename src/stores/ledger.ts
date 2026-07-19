@@ -7,7 +7,7 @@ import {
 } from "@/features/betting/calculator";
 import type { NormalizedMatch } from "@/features/matches/types";
 import { getDatabase } from "@/services/database/createDatabase";
-import type { LedgerOrder, MatchResult } from "@/types/domain";
+import type { LedgerAdjustment, LedgerOrder, MatchResult } from "@/types/domain";
 import { addCents } from "@/utils/money";
 
 export type LedgerRangePreset = "month" | "three-months" | "all" | "custom";
@@ -22,6 +22,7 @@ export interface EvaluatedLedgerOrder {
   order: LedgerOrder;
   evaluation: PlanEvaluation;
   status: "pending" | "settled";
+  automaticReturnCents: number;
   displayedReturnCents: number;
   profitCents: number;
 }
@@ -59,6 +60,7 @@ export function evaluateLedgerOrder(
     order,
     evaluation,
     status,
+    automaticReturnCents: evaluation.currentReturnCents,
     displayedReturnCents,
     profitCents: displayedReturnCents - order.stakeCents,
   };
@@ -72,6 +74,7 @@ export const useLedgerStore = defineStore("ledger", () => {
   const orders = ref<LedgerOrder[]>([]);
   const results = ref<MatchResult[]>([]);
   const matches = ref<NormalizedMatch[]>([]);
+  const adjustments = ref<Record<string, LedgerAdjustment[]>>({});
   const preset = ref<LedgerRangePreset>("month");
   const range = ref<LedgerRange>(rangeForPreset("month"));
   const sort = ref<LedgerSort>("desc");
@@ -157,10 +160,45 @@ export const useLedgerStore = defineStore("ledger", () => {
       await database.updateLedgerReturn(
         item.order.id,
         returnCents,
-        true,
         item.order.updatedAt,
       );
       await load();
+    } finally {
+      saving.value = false;
+    }
+  }
+
+  async function updateNotes(item: EvaluatedLedgerOrder, notes: string): Promise<void> {
+    saving.value = true;
+    try {
+      await database.updateLedgerNotes(
+        item.order.id,
+        notes,
+        item.order.updatedAt,
+      );
+      await load();
+    } finally {
+      saving.value = false;
+    }
+  }
+
+  function find(id: string): EvaluatedLedgerOrder | undefined {
+    return evaluatedOrders.value.find((item) => item.order.id === id);
+  }
+
+  async function loadAdjustments(orderId: string): Promise<void> {
+    adjustments.value = {
+      ...adjustments.value,
+      [orderId]: await database.listLedgerAdjustments(orderId),
+    };
+  }
+
+  async function undoLatestReturn(item: EvaluatedLedgerOrder): Promise<void> {
+    saving.value = true;
+    try {
+      await database.undoLatestLedgerAdjustment(item.order.id, item.order.updatedAt);
+      await load();
+      await loadAdjustments(item.order.id);
     } finally {
       saving.value = false;
     }
@@ -173,6 +211,7 @@ export const useLedgerStore = defineStore("ledger", () => {
     orders,
     results,
     matches,
+    adjustments,
     preset,
     range,
     sort,
@@ -183,5 +222,9 @@ export const useLedgerStore = defineStore("ledger", () => {
     applyPreset,
     applyCustomRange,
     updateReturn,
+    updateNotes,
+    find,
+    loadAdjustments,
+    undoLatestReturn,
   };
 });

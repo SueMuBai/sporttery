@@ -21,6 +21,11 @@ sporttery.db-wal
 caiguo.db
 caiguo.db-shm
 caiguo.db-wal
+sporttery_history.json
+sporttery_history.md
+sporttery_plans.json
+sporttery_results.jsonl
+sporttery_tags.json
 img/
 .playwright-cli/
 output/

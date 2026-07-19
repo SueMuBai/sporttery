@@ -1,6 +1,7 @@
 import { cartesianProduct, combinations } from '@/features/betting/combinations'
 import { payoutCents } from '@/features/betting/oddsMath'
-import { selectionWins } from '@/features/betting/settlement'
+import { MARKET_OUTCOMES } from '@/features/betting/outcomes'
+import { selectionSettled, selectionWins } from '@/features/betting/settlement'
 import type { MatchResult, PlanSelection, SavedPlan } from '@/types/domain'
 
 export interface MarketConflict {
@@ -31,6 +32,41 @@ export interface PlanEvaluation {
 export interface PlanBet {
   passSize: number
   selections: PlanSelection[]
+}
+
+export interface PlanBetGroup extends PlanBet {
+  betCount: number
+  prizeCents: number
+}
+
+export function groupPlanBetsByMatches(
+  bets: readonly PlanBet[],
+  multiplier: number,
+): PlanBetGroup[] {
+  const values = new Map<string, PlanBetGroup>()
+  for (const bet of bets) {
+    const key = `${bet.passSize}:${bet.selections
+      .map((selection) => selection.matchId)
+      .sort((left, right) => left - right)
+      .join('-')}`
+    const prizeCents = payoutCents(
+      200 * multiplier,
+      bet.selections.map((selection) => selection.odds),
+    )
+    const current = values.get(key)
+    if (current) {
+      current.betCount += 1
+      current.prizeCents += prizeCents
+    } else {
+      values.set(key, {
+        passSize: bet.passSize,
+        selections: bet.selections,
+        betCount: 1,
+        prizeCents,
+      })
+    }
+  }
+  return [...values.values()]
 }
 
 export function groupSelections(selections: readonly PlanSelection[]): Map<number, PlanSelection[]> {
@@ -105,14 +141,46 @@ export function calculatePrizeRange(
   if (!groups.length || !validPasses.length) return { minCents: 0, maxCents: 0 }
   const baseCents = 200 * multiplier
 
-  const minimumOdds = groups
-    .map((group) => group.map((selection) => selection.odds).sort((a, b) => Number(a) - Number(b))[0])
-    .filter((odds): odds is string => Boolean(odds))
-    .sort((a, b) => Number(a) - Number(b))
-  const minimumPass = validPasses[0]
-  const minCents = minimumPass
-    ? payoutCents(baseCents, minimumOdds.slice(0, minimumPass))
-    : 0
+  const minimumGroups = groups.map((group) => {
+    const odds = group
+      .map((selection) => selection.odds)
+      .sort((left, right) => Number(left) - Number(right))[0]!
+    const market = group[0]!.market
+    const selectedOutcomes = new Set(group.map((selection) => selection.outcome))
+    const fullOutcomes = MARKET_OUTCOMES[market]
+    const guaranteed =
+      selectedOutcomes.size >= fullOutcomes.size &&
+      [...fullOutcomes].every((outcome) => selectedOutcomes.has(outcome))
+    return { odds, guaranteed }
+  })
+  const minimumPass = validPasses[0]!
+  const guaranteedOdds = minimumGroups
+    .filter((group) => group.guaranteed)
+    .map((group) => group.odds)
+  let minCents: number
+  if (guaranteedOdds.length >= minimumPass) {
+    minCents = validPasses
+      .filter((size) => size <= guaranteedOdds.length)
+      .reduce(
+        (total, size) =>
+          total +
+          combinations(guaranteedOdds, size).reduce(
+            (subtotal, combination) =>
+              subtotal + payoutCents(baseCents, combination),
+            0,
+          ),
+        0,
+      )
+  } else {
+    const optionalOdds = minimumGroups
+      .filter((group) => !group.guaranteed)
+      .map((group) => group.odds)
+      .sort((left, right) => Number(left) - Number(right))
+    minCents = payoutCents(baseCents, [
+      ...guaranteedOdds,
+      ...optionalOdds.slice(0, minimumPass - guaranteedOdds.length),
+    ])
+  }
 
   const maximumGroups = groups.map((group) =>
     group.reduce((best, selection) => (Number(selection.odds) > Number(best.odds) ? selection : best)),
@@ -135,7 +203,9 @@ export function evaluatePlan(plan: SavedPlan, results: readonly MatchResult[]): 
   if (conflicts.length) throw new Error(`方案包含同场多玩法冲突：${conflicts.map((item) => item.matchId).join('、')}`)
   const resultById = new Map(results.map((result) => [result.matchId, result]))
   const groups = [...groupSelections(plan.selections).entries()]
-  const settledGroups = groups.filter(([matchId]) => resultById.has(matchId))
+  const settledGroups = groups.filter(([matchId, selections]) =>
+    selectionSettled(selections[0]!, resultById.get(matchId)),
+  )
   const correctMatches = settledGroups.filter(([matchId, selections]) => {
     const result = resultById.get(matchId)
     return result ? selections.some((selection) => selectionWins(selection, result)) : false
@@ -151,7 +221,9 @@ export function evaluatePlan(plan: SavedPlan, results: readonly MatchResult[]): 
       const selectionGroups = matchCombination.map(([, selections]) => selections)
       for (const selectionCombination of cartesianProduct(selectionGroups)) {
         betCount += 1
-        const settled = matchCombination.every(([matchId]) => resultById.has(matchId))
+        const settled = selectionCombination.every((selection) =>
+          selectionSettled(selection, resultById.get(selection.matchId)),
+        )
         if (!settled) continue
         settledBetCount += 1
         const won = selectionCombination.every((selection) => {

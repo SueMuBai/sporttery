@@ -4,6 +4,18 @@ import type { Router } from "vue-router";
 
 const ROOT_ROUTES = new Set(["/ledger", "/ticket", "/settings"]);
 
+export function nativeBackFallback(path: string): string {
+  if (path === "/ticket/current") return "/ticket";
+  if (/^\/ledger\/[^/]+$/.test(path)) return "/ledger";
+  if (/^\/plans\/[^/]+\/(?:tags|combinations)$/.test(path)) {
+    return path.replace(/\/(?:tags|combinations)$/, "");
+  }
+  if (/^\/plans\/[^/]+$/.test(path)) return "/plans";
+  if (path === "/plans") return "/ticket";
+  if (/^\/settings\/[^/]+$/.test(path)) return "/settings";
+  return "/ticket";
+}
+
 function visible(element: HTMLElement): boolean {
   const style = globalThis.getComputedStyle?.(element);
   return style?.display !== "none" && style?.visibility !== "hidden";
@@ -20,7 +32,12 @@ export function dismissTopOverlay(documentRoot: Document = document): boolean {
       cancel.click();
       return true;
     }
-    return false;
+    const close = dialog.querySelector<HTMLElement>(
+      ".van-dialog__close, [data-overlay-close]",
+    );
+    if (close) close.click();
+    // Never navigate the page underneath a still-visible modal dialog.
+    return true;
   }
 
   const popups = [
@@ -31,7 +48,9 @@ export function dismissTopOverlay(documentRoot: Document = document): boolean {
   const popup = popups.at(-1);
   if (!popup) return false;
 
-  const close = popup.querySelector<HTMLElement>(".van-popup__close-icon");
+  const close = popup.querySelector<HTMLElement>(
+    ".van-popup__close-icon, [data-overlay-close]",
+  );
   if (close) {
     close.click();
     return true;
@@ -44,7 +63,9 @@ export function dismissTopOverlay(documentRoot: Document = document): boolean {
     overlay.click();
     return true;
   }
-  return false;
+  // Consume Back even for a non-dismissible popup. Navigating underneath it
+  // leaves an orphaned mask and can make the next screen untouchable.
+  return true;
 }
 
 export async function initializeNativeLifecycle(
@@ -52,17 +73,25 @@ export async function initializeNativeLifecycle(
 ): Promise<() => Promise<void>> {
   if (!Capacitor.isNativePlatform()) return async () => undefined;
   await router.isReady();
+  let handlingBack = false;
 
   const backListener = await CapacitorApp.addListener(
     "backButton",
-    async () => {
-      if (dismissTopOverlay()) return;
-      const route = router.currentRoute.value;
-      if (route.meta.hideNav || !ROOT_ROUTES.has(route.path)) {
-        await router.back();
-        return;
+    async ({ canGoBack }) => {
+      if (handlingBack) return;
+      handlingBack = true;
+      try {
+        if (dismissTopOverlay()) return;
+        const route = router.currentRoute.value;
+        if (route.meta.hideNav || !ROOT_ROUTES.has(route.path)) {
+          if (canGoBack) await router.back();
+          else await router.replace(nativeBackFallback(route.path));
+          return;
+        }
+        await CapacitorApp.exitApp();
+      } finally {
+        handlingBack = false;
       }
-      await CapacitorApp.exitApp();
     },
   );
 

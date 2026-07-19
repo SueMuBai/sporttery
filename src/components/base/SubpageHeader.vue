@@ -18,7 +18,7 @@ const router = useRouter()
 
 <template>
   <header class="subpage-header">
-    <AppIconButton label="返回" icon="arrow-left" variant="plain" @click="router.back()" />
+    <AppIconButton label="返回" icon="back" variant="plain" @click="router.back()" />
     <div class="subpage-header__copy">
       <h1>{{ title }}</h1>
       <p v-if="subtitle">{{ subtitle }}</p>
@@ -35,9 +35,9 @@ const router = useRouter()
   z-index: 50;
   top: 0;
   display: grid;
-  grid-template-columns: var(--control-height-lg) minmax(0, 1fr) var(--control-height-lg);
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: center;
-  min-height: calc(72px + env(safe-area-inset-top));
+  min-height: calc(44px + env(safe-area-inset-top));
   gap: var(--space-2);
   padding: env(safe-area-inset-top) var(--page-gutter) 0;
   background: rgb(255 255 255 / 96%);
@@ -59,7 +59,7 @@ const router = useRouter()
 }
 
 .subpage-header h1 {
-  font-size: 19px;
+  font-size: 17px;
   line-height: 1.35;
 }
 

@@ -1,50 +1,43 @@
 <script setup lang="ts">
 import AppCard from "@/components/base/AppCard.vue";
+import AppIcon from "@/components/base/AppIcon.vue";
+import AppPage from "@/components/base/AppPage.vue";
 import SubpageHeader from "@/components/base/SubpageHeader.vue";
 </script>
 
 <template>
-  <div class="subpage about-page">
-    <SubpageHeader title="关于彩果" subtitle="长期体彩账单与选票管理工具" />
-    <main class="subpage-content about-content">
-      <div class="brand-mark"><van-icon name="records-o" size="38" /></div>
-      <div class="brand-copy">
-        <h2>彩果</h2>
-        <p>版本 2.0.0 · 全新架构</p>
-      </div>
-      <AppCard class="about-card">
-        <h3>数据与隐私</h3>
-        <p>
-          比赛、方案、账单和设置默认保存在设备本地。应用不会自动上传你的购买记录或方案。
-        </p>
-      </AppCard>
-      <AppCard class="about-card">
-        <h3>数据来源</h3>
-        <p>
-          比赛、历史交锋和赛果来自中国体育彩票公开接口。接口内容可能调整，请以官方最终公布结果为准。
-        </p>
-      </AppCard>
-      <AppCard class="about-card warning-card">
-        <h3>理性购彩</h3>
-        <p>
-          本应用只用于数据整理和账单记录，不保证预测结果或投注收益。请量力而行，理性参与。
-        </p>
-      </AppCard>
-    </main>
-  </div>
+  <AppPage secondary content-class="about-content">
+    <template #header><SubpageHeader title="关于彩果" subtitle="长期体彩账单与选票管理工具" /></template>
+    <div class="brand-mark"><AppIcon name="folder" :size="38" /></div>
+    <div class="brand-copy">
+      <h2>彩果</h2>
+      <p>版本 2.0.0 · 全新架构</p>
+    </div>
+    <AppCard class="about-card">
+      <h3>数据与隐私</h3>
+      <p>
+        比赛、方案、账单和设置默认保存在设备本地。应用不会自动上传你的购买记录或方案。
+      </p>
+    </AppCard>
+    <AppCard class="about-card">
+      <h3>数据来源</h3>
+      <p>
+        比赛、历史交锋和赛果来自中国体育彩票公开接口。接口内容可能调整，请以官方最终公布结果为准。
+      </p>
+    </AppCard>
+    <AppCard class="about-card warning-card">
+      <h3>理性购彩</h3>
+      <p>
+        本应用只用于数据整理和账单记录，不保证预测结果或投注收益。请量力而行，理性参与。
+      </p>
+    </AppCard>
+  </AppPage>
 </template>
 
 <style scoped>
-.about-page {
-  min-height: 100dvh;
-  background: var(--color-page);
-}
-
 .about-content {
-  display: grid;
   justify-items: center;
-  gap: var(--space-4);
-  padding: var(--space-6) var(--page-gutter) var(--space-8);
+  padding-top: var(--space-6);
 }
 
 .brand-mark {

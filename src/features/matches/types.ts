@@ -57,6 +57,7 @@ export interface MatchSyncProgress {
 export interface SyncReport {
   added: number
   updated: number
+  oddsChanged: number
   unchanged: number
   failed: number
   affectedPlans: number

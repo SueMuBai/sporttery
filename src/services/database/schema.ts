@@ -1,5 +1,5 @@
-export const DATABASE_NAME = 'caiguo'
-export const DATABASE_VERSION = 4
+export const DATABASE_NAME = 'caiguo_app_v2'
+export const DATABASE_VERSION = 1
 
 export const NATIVE_SCHEMA = `
 PRAGMA foreign_keys=ON;
@@ -21,6 +21,9 @@ CREATE TABLE IF NOT EXISTS tags(
 );
 CREATE TABLE IF NOT EXISTS plans(
   id TEXT PRIMARY KEY,
+  source_plan_id TEXT,
+  revision INTEGER NOT NULL,
+  status TEXT NOT NULL,
   name TEXT NOT NULL,
   pass_counts TEXT NOT NULL,
   multiplier INTEGER NOT NULL,
@@ -81,14 +84,15 @@ CREATE TABLE IF NOT EXISTS ledger_orders(
   updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_ledger_orders_date ON ledger_orders(purchased_at DESC);
-CREATE TABLE IF NOT EXISTS ledger_transactions(
+CREATE TABLE IF NOT EXISTS ledger_adjustments(
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   order_id TEXT NOT NULL REFERENCES ledger_orders(id) ON DELETE CASCADE,
-  type TEXT NOT NULL,
-  amount_cents INTEGER NOT NULL,
+  previous_return_cents INTEGER NOT NULL,
+  next_return_cents INTEGER NOT NULL,
   occurred_at TEXT NOT NULL,
   note TEXT NOT NULL
 );
+CREATE INDEX IF NOT EXISTS idx_ledger_adjustments_order ON ledger_adjustments(order_id, occurred_at DESC);
 CREATE TABLE IF NOT EXISTS sync_jobs(
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   kind TEXT NOT NULL,
