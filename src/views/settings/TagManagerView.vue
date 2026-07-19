@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { showFailToast, showSuccessToast } from "vant";
-import { nextTick, onMounted, ref } from "vue";
-import type { ComponentPublicInstance } from "vue";
+import { showFailToast } from "vant";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 
 import AppButton from "@/components/base/AppButton.vue";
 import AppCard from "@/components/base/AppCard.vue";
@@ -9,7 +8,7 @@ import AppIcon from "@/components/base/AppIcon.vue";
 import AppPage from "@/components/base/AppPage.vue";
 import AppState from "@/components/base/AppState.vue";
 import SubpageHeader from "@/components/base/SubpageHeader.vue";
-import { confirmAction } from "@/components/base/confirmAction";
+import { MAX_PLAN_TAG_NAME_LENGTH } from "@/features/plans/tagValidation";
 import { useSettingsStore } from "@/stores/settings";
 import type { PlanTag } from "@/types/domain";
 
@@ -19,11 +18,18 @@ const name = ref("");
 const color = ref("#5797F5");
 const newName = ref("");
 const newColor = ref("#5797F5");
-const error = ref("");
-const addInput = ref<ComponentPublicInstance & { focus: () => void }>();
+const addError = ref("");
+const editError = ref("");
+const addInput = ref<HTMLInputElement>();
 const addSection = ref<HTMLElement>();
+const addExpanded = ref(true);
 const dragging = ref<string>();
 const reordering = ref(false);
+const deleteTarget = ref<PlanTag>();
+const deleteSheetVisible = ref(false);
+const toastMessage = ref("");
+const toastVisible = ref(false);
+let toastTimer: ReturnType<typeof setTimeout> | undefined;
 const colors = [
   "#5797F5",
   "#61D6BF",
@@ -33,11 +39,30 @@ const colors = [
   "#FF7D7D",
 ];
 
+const deleteUsage = computed(() =>
+  deleteTarget.value ? (store.tagUsage[deleteTarget.value.name] ?? 0) : 0,
+);
+
 onMounted(() => store.load());
+onBeforeUnmount(() => {
+  if (toastTimer) clearTimeout(toastTimer);
+});
+
+function showTagToast(message: string): void {
+  if (toastTimer) clearTimeout(toastTimer);
+  toastMessage.value = message;
+  toastVisible.value = true;
+  toastTimer = setTimeout(() => {
+    toastVisible.value = false;
+  }, 1800);
+}
 
 async function focusAdd(): Promise<void> {
-  addSection.value?.scrollIntoView({ behavior: "smooth", block: "center" });
+  editing.value = undefined;
+  editError.value = "";
+  addExpanded.value = true;
   await nextTick();
+  addSection.value?.scrollIntoView({ behavior: "smooth", block: "center" });
   addInput.value?.focus();
 }
 
@@ -61,6 +86,11 @@ async function continueReorder(event: PointerEvent): Promise<void> {
   reordering.value = true;
   try {
     await store.moveTag(dragging.value, targetIndex > sourceIndex ? 1 : -1);
+  } catch (reason) {
+    showFailToast({
+      message: reason instanceof Error ? reason.message : String(reason),
+      duration: 3000,
+    });
   } finally {
     reordering.value = false;
   }
@@ -74,47 +104,65 @@ function openEditor(tag?: PlanTag): void {
   editing.value = tag;
   name.value = tag?.name ?? "";
   color.value = tag?.color ?? colors[store.tags.length % colors.length]!;
-  error.value = "";
+  editError.value = "";
+  addError.value = "";
+  addExpanded.value = false;
+}
+
+function cancelEdit(): void {
+  editing.value = undefined;
+  editError.value = "";
 }
 
 async function saveEdit(): Promise<void> {
   try {
-    error.value = "";
-    await store.saveTag(name.value, color.value, editing.value?.name);
-    editing.value = undefined;
-    showSuccessToast("标签已更新");
+    editError.value = "";
+    const saved = await store.saveTag(
+      name.value,
+      color.value,
+      editing.value?.name,
+    );
+    editing.value = saved;
+    name.value = saved.name;
+    color.value = saved.color;
+    showTagToast("标签已更新");
   } catch (reason) {
-    error.value = reason instanceof Error ? reason.message : String(reason);
+    editError.value = reason instanceof Error ? reason.message : String(reason);
   }
 }
 
 async function addTag(): Promise<void> {
   try {
-    error.value = "";
-    await store.saveTag(newName.value, newColor.value);
-    newName.value = "";
-    newColor.value = colors[store.tags.length % colors.length]!;
-    showSuccessToast("标签已新增");
+    addError.value = "";
+    const saved = await store.saveTag(newName.value, newColor.value);
+    newName.value = saved.name;
+    newColor.value = saved.color;
+    showTagToast("标签已添加");
   } catch (reason) {
-    error.value = reason instanceof Error ? reason.message : String(reason);
+    addError.value = reason instanceof Error ? reason.message : String(reason);
   }
 }
 
-async function remove(tag: PlanTag): Promise<void> {
-  const count = store.tagUsage[tag.name] ?? 0;
+function remove(tag: PlanTag): void {
+  if (editing.value) cancelEdit();
+  addExpanded.value = true;
+  deleteTarget.value = tag;
+  deleteSheetVisible.value = true;
+}
+
+async function confirmRemove(): Promise<void> {
+  if (!deleteTarget.value) return;
+  const target = deleteTarget.value;
   try {
-    await confirmAction({
-      title: `删除“${tag.name}”？`,
-      message: count
-        ? `该标签正在被 ${count} 个方案使用。删除只会解除关联，不会删除方案。`
-        : "删除标签不会删除任何方案。",
-      confirmText: "删除标签",
-      danger: true,
-    });
-    await store.deleteTag(tag.name);
-    showSuccessToast("标签已删除");
+    await store.deleteTag(target.name);
+    deleteSheetVisible.value = false;
+    if (editing.value?.name === target.name) cancelEdit();
+    showTagToast("标签已删除");
   } catch (reason) {
-    if (reason instanceof Error) showFailToast(reason.message);
+    showFailToast({
+      message: reason instanceof Error ? reason.message : String(reason),
+      duration: 3000,
+    });
   }
 }
 </script>
@@ -141,7 +189,13 @@ async function remove(tag: PlanTag): Promise<void> {
         v-for="tag in store.tags"
         :key="tag.name"
         :data-tag-name="tag.name"
-        :class="['tag-row', { 'tag-row--dragging': dragging === tag.name }]"
+        :class="[
+          'tag-row',
+          {
+            'tag-row--dragging': dragging === tag.name,
+            'tag-row--editing': editing?.name === tag.name,
+          },
+        ]"
       >
         <button
           type="button"
@@ -155,22 +209,58 @@ async function remove(tag: PlanTag): Promise<void> {
           <AppIcon name="grip" :size="20" />
         </button>
         <span class="tag-color" :style="{ backgroundColor: tag.color }" />
+        <strong class="tag-name">{{ tag.name }}</strong>
+        <span class="tag-usage">{{ store.tagUsage[tag.name] || 0 }}个方案</span>
+        <button
+          v-if="editing?.name === tag.name"
+          type="button"
+          class="tag-action"
+          :aria-label="`收起标签编辑 ${tag.name}`"
+          @click="cancelEdit"
+        >
+          <AppIcon name="chevron-up" :size="18" />
+        </button>
+        <button
+          v-else
+          type="button"
+          class="tag-action"
+          :aria-label="`编辑标签 ${tag.name}`"
+          @click="openEditor(tag)"
+        >
+          <AppIcon name="edit" :size="18" />
+        </button>
+        <button
+          type="button"
+          class="tag-action tag-action--danger"
+          :aria-label="`删除标签 ${tag.name}`"
+          :disabled="store.saving"
+          @click="remove(tag)"
+        >
+          <AppIcon name="delete" :size="18" />
+        </button>
         <div v-if="editing?.name === tag.name" class="tag-inline-editor">
           <div class="tag-edit-main">
-            <input
-              v-model="name"
-              maxlength="12"
-              aria-label="标签名称"
-              @keydown.enter.prevent="saveEdit"
-            />
-            <button
-              type="button"
-              class="tag-edit-cancel"
-              @click="editing = undefined; error = ''"
-            >
+            <label class="tag-edit-input">
+              <input
+                v-model="name"
+                :maxlength="MAX_PLAN_TAG_NAME_LENGTH"
+                aria-label="标签名称"
+                @input="editError = ''"
+                @keydown.enter.prevent="saveEdit"
+                @keydown.esc.prevent="cancelEdit"
+              />
+              <span>{{ name.length }}/{{ MAX_PLAN_TAG_NAME_LENGTH }}</span>
+            </label>
+            <button type="button" class="tag-edit-cancel" @click="cancelEdit">
               取消
             </button>
-            <AppButton size="small" :loading="store.saving" @click="saveEdit">保存</AppButton>
+            <AppButton
+              :loading="store.saving"
+              :disabled="!name.trim()"
+              @click="saveEdit"
+            >
+              保存
+            </AppButton>
           </div>
           <div class="tag-edit-colors">
             <span>颜色</span>
@@ -183,46 +273,35 @@ async function remove(tag: PlanTag): Promise<void> {
               :aria-label="item"
               @click="color = item"
             />
-            <span class="tag-preview" :style="{ color, backgroundColor: `${color}18` }">{{ name || tag.name }}</span>
+            <span
+              class="tag-preview"
+              :style="{ color, backgroundColor: `${color}18` }"
+            >{{ name.trim() || tag.name }}</span>
           </div>
           <small>修改后，已关联的{{
             store.tagUsage[tag.name] || 0
           }}个方案同步更新</small>
+          <p v-if="editError" class="tag-error" role="alert">{{ editError }}</p>
         </div>
-        <strong v-else class="tag-name">{{ tag.name }}</strong>
-        <span v-if="editing?.name !== tag.name" class="tag-usage">{{ store.tagUsage[tag.name] || 0 }}个方案</span>
-        <template v-if="editing?.name !== tag.name">
-          <button
-            type="button"
-            class="tag-action"
-            :aria-label="`编辑标签 ${tag.name}`"
-            @click="openEditor(tag)"
-          >
-            <AppIcon name="edit" :size="18" />
-          </button>
-          <button
-            type="button"
-            class="tag-action tag-action--danger"
-            :aria-label="`删除标签 ${tag.name}`"
-            @click="remove(tag)"
-          >
-            <AppIcon name="delete" :size="18" />
-          </button>
-        </template>
       </div>
     </AppCard>
     <section ref="addSection" class="tag-add-section">
       <h2>新增标签</h2>
-      <AppCard class="tag-add-card">
+      <AppCard v-if="addExpanded && !editing" class="tag-add-card">
         <div class="tag-add-row">
-          <van-field
-            ref="addInput"
-            v-model="newName"
-            maxlength="12"
-            placeholder="输入新标签名称"
-            :error-message="!editing ? error : ''"
-            @update:model-value="error = ''"
-          />
+          <label
+            :class="['tag-add-input', { 'tag-add-input--error': addError }]"
+          >
+            <input
+              ref="addInput"
+              v-model="newName"
+              :maxlength="MAX_PLAN_TAG_NAME_LENGTH"
+              placeholder="标签名称"
+              @input="addError = ''"
+              @keydown.enter.prevent="addTag"
+            />
+            <span>{{ newName.length }}/{{ MAX_PLAN_TAG_NAME_LENGTH }}</span>
+          </label>
           <AppButton
             :disabled="!newName.trim() || store.tags.length >= 8"
             :loading="store.saving"
@@ -245,7 +324,12 @@ async function remove(tag: PlanTag): Promise<void> {
             :style="{ color: newColor, backgroundColor: `${newColor}18` }"
           >{{ newName.trim() || "标签预览" }}</span>
         </div>
+        <p v-if="addError" class="tag-error" role="alert">{{ addError }}</p>
       </AppCard>
+      <button v-else type="button" class="tag-add-collapsed" @click="focusAdd">
+        <AppIcon name="add" :size="18" />
+        <span>新增标签</span>
+      </button>
       <p class="tag-note">名称不可重复，添加后可在方案菜单中关联</p>
     </section>
     <AppState
@@ -268,6 +352,66 @@ async function remove(tag: PlanTag): Promise<void> {
       description="新增标签后，可以在保存和管理方案时直接选择"
       action-text=""
     />
+    <Transition name="tag-toast">
+      <div v-if="toastVisible" class="tag-feedback-toast" role="status">
+        <span class="tag-feedback-toast__icon">
+          <AppIcon name="check" :size="17" />
+        </span>
+        <span>{{ toastMessage }}</span>
+      </div>
+    </Transition>
+    <van-popup
+      v-model:show="deleteSheetVisible"
+      position="bottom"
+      round
+      class="tag-delete-popup"
+      :close-on-click-overlay="!store.saving"
+      @closed="deleteTarget = undefined"
+    >
+      <section
+        v-if="deleteTarget"
+        class="tag-delete-sheet"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="`删除标签 ${deleteTarget.name}`"
+      >
+        <span class="tag-delete-sheet__handle" aria-hidden="true" />
+        <header class="tag-delete-sheet__title">
+          <AppIcon name="delete" :size="22" />
+          <h2>删除标签</h2>
+        </header>
+        <p class="tag-delete-sheet__question">
+          确定删除「{{ deleteTarget.name }}」标签吗？
+        </p>
+        <p class="tag-delete-sheet__impact">
+          <template v-if="deleteUsage">
+            该标签已关联<strong>{{ deleteUsage }}个</strong>方案；
+          </template>
+          <template v-else>该标签未关联方案；</template>
+          删除标签不会删除方案。
+        </p>
+        <div class="tag-delete-sheet__actions">
+          <button
+            type="button"
+            class="tag-delete-sheet__button tag-delete-sheet__button--cancel"
+            data-overlay-close
+            :disabled="store.saving"
+            @click="deleteSheetVisible = false"
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            class="tag-delete-sheet__button tag-delete-sheet__button--danger"
+            :disabled="store.saving"
+            @click="confirmRemove"
+          >
+            {{ store.saving ? "删除中…" : "删除标签" }}
+          </button>
+        </div>
+        <p class="tag-delete-sheet__note">删除后方案将自动移除此标签</p>
+      </section>
+    </van-popup>
   </AppPage>
 </template>
 
@@ -278,6 +422,7 @@ async function remove(tag: PlanTag): Promise<void> {
 }
 
 .header-add {
+  display: grid;
   width: 44px;
   height: 44px;
   padding: 0;
@@ -285,6 +430,8 @@ async function remove(tag: PlanTag): Promise<void> {
   color: var(--color-primary);
   background: transparent;
   font-size: 13px;
+  line-height: 1;
+  place-items: center;
 }
 
 .tag-tip {
@@ -316,6 +463,7 @@ async function remove(tag: PlanTag): Promise<void> {
   margin: 0 10px;
   color: var(--color-text-secondary);
   font-size: 11px;
+  line-height: 16px;
 }
 
 .tag-add-card {
@@ -329,29 +477,88 @@ async function remove(tag: PlanTag): Promise<void> {
   gap: 8px;
 }
 
-.tag-add-row :deep(.van-field) {
-  min-height: 40px;
-  padding: 8px 10px;
+.tag-add-row :deep(.app-button--primary),
+.tag-edit-main :deep(.app-button--primary) {
+  background: linear-gradient(135deg, #69b5ff, var(--color-primary));
+}
+
+.tag-add-input,
+.tag-edit-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  height: 40px;
+  min-width: 0;
+  gap: 6px;
+  padding: 0 10px;
   border-radius: var(--radius-control);
   box-shadow: var(--outline-default);
+  background: var(--color-surface);
+  transition: box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+.tag-add-input:focus-within,
+.tag-edit-input:focus-within {
+  box-shadow: var(--outline-primary);
+}
+
+.tag-add-input--error {
+  box-shadow: inset 0 0 0 1px var(--color-danger);
+}
+
+.tag-add-input input,
+.tag-edit-input input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.tag-add-input input::placeholder {
+  color: var(--color-placeholder);
+}
+
+.tag-add-input > span,
+.tag-edit-input > span {
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  line-height: 16px;
 }
 
 .inline-colors {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-height: 38px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-divider);
 }
 
-.inline-colors button {
+.inline-colors::before {
+  content: "颜色";
+  flex: 0 0 auto;
+  color: var(--color-text);
+  font-size: 13px;
+}
+
+.inline-colors button,
+.tag-edit-colors button {
+  position: relative;
   width: 24px;
   height: 24px;
+  flex: 0 0 auto;
   padding: 0;
   border: 0;
   border-radius: 50%;
   box-shadow: inset 0 0 0 2px #fff;
 }
 
-.inline-colors button.selected {
+.inline-colors button.selected,
+.tag-edit-colors button.selected {
   outline: 2px solid var(--color-primary);
   outline-offset: 1px;
 }
@@ -361,6 +568,22 @@ async function remove(tag: PlanTag): Promise<void> {
   padding: 3px 8px;
   border-radius: var(--radius-pill);
   font-size: 10px;
+}
+
+.tag-add-collapsed {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  height: 44px;
+  gap: 8px;
+  padding: 0 12px;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-control);
+  color: var(--color-text-secondary);
+  background: rgb(255 255 255 / 54%);
+  font-size: 13px;
+  line-height: 18px;
 }
 
 .tag-list {
@@ -390,7 +613,8 @@ async function remove(tag: PlanTag): Promise<void> {
   grid-template-columns: 32px 16px minmax(0, 1fr) auto 40px 40px;
   align-items: center;
   min-height: 46px;
-  gap: 6px;
+  column-gap: 6px;
+  row-gap: 0;
   padding: 0 6px;
   transition: background var(--duration-fast) var(--ease-standard);
 }
@@ -403,6 +627,10 @@ async function remove(tag: PlanTag): Promise<void> {
   position: relative;
   z-index: 2;
   background: var(--color-primary-soft);
+}
+
+.tag-row--editing {
+  align-items: center;
 }
 
 .tag-grip {
@@ -441,7 +669,9 @@ async function remove(tag: PlanTag): Promise<void> {
   display: grid;
   grid-column: 3 / 7;
   gap: 8px;
-  padding-block: 8px;
+  width: 100%;
+  min-width: 0;
+  padding: 8px 0 10px;
 }
 
 .tag-edit-main {
@@ -451,24 +681,18 @@ async function remove(tag: PlanTag): Promise<void> {
   gap: 6px;
 }
 
-.tag-edit-main input {
-  width: 100%;
-  height: 32px;
-  min-width: 0;
-  padding: 0 8px;
-  border: 0;
-  outline: 0;
-  border-radius: var(--radius-xs);
+.tag-edit-input {
   box-shadow: var(--outline-primary);
 }
 
 .tag-inline-editor small {
   color: var(--color-text-secondary);
   font-size: 10px;
+  line-height: 14px;
 }
 
 .tag-edit-cancel {
-  height: 36px;
+  height: 40px;
   padding: 0;
   border: 0;
   color: var(--color-primary);
@@ -480,24 +704,11 @@ async function remove(tag: PlanTag): Promise<void> {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-height: 30px;
 }
 
 .tag-edit-colors > span:first-child {
   font-size: 13px;
-}
-
-.tag-edit-colors button {
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 2px #fff;
-}
-
-.tag-edit-colors button.selected {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 1px;
 }
 
 .tag-preview {
@@ -514,18 +725,190 @@ async function remove(tag: PlanTag): Promise<void> {
   padding: 0;
   border: 0;
   place-items: center;
-  color: var(--color-primary);
+  color: var(--color-text);
   background: transparent;
 }
 
 .tag-action--danger {
+  color: var(--color-text);
+}
+
+.tag-action:disabled {
+  opacity: 0.45;
+}
+
+.tag-error {
+  margin: 0;
   color: var(--color-danger);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.tag-feedback-toast {
+  position: fixed;
+  z-index: 3000;
+  bottom: calc(54px + env(safe-area-inset-bottom));
+  left: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 126px;
+  min-height: 48px;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  color: #fff;
+  background: rgb(29 37 48 / 92%);
+  box-shadow: 0 10px 28px rgb(29 37 48 / 20%);
+  font-size: 13px;
+  line-height: 18px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.tag-feedback-toast__icon {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  place-items: center;
+  color: var(--color-text);
+  background: #fff;
+}
+
+.tag-toast-enter-active,
+.tag-toast-leave-active {
+  transition:
+    opacity 160ms var(--ease-standard),
+    transform 160ms var(--ease-standard);
+}
+
+.tag-toast-enter-from,
+.tag-toast-leave-to {
+  opacity: 0;
+  transform: translate(-50%, 8px);
+}
+
+/* stylelint-disable-next-line selector-pseudo-class-no-unknown */
+:global(.tag-delete-popup) {
+  overflow: hidden;
+  border-radius: 20px 20px 0 0;
+  background: var(--color-surface);
+}
+
+.tag-delete-sheet {
+  display: grid;
+  gap: 16px;
+  padding: 10px 18px calc(22px + env(safe-area-inset-bottom));
+}
+
+.tag-delete-sheet__handle {
+  width: 40px;
+  height: 5px;
+  margin: 0 auto 2px;
+  border-radius: var(--radius-pill);
+  background: #d9dee7;
+}
+
+.tag-delete-sheet__title {
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+  gap: 10px;
+  color: var(--color-danger);
+}
+
+.tag-delete-sheet__title h2 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 17px;
+  line-height: 24px;
+}
+
+.tag-delete-sheet__question,
+.tag-delete-sheet__impact,
+.tag-delete-sheet__note {
+  margin: 0;
+}
+
+.tag-delete-sheet__question {
+  color: var(--color-text);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.tag-delete-sheet__impact {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.tag-delete-sheet__impact strong {
+  color: var(--color-danger);
+  font-weight: 500;
+}
+
+.tag-delete-sheet__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.tag-delete-sheet__button {
+  height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-control);
+  font-size: 13px;
+  line-height: 18px;
+  transition:
+    opacity var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
+}
+
+.tag-delete-sheet__button:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+.tag-delete-sheet__button:disabled {
+  opacity: 0.62;
+}
+
+.tag-delete-sheet__button--cancel {
+  color: var(--color-text);
+  background: var(--color-surface);
+  box-shadow: var(--outline-strong);
+}
+
+.tag-delete-sheet__button--danger {
+  color: #fff;
+  background: linear-gradient(135deg, #ff6857, #ff5049);
+}
+
+.tag-delete-sheet__note {
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  line-height: 16px;
+  text-align: center;
 }
 
 @media (max-width: 359px) {
   .tag-row {
     grid-template-columns: 28px 14px minmax(0, 1fr) auto 36px 36px;
     gap: 4px;
+  }
+
+  .inline-colors,
+  .tag-edit-colors {
+    gap: 6px;
+  }
+
+  .inline-colors button,
+  .tag-edit-colors button {
+    width: 22px;
+    height: 22px;
   }
 }
 </style>

@@ -11,6 +11,7 @@ import {
   assertValidMatchResult,
   assertValidMatchSnapshot,
 } from "@/features/matches/validation";
+import { MAX_PLAN_TAG_NAME_LENGTH } from "@/features/plans/tagValidation";
 import { getDatabase } from "@/services/database/createDatabase";
 import { normalizePlanName } from "@/features/plans/planName";
 import { assertPersistablePlan } from "@/features/plans/validation";
@@ -109,7 +110,9 @@ export function parsePlanImport(value: string): {
   const tags = bundle.tags.map((tag, index) => {
     const name = String(tag.name ?? "").trim();
     if (!name) throw new Error(`第 ${index + 1} 个标签没有名称`);
-    if (name.length > 12) throw new Error(`标签“${name}”超过 12 个字符`);
+    if (name.length > MAX_PLAN_TAG_NAME_LENGTH) {
+      throw new Error(`标签“${name}”超过 ${MAX_PLAN_TAG_NAME_LENGTH} 个字符`);
+    }
     const identity = name.toLocaleLowerCase();
     if (seenTags.has(identity)) throw new Error(`备份中存在重复标签“${name}”`);
     seenTags.add(identity);
@@ -154,17 +157,22 @@ export function parsePlanImport(value: string): {
         odds,
       };
     });
-    if (new Set(selections.map((selection) => selection.key)).size !== selections.length) {
+    if (
+      new Set(selections.map((selection) => selection.key)).size !==
+      selections.length
+    ) {
       throw new Error(`方案“${name}”包含重复投注选项`);
     }
-    const matchCount = new Set(selections.map((selection) => selection.matchId)).size;
+    const matchCount = new Set(selections.map((selection) => selection.matchId))
+      .size;
     const passCounts = Array.isArray(plan.passCounts)
       ? [...new Set(plan.passCounts.map(Number))]
       : [];
     if (
       !passCounts.length ||
       passCounts.some(
-        (size) => !Number.isInteger(size) || size < 1 || size > 8 || size > matchCount,
+        (size) =>
+          !Number.isInteger(size) || size < 1 || size > 8 || size > matchCount,
       )
     ) {
       throw new Error(`方案“${name}”的过关方式无效`);
@@ -192,7 +200,8 @@ export function parsePlanImport(value: string): {
       updatedAt: String(plan.updatedAt || stamp),
     };
     const missing = normalized.tags.find((tag) => !tagNames.has(tag));
-    if (missing) throw new Error(`方案“${normalized.name}”引用了缺失标签“${missing}”`);
+    if (missing)
+      throw new Error(`方案“${normalized.name}”引用了缺失标签“${missing}”`);
     const conflicts = validateSingleMarketPerMatch(normalized.selections);
     if (conflicts.length) {
       throw new Error(`方案“${normalized.name}”包含同场多玩法`);
@@ -201,7 +210,9 @@ export function parsePlanImport(value: string): {
     return normalized;
   });
   const referencedMatchIds = new Set(
-    plans.flatMap((plan) => plan.selections.map((selection) => selection.matchId)),
+    plans.flatMap((plan) =>
+      plan.selections.map((selection) => selection.matchId),
+    ),
   );
   const isObject = (item: unknown): item is Record<string, unknown> =>
     Boolean(item) && typeof item === "object" && !Array.isArray(item);
@@ -229,7 +240,9 @@ export function parsePlanImport(value: string): {
         match.matchDateTime,
         `比赛 ${matchId} 的开赛时间`,
       );
-      if (!/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(?::\d{2})?$/.test(matchDateTime)) {
+      if (
+        !/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(?::\d{2})?$/.test(matchDateTime)
+      ) {
         throw new Error(`比赛 ${matchId} 的开赛时间格式无效`);
       }
       const normalized = {
@@ -239,7 +252,10 @@ export function parsePlanImport(value: string): {
         homeTeam: requireText(match.homeTeam, `比赛 ${matchId} 的主队`),
         awayTeam: requireText(match.awayTeam, `比赛 ${matchId} 的客队`),
         payload: structuredClone(match.payload),
-        updatedAt: requireTimestamp(match.updatedAt, `比赛 ${matchId} 的更新时间`),
+        updatedAt: requireTimestamp(
+          match.updatedAt,
+          `比赛 ${matchId} 的更新时间`,
+        ),
       } satisfies MatchSnapshot;
       assertValidMatchSnapshot(normalized);
       return normalized;
@@ -247,7 +263,10 @@ export function parsePlanImport(value: string): {
   const latestMatches = new Map<number, MatchSnapshot>();
   for (const match of importedMatches) {
     const previous = latestMatches.get(match.matchId);
-    if (!previous || Date.parse(previous.updatedAt) < Date.parse(match.updatedAt)) {
+    if (
+      !previous ||
+      Date.parse(previous.updatedAt) < Date.parse(match.updatedAt)
+    ) {
       latestMatches.set(match.matchId, match);
     }
   }
@@ -267,7 +286,11 @@ export function parsePlanImport(value: string): {
     if (!Number.isInteger(matchId) || matchId <= 0) {
       throw new Error("备份中的赛果比赛 ID 无效");
     }
-    const normalizeScore = (value: unknown, label: string, optional = false) => {
+    const normalizeScore = (
+      value: unknown,
+      label: string,
+      optional = false,
+    ) => {
       const score = String(value ?? "").trim();
       if (optional && !score) return "";
       if (!/^\d+\s*:\s*\d+$/.test(score)) {

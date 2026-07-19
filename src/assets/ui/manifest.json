@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "designSource": "img/ui/彩果_晴空汽水紧凑版V2_完整补充交付包",
+  "runtimeRoot": "src/assets/ui",
+  "policy": {
+    "icons": "SVG only; imported from src and rendered as URL, inline SVG, or CSS mask",
+    "color": "Migrated line icons normalize stroke to currentColor",
+    "backgrounds": "Cards, buttons, inputs, borders, dividers, sheets, and state fills are code drawn; no new full-control background slices are migrated",
+    "forbiddenRuntimeSource": "img/"
+  },
+  "modules": {
+    "common": {
+      "status": "integrated",
+      "assets": ["ic_info.svg", "ic_refresh.svg", "ic_chevron_right.svg"],
+      "consumers": ["SettingsView", "DataUpdateView", "AboutView"]
+    },
+    "ticket": {
+      "status": "available-for-integration",
+      "assets": ["ic_refresh.svg", "ic_search.svg", "ic_filter.svg", "ic_manage.svg", "ic_status_success.svg", "ic_view_plan.svg"]
+    },
+    "ledger": {
+      "status": "available-for-integration",
+      "assets": ["ic_calendar.svg", "ic_calendar_filter.svg", "ic_edit.svg", "ic_close.svg"]
+    },
+    "settings": {
+      "status": "integrated",
+      "assets": ["ic_system_settings.svg", "ic_tag.svg", "ic_folder.svg", "ic_export_markdown.svg", "ic_export_json.svg", "ic_concurrency.svg", "ic_timeout.svg", "ic_retry.svg", "ic_multiplier.svg", "ic_add.svg", "ic_back.svg", "ic_delete.svg"],
+      "consumers": ["SettingsView", "SystemSettingsView", "DataManagementView"]
+    },
+    "date": {
+      "status": "integrated-before-supplement",
+      "note": "Existing SVG set matches the supplemental year/month/day picker package"
+    },
+    "plans": {
+      "status": "integrated-before-supplement",
+      "note": "Compact V2 plan icons are already imported by plan management and detail views"
+    },
+    "navigation": {
+      "path": "src/assets/icons/navigation",
+      "status": "verified-identical",
+      "assets": ["ic_nav_bill_default.svg", "ic_nav_bill_selected.svg", "ic_nav_ticket_default.svg", "ic_nav_ticket_selected.svg", "ic_nav_settings_default.svg", "ic_nav_settings_selected.svg"]
+    }
+  },
+  "settingsEffectCalibration": [
+    {
+      "effect": "01_设置_一级目录.png",
+      "status": "partial",
+      "note": "Directory groups and themed SVG icons are integrated; gradient AppHeader is owned by the main thread"
+    },
+    {
+      "effect": "02_设置_系统设置二级页.png",
+      "status": "partial",
+      "note": "44dp header, settings persistence, unsaved-leave guard, and exact parameter icons exist; auto-sync and expand-detail switches are not represented in the current domain model"
+    },
+    {
+      "effect": "03_设置_数据更新默认态.png",
+      "status": "partial",
+      "note": "Latest snapshot, incremental counts, and sync action exist; separate fetch-match/update-result commands and task history do not"
+    },
+    {
+      "effect": "04_设置_数据更新同步中.png",
+      "status": "partial",
+      "note": "Progress and failure count exist; cancellable sync and per-step log history do not"
+    },
+    {
+      "effect": "05_设置_数据更新失败与重试.png",
+      "status": "partial",
+      "note": "Retry-failed action and failed match IDs exist; expandable failure-detail history does not"
+    },
+    {
+      "effect": "06_设置_数据与备份.png",
+      "status": "partial",
+      "note": "Markdown/JSON export and JSON plan restore exist; device-size summary, full backup restore, and destructive local-data reset are not implemented"
+    },
+    {
+      "effect": "07_设置_关于彩果.png",
+      "status": "partial",
+      "note": "Version, data/privacy/source, and responsible-play information exist; update/help/license/feedback routes and final brand artwork are not supplied"
+    }
+  ]
+}

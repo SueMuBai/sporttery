@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { nextTick, ref, watch } from "vue";
 
 import AppCard from "@/components/base/AppCard.vue";
 import deleteIcon from "@/assets/ui/plans/ic_delete_danger.svg?url";
@@ -31,18 +31,24 @@ const emit = defineEmits<{
   "update:renameValue": [value: string];
 }>();
 
-const status = computed(() => {
-  const evaluation = props.item.evaluation;
-  if (!evaluation) return { label: "异常", class: "error" };
-  if (!props.item.purchaseCount) return { label: "已保存", class: "saved" };
-  if (props.item.purchaseSummary.status === "pending")
-    return { label: "进行中", class: "pending" };
-  if (props.item.purchaseSummary.profitCents > 0)
-    return { label: "已盈利", class: "profit" };
-  if (props.item.purchaseSummary.profitCents < 0)
-    return { label: "已亏损", class: "loss" };
-  return { label: "已完成", class: "settled" };
-});
+const renameInput = ref<HTMLInputElement>();
+
+watch(
+  () => props.renaming,
+  async (renaming) => {
+    if (!renaming) return;
+    await nextTick();
+    renameInput.value?.focus();
+    renameInput.value?.select();
+  },
+  { immediate: true },
+);
+
+function tagTone(tag: string): string {
+  if (/^ai$/i.test(tag)) return "violet";
+  if (tag === "稳健") return "mint";
+  return "blue";
+}
 </script>
 
 <template>
@@ -52,32 +58,63 @@ const status = computed(() => {
     tabindex="0"
     :aria-label="`查看方案详情：${item.plan.name}`"
     @click="emit('detail')"
-    @keydown.enter="emit('detail')"
-    @keydown.space.prevent="emit('detail')"
+    @keydown.enter.self="emit('detail')"
+    @keydown.space.self.prevent="emit('detail')"
   >
-    <div class="plan-card__top">
-      <div :class="['plan-card__title-line', { 'plan-card__title-line--editing': renaming }]">
+    <div :class="['plan-card__top', { 'plan-card__top--editing': renaming }]">
+      <div
+        :class="[
+          'plan-card__title-line',
+          { 'plan-card__title-line--editing': renaming },
+        ]"
+      >
         <div v-if="renaming" class="inline-rename" @click.stop>
           <div class="inline-rename__main">
             <input
+              ref="renameInput"
               :value="renameValue"
               :maxlength="PLAN_NAME_MAX_LENGTH"
               aria-label="方案名称"
-              @input="emit('update:renameValue', ($event.target as HTMLInputElement).value)"
+              @input="
+                emit(
+                  'update:renameValue',
+                  ($event.target as HTMLInputElement).value,
+                )
+              "
               @keydown.enter.prevent="emit('saveRename')"
               @keydown.escape.prevent="emit('cancelRename')"
             />
             <button type="button" @click="emit('cancelRename')">取消</button>
-            <button type="button" class="save" :disabled="saving || !renameValue?.trim()" @click="emit('saveRename')">保存</button>
+            <button
+              type="button"
+              class="save"
+              :disabled="saving || !renameValue?.trim()"
+              @click="emit('saveRename')"
+            >
+              保存
+            </button>
           </div>
-          <div class="inline-rename__helper"><span>名称1～{{ PLAN_NAME_MAX_LENGTH }}个字</span><span>{{ renameValue?.length || 0 }}/{{ PLAN_NAME_MAX_LENGTH }}</span></div>
+          <div class="inline-rename__helper">
+            <span>名称1～{{ PLAN_NAME_MAX_LENGTH }}个字</span><span>{{ renameValue?.length || 0 }}/{{ PLAN_NAME_MAX_LENGTH }}</span>
+          </div>
+          <div
+            v-if="item.plan.tags.length"
+            class="plan-tags plan-tags--editing"
+          >
+            <span
+              v-for="tag in item.plan.tags.slice(0, 3)"
+              :key="tag"
+              :class="'plan-tag--' + tagTone(tag)"
+            >{{ tag }}</span>
+          </div>
         </div>
         <h2 v-else>{{ item.plan.name }}</h2>
-        <span v-if="!renaming" :class="['plan-status', `plan-status--${status.class}`]">{{ status.label }}</span>
         <div v-if="!renaming" class="plan-tags">
-          <span v-for="tag in item.plan.tags.slice(0, 2)" :key="tag">{{
-            tag
-          }}</span>
+          <span
+            v-for="tag in item.plan.tags.slice(0, 3)"
+            :key="tag"
+            :class="'plan-tag--' + tagTone(tag)"
+          >{{ tag }}</span>
         </div>
       </div>
       <button
@@ -89,20 +126,22 @@ const status = computed(() => {
       >
         <img :src="moreIcon" alt="" />
       </button>
-      <div v-if="menuOpen" class="plan-menu" @click.stop>
-        <button type="button" @click="emit('load')">
-          <img :src="loadIcon" alt="" />载入编辑
-        </button>
-        <button type="button" @click="emit('rename')">
-          <img :src="renameIcon" alt="" />重命名
-        </button>
-        <button type="button" @click="emit('tags')">
-          <img :src="editTagIcon" alt="" />编辑标签
-        </button>
-        <button type="button" class="danger" @click="emit('remove')">
-          <img :src="deleteIcon" alt="" />删除
-        </button>
-      </div>
+      <Transition name="plan-menu">
+        <div v-if="menuOpen" class="plan-menu" @click.stop>
+          <button type="button" @click="emit('load')">
+            <img :src="loadIcon" alt="" />载入编辑
+          </button>
+          <button type="button" @click="emit('rename')">
+            <img :src="renameIcon" alt="" />重命名
+          </button>
+          <button type="button" @click="emit('tags')">
+            <img :src="editTagIcon" alt="" />编辑标签
+          </button>
+          <button type="button" class="danger" @click="emit('remove')">
+            <img :src="deleteIcon" alt="" />删除
+          </button>
+        </div>
+      </Transition>
     </div>
 
     <div class="plan-card__meta">
@@ -114,29 +153,23 @@ const status = computed(() => {
       <i>·</i>
       <span>{{ item.plan.multiplier }}倍</span>
     </div>
+    <span v-if="item.purchaseCount" class="plan-card__purchase-summary">
+      购买{{ item.purchaseCount }}笔
+    </span>
 
-    <div v-if="item.evaluation && item.purchaseCount" class="plan-card__stats">
-      <div>
-        <span>购买</span><strong class="numeric">{{ item.purchaseCount }}笔</strong>
-      </div>
-      <div>
-        <span>已完成</span><strong class="numeric">{{ item.purchaseSummary.settledCount }}笔</strong>
-      </div>
-      <div>
-        <span>进行中</span><strong class="numeric">{{ item.purchaseSummary.pendingCount }}笔</strong>
-      </div>
-    </div>
-    <div v-else-if="item.evaluation" class="plan-card__stats">
+    <div v-if="item.evaluation" class="plan-card__stats">
       <div>
         <span>已完成</span><strong class="numeric">{{ item.evaluation.settledMatches }}/{{
           item.evaluation.totalMatches
         }}</strong>
       </div>
       <div>
-        <span>猜对</span><strong class="numeric">{{ item.evaluation.correctMatches }}</strong>
+        <span>猜对</span><strong class="numeric positive">{{
+          item.evaluation.correctMatches
+        }}</strong>
       </div>
       <div>
-        <span>猜错</span><strong class="numeric">{{
+        <span>猜错</span><strong class="numeric negative">{{
           Math.max(
             0,
             item.evaluation.settledMatches - item.evaluation.correctMatches,
@@ -144,34 +177,44 @@ const status = computed(() => {
         }}</strong>
       </div>
     </div>
-    <div v-if="item.evaluation && item.purchaseCount" class="plan-card__finance">
+    <div
+      v-if="item.evaluation && item.purchaseCount"
+      class="plan-card__finance"
+    >
       <div>
         <span>实际投入</span><strong class="numeric">¥{{ centsToYuan(item.purchaseSummary.stakeCents) }}</strong>
       </div>
       <div>
-        <span>{{ item.purchaseSummary.status === "settled" ? "实际回款" : "当前已结算" }}</span>
+        <span>{{
+          item.purchaseSummary.status === "settled" ? "实际回款" : "当前已结算"
+        }}</span>
         <strong class="numeric positive">¥{{ centsToYuan(item.purchaseSummary.returnCents) }}</strong>
       </div>
       <div>
-        <span>{{ item.purchaseSummary.status === "settled" ? "实际盈亏" : "当前收益" }}</span>
-        <strong :class="['numeric', item.purchaseSummary.profitCents >= 0 ? 'positive' : 'negative']">
-          {{ item.purchaseSummary.profitCents >= 0 ? "+" : "-" }}¥{{ centsToYuan(Math.abs(item.purchaseSummary.profitCents)) }}
+        <span>{{
+          item.purchaseSummary.status === "settled" ? "实际盈亏" : "当前收益"
+        }}</span>
+        <strong
+          :class="[
+            'numeric',
+            item.purchaseSummary.profitCents >= 0 ? 'positive' : 'negative',
+          ]"
+        >
+          {{ item.purchaseSummary.profitCents >= 0 ? "+" : "-" }}¥{{
+            centsToYuan(Math.abs(item.purchaseSummary.profitCents))
+          }}
         </strong>
       </div>
     </div>
     <div v-else-if="item.evaluation" class="plan-card__finance">
       <div>
-        <span>预计投入</span><strong class="numeric">¥{{ centsToYuan(item.evaluation.stakeCents) }}</strong>
+        <span>投注</span><strong class="numeric">¥{{ centsToYuan(item.evaluation.stakeCents) }}</strong>
       </div>
       <div>
-        <span>{{
-          item.evaluation.status === "settled" ? "理论回款" : "当前已结算"
-        }}</span><strong class="numeric positive">¥{{ centsToYuan(item.evaluation.currentReturnCents) }}</strong>
+        <span>奖金</span><strong class="numeric positive">¥{{ centsToYuan(item.evaluation.currentReturnCents) }}</strong>
       </div>
       <div>
-        <span>{{
-          item.evaluation.status === "settled" ? "净盈亏" : "当前收益"
-        }}</span>
+        <span>收益</span>
         <strong
           :class="[
             'numeric',
@@ -209,7 +252,7 @@ const status = computed(() => {
   min-width: 0;
   max-width: 100%;
   grid-template-columns: minmax(0, 1fr);
-  gap: 5px;
+  gap: 4px;
   min-height: 112px;
   overflow: visible;
 }
@@ -225,23 +268,27 @@ const status = computed(() => {
   padding-right: 32px;
 }
 
+.plan-card__top--editing {
+  padding-right: 0;
+}
+
 .inline-rename {
   display: grid;
   width: 100%;
   min-width: 0;
-  gap: 3px;
+  gap: 4px;
 }
 
 .inline-rename__main {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 42px 42px;
+  grid-template-columns: minmax(0, 1fr) 48px 48px;
   align-items: center;
   gap: 4px;
 }
 
 .inline-rename input {
   width: 100%;
-  height: 34px;
+  height: 40px;
   min-width: 0;
   padding: 0 8px;
   border: 0;
@@ -254,7 +301,7 @@ const status = computed(() => {
 }
 
 .inline-rename button {
-  height: 34px;
+  height: 40px;
   padding: 0;
   border: 0;
   color: var(--color-text);
@@ -274,7 +321,8 @@ const status = computed(() => {
   display: flex;
   justify-content: space-between;
   color: var(--color-text-secondary);
-  font-size: 10px;
+  font-size: 11px;
+  line-height: 16px;
 }
 
 .plan-card__title-line--editing {
@@ -284,14 +332,28 @@ const status = computed(() => {
 .plan-menu {
   position: absolute;
   z-index: 20;
-  top: 28px;
-  right: -6px;
+  top: 30px;
+  right: -1px;
   display: grid;
   width: 142px;
   padding: 4px;
   border-radius: var(--radius-control);
   background: var(--color-surface);
   box-shadow: var(--outline-strong), var(--shadow-float);
+  transform-origin: top right;
+}
+
+.plan-menu-enter-active,
+.plan-menu-leave-active {
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
+}
+
+.plan-menu-enter-from,
+.plan-menu-leave-to {
+  opacity: 0;
+  transform: translateY(-3px) scale(0.98);
 }
 
 .plan-menu button {
@@ -338,57 +400,26 @@ const status = computed(() => {
   white-space: nowrap;
 }
 
-.plan-status {
-  display: inline-flex;
-  align-items: center;
-  min-height: 20px;
-  flex: 0 0 auto;
-  padding: 0 6px;
-  border-radius: var(--radius-pill);
-  font-size: 11px;
-  font-weight: 650;
-  line-height: 1;
-}
-
-.plan-status--pending {
-  color: #956f18;
-  background: #fff6dc;
-}
-
-.plan-status--saved {
-  color: var(--color-primary);
-  background: var(--color-primary-soft);
-}
-
-.plan-status--profit {
-  color: var(--color-success);
-  background: #eafaf5;
-}
-
-.plan-status--loss,
-.plan-status--error {
-  color: var(--color-danger);
-  background: var(--color-accent-soft);
-}
-
-.plan-status--settled {
-  color: var(--color-primary);
-  background: var(--color-primary-soft);
-}
-
 .plan-more {
   position: absolute;
-  top: -8px;
-  right: -6px;
+  top: -2px;
+  right: 0;
   display: grid;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 24px;
   padding: 0;
   border: 0;
-  border-radius: 50%;
+  border-radius: 7px;
   place-items: center;
   color: var(--color-text-secondary);
-  background: transparent;
+  background: var(--color-surface);
+  box-shadow: var(--outline-default);
+}
+
+.plan-more::before {
+  position: absolute;
+  inset: -10px -6px;
+  content: "";
 }
 
 .plan-more img,
@@ -415,6 +446,15 @@ const status = computed(() => {
 .plan-card__meta i {
   color: var(--color-text-placeholder);
   font-style: normal;
+}
+
+.plan-card__purchase-summary {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .plan-card__stats {
@@ -474,11 +514,29 @@ const status = computed(() => {
 
 .plan-tags span {
   flex: 0 0 auto;
-  color: var(--color-primary);
   font-size: 10px;
-  padding: 3px 7px;
+  line-height: 20px;
+  padding: 0 7px;
   border-radius: var(--radius-pill);
+}
+
+.plan-tags--editing {
+  margin-top: 1px;
+}
+
+.plan-tags span.plan-tag--blue {
+  color: var(--color-primary);
   background: var(--color-primary-soft);
+}
+
+.plan-tags span.plan-tag--violet {
+  color: #7c51ec;
+  background: #f2edff;
+}
+
+.plan-tags span.plan-tag--mint {
+  color: #328f78;
+  background: #eaf8f3;
 }
 
 .plan-card__finance {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AppIcon, { type AppIconName } from '@/components/base/AppIcon.vue'
+import AppAssetIcon from '@/components/base/AppAssetIcon.vue'
 
 withDefaults(
   defineProps<{
@@ -7,6 +8,7 @@ withDefaults(
     description?: string
     value?: string
     icon?: AppIconName
+    iconSrc?: string
     iconColor?: string
     interactive?: boolean
   }>(),
@@ -14,6 +16,7 @@ withDefaults(
     description: '',
     value: '',
     icon: undefined,
+    iconSrc: '',
     iconColor: '#5797F5',
     interactive: true,
   },
@@ -29,8 +32,11 @@ const emit = defineEmits<{ click: [] }>()
     :disabled="!interactive"
     @click="emit('click')"
   >
-    <span v-if="icon || $slots.leading" class="app-form-row__icon" :style="{ color: iconColor, backgroundColor: `${iconColor}18` }">
-      <slot name="leading"><AppIcon v-if="icon" :name="icon" :size="20" /></slot>
+    <span v-if="icon || iconSrc || $slots.leading" class="app-form-row__icon" :style="{ color: iconColor, backgroundColor: `${iconColor}18` }">
+      <slot name="leading">
+        <AppAssetIcon v-if="iconSrc" :src="iconSrc" :size="20" />
+        <AppIcon v-else-if="icon" :name="icon" :size="20" />
+      </slot>
     </span>
     <span class="app-form-row__copy">
       <strong>{{ title }}</strong>

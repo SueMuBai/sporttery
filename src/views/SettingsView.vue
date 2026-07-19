@@ -2,8 +2,16 @@
 import { computed, onActivated } from "vue";
 import { useRouter } from "vue-router";
 
+import { APP_VERSION } from "@/app/version";
+import infoIcon from "@/assets/ui/common/ic_info.svg?url";
+import refreshIcon from "@/assets/ui/common/ic_refresh.svg?url";
+import exportJsonIcon from "@/assets/ui/settings/ic_export_json.svg?url";
+import folderIcon from "@/assets/ui/settings/ic_folder.svg?url";
+import systemSettingsIcon from "@/assets/ui/settings/ic_system_settings.svg?url";
+import tagIcon from "@/assets/ui/settings/ic_tag.svg?url";
 import AppFormRow from "@/components/base/AppFormRow.vue";
 import AppHeader from "@/components/base/AppHeader.vue";
+import AppIconButton from "@/components/base/AppIconButton.vue";
 import type { AppIconName } from "@/components/base/AppIcon.vue";
 import AppListGroup from "@/components/base/AppListGroup.vue";
 import AppPage from "@/components/base/AppPage.vue";
@@ -13,6 +21,7 @@ interface SettingsItem {
   title: string;
   description: string;
   icon: AppIconName;
+  iconSrc: string;
   color: string;
   route?: string;
   value?: string;
@@ -29,6 +38,7 @@ const groups = computed<Array<{ title: string; items: SettingsItem[] }>>(() => [
         title: "系统设置",
         description: "历史条数、并发、超时与重试",
         icon: "system",
+        iconSrc: systemSettingsIcon,
         color: "#5797F5",
         value: store.settingsSummary,
         route: "/settings/system",
@@ -37,6 +47,7 @@ const groups = computed<Array<{ title: string; items: SettingsItem[] }>>(() => [
         title: "数据更新",
         description: "获取最新比赛并同步比赛结果",
         icon: "refresh",
+        iconSrc: refreshIcon,
         color: "#61D6BF",
         route: "/settings/update",
       },
@@ -49,6 +60,7 @@ const groups = computed<Array<{ title: string; items: SettingsItem[] }>>(() => [
         title: "标签管理",
         description: "新增、编辑、排序和删除方案标签",
         icon: "tag",
+        iconSrc: tagIcon,
         color: "#9A91F5",
         value: `${store.tags.length} 个`,
         route: "/settings/tags",
@@ -57,6 +69,7 @@ const groups = computed<Array<{ title: string; items: SettingsItem[] }>>(() => [
         title: "方案管理",
         description: "查看和整理已保存方案",
         icon: "folder",
+        iconSrc: folderIcon,
         color: "#72AEFF",
         route: "/plans",
       },
@@ -69,6 +82,7 @@ const groups = computed<Array<{ title: string; items: SettingsItem[] }>>(() => [
         title: "数据与备份",
         description: "导出账单报告或完整数据备份",
         icon: "export-json",
+        iconSrc: exportJsonIcon,
         color: "#FF8FB3",
         route: "/settings/data",
       },
@@ -81,8 +95,9 @@ const groups = computed<Array<{ title: string; items: SettingsItem[] }>>(() => [
         title: "关于彩果",
         description: "版本、数据说明与隐私信息",
         icon: "info",
+        iconSrc: infoIcon,
         color: "#61D6BF",
-        value: "v2.0.0",
+        value: `v${APP_VERSION}`,
         route: "/settings/about",
       },
     ],
@@ -101,7 +116,18 @@ async function activate(item: SettingsItem): Promise<void> {
 
 <template>
   <AppPage>
-    <template #header><AppHeader title="彩果 · 设置" subtitle="配置数据、标签与应用" /></template>
+    <template #header>
+      <AppHeader title="彩果 · 设置" subtitle="配置数据、标签与应用">
+        <template #action>
+          <AppIconButton
+            class="settings-header-action"
+            label="打开系统设置"
+            icon="system"
+            @click="router.push('/settings/system')"
+          />
+        </template>
+      </AppHeader>
+    </template>
     <AppListGroup
       v-for="group in groups"
       :key="group.title"
@@ -114,9 +140,18 @@ async function activate(item: SettingsItem): Promise<void> {
         :description="item.description"
         :value="item.value"
         :icon="item.icon"
+        :icon-src="item.iconSrc"
         :icon-color="item.color"
         @click="activate(item)"
       />
     </AppListGroup>
   </AppPage>
 </template>
+
+<style scoped>
+.settings-header-action {
+  color: #fff;
+  background: rgb(255 255 255 / 10%);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 80%);
+}
+</style>

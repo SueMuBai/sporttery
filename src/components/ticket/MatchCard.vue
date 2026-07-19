@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import AppCard from '@/components/base/AppCard.vue'
 import AppIcon from '@/components/base/AppIcon.vue'
@@ -26,34 +26,37 @@ const summary = computed(() => props.match.payload.historySummary)
 const mixedSections: Array<{
   key: string
   label: string
-  markets: MarketCode[]
   openMarket: MarketCode
 }> = [
-  { key: 'result', label: 'A. 胜平负/让球', markets: ['had', 'hhad'], openMarket: 'had' },
-  { key: 'score', label: 'B. 比分', markets: ['crs'], openMarket: 'crs' },
-  { key: 'goals', label: 'C. 总进球', markets: ['ttg'], openMarket: 'ttg' },
-  { key: 'half-full', label: 'D. 半全场', markets: ['hafu'], openMarket: 'hafu' },
+  { key: 'score', label: '比分', openMarket: 'crs' },
+  { key: 'goals', label: '总进球', openMarket: 'ttg' },
+  { key: 'half-full', label: '半全场', openMarket: 'hafu' },
 ]
-const expandedMixedSection = ref(
-  mixedSections.find((section) => section.markets.includes(props.mixedMarket))?.key ?? 'result',
+
+function sectionKeyForMarket(market: MarketCode): string | undefined {
+  return mixedSections.find((section) => section.openMarket === market)?.key
+}
+
+const expandedMixedSections = ref(new Set([
+  'score',
+  ...(sectionKeyForMarket(props.mixedMarket) ? [sectionKeyForMarket(props.mixedMarket)!] : []),
+]))
+
+watch(
+  () => props.mixedMarket,
+  (market) => {
+    const key = sectionKeyForMarket(market)
+    if (!key || expandedMixedSections.value.has(key)) return
+    expandedMixedSections.value = new Set([...expandedMixedSections.value, key])
+  },
 )
 
 function toggleMixedSection(section: (typeof mixedSections)[number]): void {
-  if (expandedMixedSection.value === section.key) {
-    expandedMixedSection.value = ''
-    return
-  }
-  expandedMixedSection.value = section.key
+  const next = new Set(expandedMixedSections.value)
+  if (next.has(section.key)) next.delete(section.key)
+  else next.add(section.key)
+  expandedMixedSections.value = next
   emit('changeMixedMarket', section.openMarket)
-}
-
-function mixedSelectedCount(markets: MarketCode[]): number {
-  const prefix = `${props.match.matchId}|`
-  return props.selectedKeys.filter((key) => {
-    if (!key.startsWith(prefix)) return false
-    const market = key.split('|')[1] as MarketCode | undefined
-    return market ? markets.includes(market) : false
-  }).length
 }
 </script>
 
@@ -79,7 +82,7 @@ function mixedSelectedCount(markets: MarketCode[]): number {
       <AppIcon :name="expanded ? 'chevron-up' : 'chevron-down'" :size="16" />
     </button>
 
-    <div v-if="expanded" class="history-panel">
+    <div v-if="expanded && activeMarket !== 'mixed'" class="history-panel">
       <div v-if="match.payload.history.length" class="history-list">
         <div class="history-row history-row--head">
           <span>日期/赛事</span><span>主队</span><span>半场</span><span>全场</span><span>客队</span>
@@ -128,26 +131,25 @@ function mixedSelectedCount(markets: MarketCode[]): number {
       />
     </section>
 
-    <div v-else class="mixed-market">
+    <div v-else-if="expanded" class="mixed-market">
+      <div class="mixed-result">
+        <section class="market-section">
+          <h3>胜平负/让球</h3>
+          <MarketGrid :match-id="match.matchId" market="had" :pool="match.payload.odds.had" :selected-keys="selectedKeys" @select="emit('select', $event)" />
+        </section>
+        <section class="market-section">
+          <h3>让球 <span>{{ match.payload.odds.hhad.goalLine || match.payload.odds.hhad.goalLineValue }}</span></h3>
+          <MarketGrid :match-id="match.matchId" market="hhad" :pool="match.payload.odds.hhad" :selected-keys="selectedKeys" @select="emit('select', $event)" />
+        </section>
+      </div>
+
       <section v-for="section in mixedSections" :key="section.key" class="mixed-section">
         <button type="button" class="mixed-section__header" @click="toggleMixedSection(section)">
           <strong>{{ section.label }}</strong>
-          <span>{{ mixedSelectedCount(section.markets) ? `已选 ${mixedSelectedCount(section.markets)}` : '未选' }}</span>
-          <AppIcon :name="expandedMixedSection === section.key ? 'chevron-up' : 'chevron-down'" :size="16" />
+          <AppIcon :name="expandedMixedSections.has(section.key) ? 'chevron-up' : 'chevron-down'" :size="16" />
         </button>
-        <div v-if="expandedMixedSection === section.key" class="mixed-section__content">
-          <div v-if="section.key === 'result'" class="dual-market">
-            <section class="market-section">
-              <h3>胜平负</h3>
-              <MarketGrid :match-id="match.matchId" market="had" :pool="match.payload.odds.had" :selected-keys="selectedKeys" @select="emit('select', $event)" />
-            </section>
-            <section class="market-section">
-              <h3>让球 <span>{{ match.payload.odds.hhad.goalLine || match.payload.odds.hhad.goalLineValue }}</span></h3>
-              <MarketGrid :match-id="match.matchId" market="hhad" :pool="match.payload.odds.hhad" :selected-keys="selectedKeys" @select="emit('select', $event)" />
-            </section>
-          </div>
+        <div v-if="expandedMixedSections.has(section.key)" class="mixed-section__content">
           <MarketGrid
-            v-else
             :match-id="match.matchId"
             :market="section.openMarket"
             :pool="match.payload.odds[section.openMarket]"
@@ -172,7 +174,7 @@ function mixedSelectedCount(markets: MarketCode[]): number {
   align-items: start;
   gap: var(--space-2);
   width: 100%;
-  min-height: var(--touch-target);
+  min-height: 60px;
   padding: 0;
   border: 0;
   color: var(--color-text);
@@ -290,11 +292,18 @@ function mixedSelectedCount(markets: MarketCode[]): number {
 }
 
 .market-section h3 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
   margin: 0;
+  border-radius: var(--radius-xs);
   color: var(--color-accent-strong);
+  background: linear-gradient(90deg, #fff7fa, var(--color-accent-soft));
   font-size: var(--font-size-sm);
   line-height: 1.3;
   text-align: center;
+  white-space: nowrap;
 }
 
 .market-section h3 span {
@@ -357,6 +366,16 @@ function mixedSelectedCount(markets: MarketCode[]): number {
   gap: 5px;
 }
 
+.mixed-result {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 6px;
+  border-radius: var(--radius-xs);
+  background: var(--color-surface);
+  box-shadow: var(--outline-default);
+}
+
 .mixed-section {
   overflow: hidden;
   border-radius: var(--radius-xs);
@@ -366,7 +385,7 @@ function mixedSelectedCount(markets: MarketCode[]): number {
 
 .mixed-section__header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto 16px;
+  grid-template-columns: minmax(0, 1fr) 16px;
   align-items: center;
   width: 100%;
   min-height: 40px;
@@ -383,11 +402,6 @@ function mixedSelectedCount(markets: MarketCode[]): number {
   font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.mixed-section__header span {
-  color: var(--color-text-secondary);
-  font-size: 11px;
 }
 
 .mixed-section__content {

@@ -2,9 +2,10 @@
 import { showFailToast, showSuccessToast } from "vant";
 import { computed, onMounted } from "vue";
 
+import refreshIcon from "@/assets/ui/common/ic_refresh.svg?url";
+import AppAssetIcon from "@/components/base/AppAssetIcon.vue";
 import AppButton from "@/components/base/AppButton.vue";
 import AppCard from "@/components/base/AppCard.vue";
-import AppIcon from "@/components/base/AppIcon.vue";
 import AppPage from "@/components/base/AppPage.vue";
 import SubpageHeader from "@/components/base/SubpageHeader.vue";
 import { useSettingsStore } from "@/stores/settings";
@@ -64,52 +65,54 @@ async function retryFailed(): Promise<void> {
 <template>
   <AppPage secondary content-class="update-content">
     <template #header><SubpageHeader title="数据更新" subtitle="同步最新比赛、历史交锋与赛果" /></template>
-    <AppCard class="update-hero">
-      <span class="update-icon"><AppIcon name="refresh" :size="32" /></span>
-      <div>
-        <h2>{{ store.syncing ? "正在更新数据" : "保持比赛数据最新" }}</h2>
-        <p>同步采用增量保存；赔率或赛果发生变化时会更新最新记录。</p>
-        <small>上次成功：{{ formatSyncTime(store.syncReport?.completedAt) }}</small>
-      </div>
-    </AppCard>
-    <AppCard v-if="store.syncing" class="progress-card">
-      <div class="progress-heading">
-        <strong>历史交锋</strong><span>{{ store.syncProgress.completed }}/{{
-          store.syncProgress.total
-        }}</span>
-      </div>
-      <van-progress
-        :percentage="progress"
-        color="var(--color-primary)"
-        track-color="var(--color-primary-soft)"
-      />
-      <p>失败 {{ store.syncProgress.failed }} 项，已完成的数据会继续保留。</p>
-    </AppCard>
-    <AppCard v-if="store.syncReport" class="report-card" :padded="false">
-      <h2>最近一次更新报告</h2>
-      <div>
-        <span>比赛</span><strong>新增 {{ store.syncReport.matches.added }} · 更新
-          {{ store.syncReport.matches.updated }}</strong><small>失败 {{ store.syncReport.matches.failed }}</small>
-      </div>
-      <div>
-        <span>赔率</span><strong>变化 {{ store.syncReport.matches.oddsChanged }}</strong><small>增量记录</small>
-      </div>
-      <div>
-        <span>赛果</span><strong>新增 {{ store.syncReport.results.added }} · 更新
-          {{ store.syncReport.results.updated }}</strong><small>失败 {{ store.syncReport.results.failed }}</small>
-      </div>
-      <p class="report-meta">
-        {{ store.syncReport.mode === "retry" ? "失败项重试" : "完整同步" }} ·
-        耗时 {{ ((store.syncReport.matches.durationMs + store.syncReport.results.durationMs) / 1000).toFixed(1) }} 秒
-      </p>
-    </AppCard>
-    <AppCard v-if="failedCount" class="failed-card">
-      <div>
-        <h2>{{ failedCount }} 项未完成</h2>
-        <p v-if="failedMatchIds.length">涉及比赛：{{ failedMatchIds.join("、") }}</p>
-        <p v-else>网络恢复后可只重试失败数据。</p>
-      </div>
-      <AppButton size="small" variant="secondary" :loading="store.syncing" @click="retryFailed">重试失败项</AppButton>
+    <AppCard class="update-panel" :padded="false">
+      <section class="update-summary">
+        <span class="update-icon"><AppAssetIcon :src="refreshIcon" :size="20" /></span>
+        <div>
+          <h2>{{ store.syncing ? "正在更新数据" : "保持比赛数据最新" }}</h2>
+          <p>增量保存比赛与赛果，赔率变化时同步覆盖最新记录。</p>
+          <small>上次成功：{{ formatSyncTime(store.syncReport?.completedAt) }}</small>
+        </div>
+      </section>
+      <section v-if="store.syncing" class="progress-section">
+        <div class="progress-heading">
+          <strong>历史交锋</strong><span>{{ store.syncProgress.completed }}/{{
+            store.syncProgress.total
+          }}</span>
+        </div>
+        <van-progress
+          :percentage="progress"
+          color="var(--color-primary)"
+          track-color="var(--color-primary-soft)"
+        />
+        <p>失败 {{ store.syncProgress.failed }} 项，已完成的数据会继续保留。</p>
+      </section>
+      <section v-if="store.syncReport" class="report-section">
+        <h2>最近一次更新报告</h2>
+        <div class="report-row">
+          <span>比赛</span><strong>新增 {{ store.syncReport.matches.added }} · 更新
+            {{ store.syncReport.matches.updated }}</strong><small>失败 {{ store.syncReport.matches.failed }}</small>
+        </div>
+        <div class="report-row">
+          <span>赔率</span><strong>变化 {{ store.syncReport.matches.oddsChanged }}</strong><small>增量记录</small>
+        </div>
+        <div class="report-row">
+          <span>赛果</span><strong>新增 {{ store.syncReport.results.added }} · 更新
+            {{ store.syncReport.results.updated }}</strong><small>失败 {{ store.syncReport.results.failed }}</small>
+        </div>
+        <p class="report-meta">
+          {{ store.syncReport.mode === "retry" ? "失败项重试" : "完整同步" }} ·
+          耗时 {{ ((store.syncReport.matches.durationMs + store.syncReport.results.durationMs) / 1000).toFixed(1) }} 秒
+        </p>
+      </section>
+      <section v-if="failedCount" class="failed-section">
+        <div>
+          <h2>{{ failedCount }} 项未完成</h2>
+          <p v-if="failedMatchIds.length">涉及比赛：{{ failedMatchIds.join("、") }}</p>
+          <p v-else>网络恢复后可只重试失败数据。</p>
+        </div>
+        <AppButton size="small" variant="secondary" :loading="store.syncing" @click="retryFailed">重试失败项</AppButton>
+      </section>
     </AppCard>
     <AppButton block :loading="store.syncing" @click="synchronize">
       {{ store.syncing ? "正在同步…" : "立即更新全部数据" }}
@@ -120,120 +123,140 @@ async function retryFailed(): Promise<void> {
 <style scoped>
 .update-content {
   align-content: start;
+  gap: 12px;
 }
 
-.update-hero {
-  display: flex;
+.update-panel {
+  display: grid;
+}
+
+.update-summary {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
   align-items: center;
-  gap: var(--space-4);
+  gap: 8px;
+  padding: 10px;
 }
 
 .update-icon {
   display: grid;
-  width: 58px;
-  height: 58px;
+  width: 34px;
+  height: 34px;
   flex: 0 0 auto;
-  border-radius: 50%;
+  border-radius: var(--radius-control);
   place-items: center;
   color: var(--color-primary);
   background: var(--color-primary-soft);
 }
 
-.update-hero h2,
-.update-hero p,
-.progress-card p,
-.report-card h2 {
+.update-summary h2,
+.update-summary p,
+.progress-section p,
+.report-section h2,
+.failed-section h2,
+.failed-section p {
   margin: 0;
 }
 
-.update-hero h2 {
-  font-size: 19px;
+.update-summary h2,
+.report-section h2,
+.failed-section h2 {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
 }
 
-.update-hero p,
-.progress-card p {
-  margin-top: 5px;
+.update-summary p {
+  margin-top: 2px;
   color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 18px;
 }
 
-.update-hero small {
+.update-summary small {
   display: block;
-  margin-top: 5px;
+  margin-top: 2px;
   color: var(--color-text-tertiary);
   font-size: 11px;
+  line-height: 16px;
 }
 
-.progress-card {
+.progress-section {
   display: grid;
-  gap: var(--space-3);
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid var(--color-divider);
 }
 
 .progress-heading {
   display: flex;
   justify-content: space-between;
-}
-
-.report-card {
-  display: grid;
-  padding-top: var(--space-3);
-}
-
-.report-card h2 {
-  padding: 0 var(--space-4) var(--space-3);
-  font-size: 17px;
-}
-
-.report-card > div {
-  display: grid;
-  grid-template-columns: 56px minmax(0, 1fr) auto;
-  align-items: center;
-  min-height: 56px;
-  gap: var(--space-2);
-  padding: 0 var(--space-4);
-  border-top: 1px solid var(--color-divider);
-}
-
-.report-card span,
-.report-card small {
-  color: var(--color-text-secondary);
-  font-size: 11px;
-}
-
-.report-card strong {
   font-size: 13px;
+  line-height: 18px;
 }
 
-.report-card .report-meta {
+.progress-section p {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.report-section {
+  display: grid;
+  border-top: 1px solid var(--color-divider);
+}
+
+.report-section h2 {
+  padding: 10px;
+}
+
+.report-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 48px;
+  gap: 8px;
+  padding: 0 10px;
+  border-top: 1px solid var(--color-divider);
+}
+
+.report-row span,
+.report-row small {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.report-row strong {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.report-section .report-meta {
   margin: 0;
-  padding: 10px var(--space-4);
+  padding: 8px 10px;
   border-top: 1px solid var(--color-divider);
   color: var(--color-text-secondary);
   font-size: 11px;
+  line-height: 16px;
 }
 
-.failed-card {
+.failed-section {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--space-3);
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid var(--color-divider);
   color: var(--color-danger);
   background: var(--color-accent-soft);
 }
 
-.failed-card h2,
-.failed-card p {
-  margin: 0;
-}
-
-.failed-card h2 {
-  font-size: 15px;
-}
-
-.failed-card p {
+.failed-section p {
   margin-top: 4px;
   color: var(--color-text-secondary);
   font-size: 11px;
+  line-height: 16px;
 }
 </style>

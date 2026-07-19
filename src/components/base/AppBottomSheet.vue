@@ -7,10 +7,14 @@ withDefaults(
     title: string
     description?: string
     closeLabel?: string
+    showClose?: boolean
+    dragHandle?: boolean
   }>(),
   {
     description: '',
     closeLabel: '关闭',
+    showClose: true,
+    dragHandle: false,
   },
 )
 
@@ -27,12 +31,14 @@ const emit = defineEmits<{ 'update:show': [show: boolean] }>()
     @update:show="emit('update:show', $event)"
   >
     <section class="app-bottom-sheet__panel" role="dialog" aria-modal="true" :aria-label="title">
+      <span v-if="dragHandle" class="app-bottom-sheet__drag-handle" aria-hidden="true" />
       <header class="app-bottom-sheet__header">
         <div>
           <h2>{{ title }}</h2>
           <p v-if="description">{{ description }}</p>
         </div>
         <AppIconButton
+          v-if="showClose"
           class="app-bottom-sheet__close"
           data-overlay-close
           :label="closeLabel"
@@ -55,9 +61,26 @@ const emit = defineEmits<{ 'update:show': [show: boolean] }>()
 }
 
 .app-bottom-sheet__panel {
+  position: relative;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   max-height: min(88dvh, 760px);
+}
+
+.app-bottom-sheet__drag-handle {
+  position: absolute;
+  z-index: 2;
+  top: 8px;
+  left: 50%;
+  width: 40px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: #c8d2e0;
+  transform: translateX(-50%);
+}
+
+.app-bottom-sheet__panel:has(.app-bottom-sheet__drag-handle) .app-bottom-sheet__header {
+  padding-top: 18px;
 }
 
 .app-bottom-sheet__header {

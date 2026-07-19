@@ -36,4 +36,12 @@ describe('DateRangePicker', () => {
     await month?.trigger('click')
     expect(wrapper.find('.date-range-picker__days').exists()).toBe(true)
   })
+
+  it('renders the compact V2 Sunday-first calendar layout', () => {
+    const wrapper = mountPicker()
+    const weekdays = wrapper.findAll('.date-range-picker__week span').map((item) => item.text())
+
+    expect(weekdays).toEqual(['日', '一', '二', '三', '四', '五', '六'])
+    expect(wrapper.findAll('.date-range-picker__days > span')).toHaveLength(3)
+  })
 })

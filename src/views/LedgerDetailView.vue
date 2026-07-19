@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import AppButton from '@/components/base/AppButton.vue'
 import AppCard from '@/components/base/AppCard.vue'
+import AppIcon from '@/components/base/AppIcon.vue'
 import AppState from '@/components/base/AppState.vue'
 import AppInlineEditor from '@/components/base/AppInlineEditor.vue'
 import SubpageHeader from '@/components/base/SubpageHeader.vue'
@@ -209,7 +210,10 @@ async function saveNotes(): Promise<void> {
             <span>¥{{ centsToYuan(adjustment.previousReturnCents) }} → ¥{{ centsToYuan(adjustment.nextReturnCents) }}</span>
           </div>
         </section>
-        <div v-else class="pending-banner">比赛全部完成后可填写实际回款；当前金额按已结算组合计算。</div>
+        <div v-if="item.status === 'pending'" class="pending-banner">
+          <AppIcon name="info" :size="18" />
+          <span>比赛全部完成后可填写实际回款；当前金额按已结算组合计算。</span>
+        </div>
       </template>
     </main>
   </div>
@@ -270,6 +274,13 @@ async function saveNotes(): Promise<void> {
   box-shadow: var(--outline-default);
   font-size: var(--font-size-sm);
   text-align: center;
+}
+
+.pending-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .manual-return-reference {

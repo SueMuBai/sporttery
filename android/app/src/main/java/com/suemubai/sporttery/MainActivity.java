@@ -15,11 +15,11 @@ public class MainActivity extends BridgeActivity {
         // edge-to-edge by default, which previously placed the page title
         // underneath the clock, signal and battery indicators.
         WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
-        getWindow().setStatusBarColor(Color.parseColor("#72AEFF"));
+        getWindow().setStatusBarColor(Color.WHITE);
         getWindow().setNavigationBarColor(Color.WHITE);
         WindowInsetsControllerCompat bars = WindowCompat.getInsetsController(
                 getWindow(), getWindow().getDecorView());
-        bars.setAppearanceLightStatusBars(false);
+        bars.setAppearanceLightStatusBars(true);
         bars.setAppearanceLightNavigationBars(true);
     }
 }

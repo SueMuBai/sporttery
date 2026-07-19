@@ -2,6 +2,9 @@
 import { showFailToast, showLoadingToast, showSuccessToast } from 'vant'
 import { ref } from 'vue'
 
+import exportJsonIcon from '@/assets/ui/settings/ic_export_json.svg?url'
+import exportMarkdownIcon from '@/assets/ui/settings/ic_export_markdown.svg?url'
+import AppAssetIcon from '@/components/base/AppAssetIcon.vue'
 import AppButton from '@/components/base/AppButton.vue'
 import AppCard from '@/components/base/AppCard.vue'
 import AppIcon from '@/components/base/AppIcon.vue'
@@ -75,12 +78,12 @@ async function importFile(event: Event): Promise<void> {
       导出不会删除或修改本地数据。JSON 可恢复方案、标签及其比赛赛果，Markdown 适合阅读和归档。
     </AppCard>
     <AppCard class="export-card">
-      <span class="export-icon export-icon--markdown"><AppIcon name="export-markdown" /></span>
+      <span class="export-icon export-icon--markdown"><AppAssetIcon :src="exportMarkdownIcon" /></span>
       <div><h2>Markdown 报告</h2><p>包含账单汇总、方案和比赛选择，适合阅读。</p></div>
       <AppButton size="small" variant="secondary" :loading="exporting === 'markdown'" @click="exportData('markdown')">导出</AppButton>
     </AppCard>
     <AppCard class="export-card">
-      <span class="export-icon export-icon--json"><AppIcon name="export-json" /></span>
+      <span class="export-icon export-icon--json"><AppAssetIcon :src="exportJsonIcon" /></span>
       <div><h2>JSON 完整备份</h2><p>保留可重新解析的结构化数据，适合迁移和存档。</p></div>
       <AppButton size="small" :loading="exporting === 'json'" @click="exportData('json')">导出</AppButton>
     </AppCard>

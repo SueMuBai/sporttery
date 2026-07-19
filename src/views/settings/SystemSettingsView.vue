@@ -7,9 +7,15 @@ import AppButton from "@/components/base/AppButton.vue";
 import AppBottomSheet from "@/components/base/AppBottomSheet.vue";
 import AppCard from "@/components/base/AppCard.vue";
 import AppState from "@/components/base/AppState.vue";
-import AppIcon, { type AppIconName } from "@/components/base/AppIcon.vue";
+import AppAssetIcon from "@/components/base/AppAssetIcon.vue";
+import AppIcon from "@/components/base/AppIcon.vue";
 import AppPage from "@/components/base/AppPage.vue";
 import SubpageHeader from "@/components/base/SubpageHeader.vue";
+import refreshIcon from "@/assets/ui/common/ic_refresh.svg?url";
+import concurrencyIcon from "@/assets/ui/settings/ic_concurrency.svg?url";
+import multiplierIcon from "@/assets/ui/settings/ic_multiplier.svg?url";
+import retryIcon from "@/assets/ui/settings/ic_retry.svg?url";
+import timeoutIcon from "@/assets/ui/settings/ic_timeout.svg?url";
 import { useSettingsStore } from "@/stores/settings";
 import { DEFAULT_SETTINGS, type AppSettings } from "@/types/domain";
 
@@ -17,7 +23,7 @@ interface SettingDefinition {
   key: keyof AppSettings;
   title: string;
   description: string;
-  icon: AppIconName;
+  iconSrc: string;
   suffix?: string;
   min: number;
   max: number;
@@ -30,48 +36,66 @@ const saved = ref(false);
 const leaveSheetVisible = ref(false);
 let resolveLeaveDecision: ((allow: boolean) => void) | undefined;
 
-const definitions: SettingDefinition[] = [
+const settingGroups: Array<{
+  title: string;
+  items: SettingDefinition[];
+}> = [
   {
-    key: "historyLimits",
-    title: "每场历史条数",
-    description: "历史交锋最多读取的比赛数量",
-    icon: "history",
-    min: 1,
-    max: 50,
+    title: "比赛数据",
+    items: [
+      {
+        key: "historyLimits",
+        title: "每场历史条数",
+        description: "历史交锋最多读取的比赛数量",
+        iconSrc: refreshIcon,
+        min: 1,
+        max: 50,
+      },
+    ],
   },
   {
-    key: "workers",
-    title: "并发请求数",
-    description: "同时请求历史数据的任务数量",
-    icon: "concurrency",
-    min: 1,
-    max: 12,
+    title: "请求策略",
+    items: [
+      {
+        key: "workers",
+        title: "并发请求数",
+        description: "同时请求历史数据的任务数量",
+        iconSrc: concurrencyIcon,
+        min: 1,
+        max: 12,
+      },
+      {
+        key: "timeoutSeconds",
+        title: "接口超时",
+        description: "单次网络请求的最长等待时间",
+        iconSrc: timeoutIcon,
+        suffix: "秒",
+        min: 5,
+        max: 120,
+      },
+      {
+        key: "retries",
+        title: "失败重试次数",
+        description: "网络失败后的自动重试次数",
+        iconSrc: retryIcon,
+        min: 0,
+        max: 8,
+      },
+    ],
   },
   {
-    key: "timeoutSeconds",
-    title: "接口超时",
-    description: "单次网络请求的最长等待时间",
-    icon: "timeout",
-    suffix: "秒",
-    min: 5,
-    max: 120,
-  },
-  {
-    key: "retries",
-    title: "失败重试次数",
-    description: "网络失败后的自动重试次数",
-    icon: "retry",
-    min: 0,
-    max: 8,
-  },
-  {
-    key: "defaultMultiplier",
-    title: "默认倍数",
-    description: "新选票默认使用的投注倍数",
-    icon: "multiplier",
-    suffix: "倍",
-    min: 1,
-    max: 999,
+    title: "投注默认值",
+    items: [
+      {
+        key: "defaultMultiplier",
+        title: "默认倍数",
+        description: "新选票默认使用的投注倍数",
+        iconSrc: multiplierIcon,
+        suffix: "倍",
+        min: 1,
+        max: 999,
+      },
+    ],
   },
 ];
 
@@ -138,7 +162,9 @@ async function save(): Promise<void> {
 
 <template>
   <AppPage secondary content-class="system-content">
-    <template #header><SubpageHeader title="系统设置" subtitle="调整数据获取与投注默认参数" /></template>
+    <template #header>
+      <SubpageHeader title="系统设置" subtitle="调整数据获取与投注默认参数" />
+    </template>
     <AppState
       v-if="store.loading && !store.settings"
       type="loading"
@@ -153,29 +179,40 @@ async function save(): Promise<void> {
       @action="store.load"
     />
     <template v-else>
-      <AppCard class="setting-list" :padded="false">
-        <div v-for="item in definitions" :key="item.key" class="setting-row">
-          <span class="setting-row__icon"><AppIcon :name="item.icon" :size="20" /></span>
-          <div class="setting-row__copy">
-            <strong>{{ item.title }}</strong>
-            <small>{{ item.description }}</small>
+      <section
+        v-for="group in settingGroups"
+        :key="group.title"
+        class="setting-group"
+      >
+        <h2>{{ group.title }}</h2>
+        <AppCard class="setting-list" :padded="false">
+          <div v-for="item in group.items" :key="item.key" class="setting-row">
+            <span class="setting-row__icon">
+              <AppAssetIcon :src="item.iconSrc" :size="20" />
+            </span>
+            <div class="setting-row__copy">
+              <strong>{{ item.title }}</strong>
+              <small>{{ item.description }}</small>
+            </div>
+            <van-stepper
+              :model-value="draft[item.key]"
+              :min="item.min"
+              :max="item.max"
+              integer
+              :aria-label="`${item.title}，当前 ${draft[item.key]}${item.suffix || ''}`"
+              @update:model-value="update(item.key, Number($event))"
+            />
+            <span v-if="item.suffix" class="setting-row__suffix">{{
+              item.suffix
+            }}</span>
           </div>
-          <van-stepper
-            :model-value="draft[item.key]"
-            :min="item.min"
-            :max="item.max"
-            integer
-            :aria-label="`${item.title}，当前 ${draft[item.key]}${item.suffix || ''}`"
-            @update:model-value="update(item.key, Number($event))"
-          />
-          <span v-if="item.suffix" class="setting-row__suffix">{{
-            item.suffix
-          }}</span>
-        </div>
-      </AppCard>
+        </AppCard>
+      </section>
       <AppCard class="info-banner">
         <AppIcon name="info" :size="21" />
-        <p>并发数过高可能触发接口限制。修改会在下一次数据同步或新建方案时生效。</p>
+        <p>
+          并发数过高可能触发接口限制。修改会在下一次数据同步或新建方案时生效。
+        </p>
       </AppCard>
       <p v-if="dirty" class="save-state">有尚未保存的修改</p>
       <p v-else-if="saved" class="save-state save-state--success">
@@ -184,7 +221,14 @@ async function save(): Promise<void> {
     </template>
     <template #footer>
       <div v-if="store.settings && !store.error" class="system-footer">
-        <AppButton block :loading="store.saving" :disabled="!dirty" @click="save">保存设置</AppButton>
+        <AppButton
+          block
+          :loading="store.saving"
+          :disabled="!dirty"
+          @click="save"
+        >
+          保存设置
+        </AppButton>
       </div>
     </template>
     <AppBottomSheet
@@ -201,7 +245,11 @@ async function save(): Promise<void> {
         <AppButton block variant="danger" @click="discardAndLeave">
           放弃修改
         </AppButton>
-        <AppButton block variant="secondary" @click="finishLeaveDecision(false)">
+        <AppButton
+          block
+          variant="secondary"
+          @click="finishLeaveDecision(false)"
+        >
           继续编辑
         </AppButton>
       </div>
@@ -212,7 +260,20 @@ async function save(): Promise<void> {
 <style scoped>
 .system-content {
   align-content: start;
+  gap: 12px;
   padding-bottom: calc(76px + env(safe-area-inset-bottom));
+}
+
+.setting-group {
+  display: grid;
+  gap: 8px;
+}
+
+.setting-group h2 {
+  margin: 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 21px;
 }
 
 .info-banner {
@@ -309,7 +370,8 @@ async function save(): Promise<void> {
 .leave-actions {
   display: grid;
   gap: var(--space-3);
-  padding: var(--space-4) var(--page-gutter) calc(var(--space-4) + env(safe-area-inset-bottom));
+  padding: var(--space-4) var(--page-gutter)
+    calc(var(--space-4) + env(safe-area-inset-bottom));
 }
 
 .system-footer {
@@ -321,21 +383,5 @@ async function save(): Promise<void> {
   padding: 8px var(--page-gutter) calc(8px + env(safe-area-inset-bottom));
   background: rgb(255 255 255 / 96%);
   border-top: 1px solid var(--color-divider);
-}
-
-@media (max-width: 380px) {
-  .setting-row {
-    grid-template-columns: 34px minmax(0, 1fr) auto;
-    gap: 8px;
-    padding-inline: 10px;
-  }
-
-  .setting-row__suffix {
-    display: none;
-  }
-
-  .setting-row__copy small {
-    display: none;
-  }
 }
 </style>

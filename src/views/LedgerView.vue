@@ -6,21 +6,39 @@ import { useRouter } from "vue-router";
 import AppButton from "@/components/base/AppButton.vue";
 import AppBottomSheet from "@/components/base/AppBottomSheet.vue";
 import AppCard from "@/components/base/AppCard.vue";
-import AppChip from "@/components/base/AppChip.vue";
 import AppHeader from "@/components/base/AppHeader.vue";
-import AppIconButton from "@/components/base/AppIconButton.vue";
 import AppIcon from "@/components/base/AppIcon.vue";
 import AppState from "@/components/base/AppState.vue";
+import LedgerDetailSheet from "@/components/ledger/LedgerDetailSheet.vue";
 import DateRangePicker from "@/components/base/DateRangePicker.vue";
-import { useLedgerStore, type EvaluatedLedgerOrder } from "@/stores/ledger";
+import billSectionIcon from "@/assets/icons/navigation/ic_nav_bill_selected.svg?url";
+import {
+  rangeForPreset,
+  useLedgerStore,
+  type EvaluatedLedgerOrder,
+  type LedgerRangePreset,
+} from "@/stores/ledger";
+import { useTicketStore } from "@/stores/ticket";
+import type { SavedPlan } from "@/types/domain";
 import { centsToYuan } from "@/utils/money";
 
+type DateEndpoint = "start" | "end";
+type QuickRangePreset = Exclude<LedgerRangePreset, "custom">;
+
 const store = useLedgerStore();
+const ticketStore = useTicketStore();
 const router = useRouter();
 const showDateSheet = ref(false);
+const showDetailSheet = ref(false);
+const selectedLedgerId = ref("");
 const showCalendar = ref(false);
 const draftStart = ref("");
 const draftEnd = ref("");
+const draftPreset = ref<LedgerRangePreset>("month");
+const draftEndpoint = ref<DateEndpoint>("start");
+const selectedLedgerItem = computed(() =>
+  selectedLedgerId.value ? store.find(selectedLedgerId.value) : undefined,
+);
 
 const dateLabel = computed(() => {
   if (!store.range.start || !store.range.end) return "全部账单";
@@ -41,6 +59,8 @@ watch(showDateSheet, (visible) => {
   if (!visible) return;
   draftStart.value = store.range.start ?? "";
   draftEnd.value = store.range.end ?? "";
+  draftPreset.value = store.preset;
+  draftEndpoint.value = store.range.start ? "end" : "start";
   showCalendar.value = false;
 });
 
@@ -58,20 +78,34 @@ function formatDateTime(value: string): string {
   });
 }
 
-async function selectQuickRange(
-  preset: "month" | "three-months" | "all",
-): Promise<void> {
-  await store.applyPreset(preset);
-  showDateSheet.value = false;
+function selectQuickRange(preset: QuickRangePreset): void {
+  const range = rangeForPreset(preset);
+  draftPreset.value = preset;
+  draftStart.value = range.start ?? "";
+  draftEnd.value = range.end ?? "";
+  draftEndpoint.value = draftStart.value ? "end" : "start";
+  showCalendar.value = false;
 }
 
-function openInlineCalendar(): void {
-  showCalendar.value = !showCalendar.value;
+function markCustomRange(): void {
+  draftPreset.value = "custom";
 }
 
-async function applyCustomRange(): Promise<void> {
+function resetDraftRange(): void {
+  const range = rangeForPreset("month");
+  draftPreset.value = "month";
+  draftStart.value = range.start ?? "";
+  draftEnd.value = range.end ?? "";
+  draftEndpoint.value = "end";
+}
+
+async function applyDraftRange(): Promise<void> {
   try {
-    await store.applyCustomRange(draftStart.value, draftEnd.value);
+    if (draftPreset.value === "custom") {
+      await store.applyCustomRange(draftStart.value, draftEnd.value);
+    } else {
+      await store.applyPreset(draftPreset.value);
+    }
     showDateSheet.value = false;
   } catch (reason) {
     showFailToast(reason instanceof Error ? reason.message : String(reason));
@@ -79,22 +113,19 @@ async function applyCustomRange(): Promise<void> {
 }
 
 function openDetail(item: EvaluatedLedgerOrder): void {
-  router.push(`/ledger/${item.order.id}`);
+  selectedLedgerId.value = item.order.id;
+  showDetailSheet.value = true;
+}
+
+function continueEditing(plan: SavedPlan): void {
+  ticketStore.loadPlan(plan);
+  void router.push("/ticket");
 }
 </script>
 
 <template>
   <div class="page ledger-page">
-    <AppHeader title="彩果 · 长期账单" subtitle="记录每一次投入与回报">
-      <template #action>
-        <AppIconButton
-          label="筛选账单日期"
-          @click="showDateSheet = true"
-        >
-          <AppIcon name="calendar-filter" />
-        </AppIconButton>
-      </template>
-    </AppHeader>
+    <AppHeader title="彩果 · 账单" subtitle="记录每一次投入与回报" />
 
     <div class="page-content ledger-content">
       <AppCard
@@ -116,27 +147,6 @@ function openDetail(item: EvaluatedLedgerOrder): void {
         <AppIcon name="chevron-right" :size="18" />
       </AppCard>
 
-      <div class="quick-ranges" aria-label="快捷日期范围">
-        <AppChip
-          :selected="store.preset === 'month'"
-          @click="store.applyPreset('month')"
-        >
-          本月
-        </AppChip>
-        <AppChip
-          :selected="store.preset === 'three-months'"
-          @click="store.applyPreset('three-months')"
-        >
-          近3个月
-        </AppChip>
-        <AppChip
-          :selected="store.preset === 'all'"
-          @click="store.applyPreset('all')"
-        >
-          全部
-        </AppChip>
-      </div>
-
       <AppCard class="ledger-summary" :padded="false">
         <div>
           <span>总投入</span>
@@ -156,7 +166,7 @@ function openDetail(item: EvaluatedLedgerOrder): void {
                 : 'amount-negative',
             ]"
           >
-            {{ store.summary.profitCents >= 0 ? "+" : "-" }}¥{{
+            {{ store.summary.profitCents > 0 ? "+" : store.summary.profitCents < 0 ? "-" : "" }}¥{{
               centsToYuan(Math.abs(store.summary.profitCents))
             }}
           </strong>
@@ -166,7 +176,10 @@ function openDetail(item: EvaluatedLedgerOrder): void {
 
       <section class="content-section">
         <div class="section-heading">
-          <h2 class="text-section-title">账单明细</h2>
+          <h2 class="text-section-title section-heading__title">
+            <img :src="billSectionIcon" alt="" />
+            账单明细
+          </h2>
           <button
             type="button"
             class="sort-button"
@@ -177,26 +190,32 @@ function openDetail(item: EvaluatedLedgerOrder): void {
           </button>
         </div>
 
-        <AppState
-          v-if="store.loading && !store.orders.length"
-          type="loading"
-          title="正在读取账单"
-        />
-        <AppState
-          v-else-if="store.error"
-          type="error"
-          title="账单读取失败"
-          :description="store.error"
-          action-text="重试"
-          @action="store.load"
-        />
-        <AppState
+        <AppCard v-if="store.loading && !store.orders.length" class="ledger-state-card" :padded="false">
+          <AppState
+            type="loading"
+            title="正在读取账单"
+          />
+        </AppCard>
+        <AppCard v-else-if="store.error" class="ledger-state-card" :padded="false">
+          <AppState
+            type="error"
+            title="账单读取失败"
+            :description="store.error"
+            action-text="重试"
+            @action="store.load"
+          />
+        </AppCard>
+        <AppCard
           v-else-if="!store.evaluatedOrders.length"
-          type="empty"
-          title="当前周期暂无账单"
-          description="在选票或当前选择页点击“记录购买”后，会自动记录到这里"
-        />
-        <template v-else>
+          class="ledger-empty"
+          :padded="false"
+        >
+          <img :src="billSectionIcon" alt="" />
+          <strong>暂无账单记录</strong>
+          <p>所选日期内还没有购买方案</p>
+          <AppButton variant="secondary" @click="showDateSheet = true">调整日期</AppButton>
+        </AppCard>
+        <div v-else class="ledger-list">
           <AppCard
             v-for="item in store.evaluatedOrders"
             :key="item.order.id"
@@ -219,66 +238,71 @@ function openDetail(item: EvaluatedLedgerOrder): void {
             <div class="ledger-item__title-row">
               <div>
                 <h3>{{ item.order.planName }}</h3>
-                <p>{{ item.evaluation.totalMatches }}场 · {{ item.order.planSnapshot.selections.length }}个选项 · 完成{{ item.evaluation.settledMatches }}/{{ item.evaluation.totalMatches }} · 猜对{{ item.evaluation.correctMatches }}</p>
+                <p>{{ item.evaluation.totalMatches }}场 · {{ item.order.planSnapshot.selections.length }}个选项</p>
               </div>
-              <AppIcon name="chevron-right" :size="18" />
             </div>
             <div class="ledger-item__finance">
               <div>
                 <span>投注</span><strong class="numeric">¥{{ centsToYuan(item.order.stakeCents) }}</strong>
               </div>
               <div>
-                <span>{{
-                  item.status === "pending"
-                    ? "当前已结算"
-                    : item.order.returnManual
-                      ? "实际回款"
-                      : "理论回款"
-                }}<small v-if="item.order.returnManual">手工调整</small></span><strong class="numeric amount-positive">¥{{ centsToYuan(item.displayedReturnCents) }}</strong>
+                <span>回款</span>
+                <strong
+                  :class="[
+                    'numeric',
+                    item.displayedReturnCents > 0 ? 'amount-positive' : 'amount-muted',
+                  ]"
+                >¥{{ centsToYuan(item.displayedReturnCents) }}</strong>
               </div>
               <div>
                 <span>净盈亏</span>
                 <strong
                   :class="[
                     'numeric',
-                    item.profitCents >= 0
+                    item.profitCents > 0
                       ? 'amount-positive'
                       : 'amount-negative',
                   ]"
                 >
-                  {{ item.profitCents >= 0 ? "+" : "-" }}¥{{
+                  {{ item.profitCents > 0 ? "+" : item.profitCents < 0 ? "-" : "" }}¥{{
                     centsToYuan(Math.abs(item.profitCents))
                   }}
                 </strong>
               </div>
             </div>
           </AppCard>
-          <p class="list-end">已经到底了</p>
-        </template>
+        </div>
       </section>
     </div>
 
-    <AppBottomSheet v-model:show="showDateSheet" title="日期筛选" description="选择统计账单的起止日期">
+    <AppBottomSheet
+      v-model:show="showDateSheet"
+      :class="['ledger-date-sheet', { 'ledger-date-sheet--calendar': showCalendar }]"
+      title="日期筛选"
+      :show-close="false"
+      drag-handle
+    >
       <div class="date-sheet">
+        <AppIcon v-if="showCalendar" class="date-sheet__header-icon" name="calendar" :size="22" />
         <section>
-          <h3>快捷选择</h3>
+          <h3 v-if="!showCalendar">快捷选择</h3>
           <div class="date-sheet__quick">
             <AppButton
-              :variant="store.preset === 'month' ? 'primary' : 'secondary'"
+              :variant="draftPreset === 'month' ? 'primary' : 'secondary'"
               @click="selectQuickRange('month')"
             >
               本月
             </AppButton>
             <AppButton
               :variant="
-                store.preset === 'three-months' ? 'primary' : 'secondary'
+                draftPreset === 'three-months' ? 'primary' : 'secondary'
               "
               @click="selectQuickRange('three-months')"
             >
               近3个月
             </AppButton>
             <AppButton
-              :variant="store.preset === 'all' ? 'primary' : 'secondary'"
+              :variant="draftPreset === 'all' ? 'primary' : 'secondary'"
               @click="selectQuickRange('all')"
             >
               全部
@@ -286,35 +310,33 @@ function openDetail(item: EvaluatedLedgerOrder): void {
           </div>
         </section>
         <section>
-          <h3>自定义日期</h3>
-          <div class="range-fields">
-            <button type="button" @click="openInlineCalendar">
-              <AppIcon name="calendar" :size="20" />{{ draftStart || "起始日期" }}
-              <AppIcon name="chevron-down" :size="16" />
-            </button>
-            <b>至</b>
-            <button type="button" @click="openInlineCalendar">
-              <AppIcon name="calendar" :size="20" />{{ draftEnd || "结束日期" }}
-              <AppIcon name="chevron-down" :size="16" />
-            </button>
-          </div>
-          <p class="range-hint">最多可查询最近 12 个月的账单</p>
+          <h3 v-if="!showCalendar">自定义日期</h3>
           <DateRangePicker
-            v-if="showCalendar"
             v-model:start="draftStart"
             v-model:end="draftEnd"
+            v-model:active-endpoint="draftEndpoint"
+            v-model:expanded="showCalendar"
             :min-date="minCalendarDate"
             :max-date="maxCalendarDate"
+            @update:start="markCustomRange"
+            @update:end="markCustomRange"
           />
+          <p v-if="!showCalendar" class="range-hint">最多可查询最近 12 个月的账单</p>
         </section>
       </div>
       <template #footer>
         <div class="date-sheet__actions">
-          <AppButton variant="secondary" block @click="draftStart = ''; draftEnd = ''; showCalendar = true">重置</AppButton>
-          <AppButton block :loading="store.loading" @click="applyCustomRange">确定</AppButton>
+          <AppButton variant="secondary" block @click="resetDraftRange">重置</AppButton>
+          <AppButton block :loading="store.loading" @click="applyDraftRange">确定</AppButton>
         </div>
       </template>
     </AppBottomSheet>
+
+    <LedgerDetailSheet
+      v-model:show="showDetailSheet"
+      :item="selectedLedgerItem"
+      @continue-edit="continueEditing"
+    />
   </div>
 </template>
 
@@ -326,16 +348,18 @@ function openDetail(item: EvaluatedLedgerOrder): void {
 
 .period-card {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) auto;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--space-3);
+  height: 48px;
+  gap: var(--space-2);
+  padding: 5px 10px;
 }
 
 .period-card__icon {
   display: grid;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-control);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-xs);
   place-items: center;
   color: var(--color-primary);
   background: var(--color-primary-soft);
@@ -350,32 +374,32 @@ function openDetail(item: EvaluatedLedgerOrder): void {
 .period-card__copy {
   display: grid;
   min-width: 0;
-  gap: 3px;
+  gap: 0;
 }
 
 .period-card__copy span {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-xs);
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 17px;
 }
 
 .period-card__copy strong {
+  min-width: 0;
   overflow: hidden;
-  font-size: 14px;
-  line-height: 1.35;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 15px;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.quick-ranges {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-2);
 }
 
 .ledger-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  padding: 10px 0 8px;
+  min-height: 76px;
+  padding: 8px 0 6px;
 }
 
 .ledger-summary > div {
@@ -405,9 +429,11 @@ function openDetail(item: EvaluatedLedgerOrder): void {
 
 .ledger-summary p {
   grid-column: 1 / -1;
-  margin: 6px 0 0;
+  margin: 5px 10px 0;
+  padding-top: 5px;
+  border-top: 1px solid var(--color-divider);
   color: var(--color-text-secondary);
-  font-size: var(--font-size-xs);
+  font-size: 11px;
   text-align: center;
 }
 
@@ -418,6 +444,21 @@ function openDetail(item: EvaluatedLedgerOrder): void {
 
 .amount-negative {
   color: var(--color-danger);
+}
+
+.amount-muted {
+  color: var(--color-placeholder);
+}
+
+.section-heading__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.section-heading__title img {
+  width: 24px;
+  height: 24px;
 }
 
 .sort-button {
@@ -458,18 +499,20 @@ function openDetail(item: EvaluatedLedgerOrder): void {
   min-height: 22px;
   padding: 0 8px;
   border-radius: var(--radius-pill);
-  font-size: 11px;
-  font-weight: 650;
+  font-size: 10px;
+  font-weight: 600;
 }
 
 .status-pill--pending {
-  color: #956f18;
-  background: #fff6dc;
+  color: var(--color-primary-strong);
+  background: var(--color-primary-soft);
+  box-shadow: inset 0 0 0 1px rgb(87 151 245 / 22%);
 }
 
 .status-pill--settled {
-  color: var(--color-primary);
-  background: var(--color-primary-soft);
+  color: var(--color-success);
+  background: rgb(97 214 191 / 14%);
+  box-shadow: inset 0 0 0 1px rgb(97 214 191 / 24%);
 }
 
 .ledger-item__title-row > div {
@@ -479,6 +522,7 @@ function openDetail(item: EvaluatedLedgerOrder): void {
 .ledger-item__title-row h3 {
   margin: 0;
   overflow: hidden;
+  color: var(--color-primary-strong);
   font-size: 14px;
   line-height: 1.35;
   text-overflow: ellipsis;
@@ -535,16 +579,62 @@ function openDetail(item: EvaluatedLedgerOrder): void {
   white-space: nowrap;
 }
 
-.list-end {
-  margin: var(--space-4) 0;
-  color: var(--color-text-tertiary);
+.ledger-list {
+  display: grid;
+  gap: 8px;
+}
+
+.ledger-state-card {
+  min-height: 220px;
+}
+
+.ledger-empty {
+  display: grid;
+  min-height: 268px;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  padding: 20px;
   text-align: center;
+}
+
+.ledger-empty > img {
+  width: 56px;
+  height: 56px;
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--color-primary-soft);
+  opacity: 0.72;
+}
+
+.ledger-empty strong {
+  margin-top: 8px;
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.ledger-empty p {
+  margin: 0 0 8px;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+}
+
+.ledger-empty :deep(.app-button) {
+  min-width: 132px;
 }
 
 .date-sheet {
   display: grid;
   gap: 16px;
   padding: 12px var(--page-gutter);
+}
+
+.date-sheet__header-icon {
+  position: absolute;
+  z-index: 3;
+  top: 23px;
+  right: var(--page-gutter);
+  color: var(--color-primary);
 }
 
 .date-sheet h3 {
@@ -570,28 +660,41 @@ function openDetail(item: EvaluatedLedgerOrder): void {
   grid-template-columns: repeat(2, 1fr);
 }
 
-.range-fields {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
-  gap: var(--space-2);
-  color: var(--color-text);
+.date-sheet__quick :deep(.app-button--primary) {
+  background: linear-gradient(135deg, #68b8ff, var(--color-violet));
+  box-shadow: var(--outline-primary);
 }
 
-.range-fields button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-  min-height: 40px;
-  gap: 7px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: var(--radius-control);
-  color: var(--color-text);
-  background: var(--color-surface);
-  box-shadow: var(--outline-default);
-  font-size: 13px;
+.ledger-date-sheet :deep(.app-bottom-sheet__header) {
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 58px;
+  padding-top: 18px;
+}
+
+.ledger-date-sheet--calendar .date-sheet {
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.ledger-date-sheet--calendar .date-sheet section {
+  gap: 8px;
+}
+
+.ledger-date-sheet--calendar .date-sheet__quick {
+  display: flex;
+  gap: 8px;
+}
+
+.ledger-date-sheet--calendar .date-sheet__quick :deep(.app-button) {
+  width: auto;
+  height: 30px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+.ledger-date-sheet--calendar .date-sheet__quick :deep(.app-button--primary) {
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
 }
 
 .range-hint {
@@ -608,10 +711,6 @@ function openDetail(item: EvaluatedLedgerOrder): void {
 
   .date-sheet__quick {
     gap: 6px;
-  }
-
-  .range-fields button {
-    font-size: 11px;
   }
 }
 </style>

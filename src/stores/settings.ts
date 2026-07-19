@@ -4,6 +4,7 @@ import { computed, ref } from "vue";
 import { getSyncService } from "@/features/sync/getSyncService";
 import type { SyncSnapshot } from "@/features/sync/SyncService";
 import { validateSettings } from "@/features/settings/validation";
+import { MAX_PLAN_TAG_NAME_LENGTH } from "@/features/plans/tagValidation";
 import { getDatabase } from "@/services/database/createDatabase";
 import type { AppSettings, PlanTag } from "@/types/domain";
 
@@ -81,7 +82,9 @@ export const useSettingsStore = defineStore("settings", () => {
   ): Promise<PlanTag> {
     const normalized = name.trim();
     if (!normalized) throw new TypeError("请输入标签名称");
-    if (normalized.length > 12) throw new RangeError("标签名称最多 12 个字符");
+    if (normalized.length > MAX_PLAN_TAG_NAME_LENGTH) {
+      throw new RangeError(`标签名称最多 ${MAX_PLAN_TAG_NAME_LENGTH} 个字符`);
+    }
     if (!originalName && tags.value.length >= 8)
       throw new RangeError("最多只能创建 8 个标签");
     const duplicate = tags.value.find(

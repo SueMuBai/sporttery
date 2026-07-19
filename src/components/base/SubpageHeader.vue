@@ -21,7 +21,6 @@ const router = useRouter()
     <AppIconButton label="返回" icon="back" variant="plain" @click="router.back()" />
     <div class="subpage-header__copy">
       <h1>{{ title }}</h1>
-      <p v-if="subtitle">{{ subtitle }}</p>
     </div>
     <div class="subpage-header__action">
       <slot name="action" />
@@ -37,12 +36,11 @@ const router = useRouter()
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: center;
-  min-height: calc(44px + env(safe-area-inset-top));
+  height: calc(44px + env(safe-area-inset-top));
   gap: var(--space-2);
   padding: env(safe-area-inset-top) var(--page-gutter) 0;
-  background: rgb(255 255 255 / 96%);
-  border-bottom: 1px solid var(--color-border);
-  backdrop-filter: blur(18px);
+  background: var(--color-surface);
+  box-shadow: inset 0 -1px 0 var(--color-divider);
 }
 
 .subpage-header__copy {
@@ -50,27 +48,24 @@ const router = useRouter()
   text-align: center;
 }
 
-.subpage-header h1,
-.subpage-header p {
+.subpage-header h1 {
   margin: 0;
   overflow: hidden;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 24px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.subpage-header h1 {
-  font-size: 17px;
-  line-height: 1.35;
-}
-
-.subpage-header p {
-  margin-top: 2px;
-  color: var(--color-text-secondary);
-  font-size: 11px;
-}
-
 .subpage-header__action {
   display: grid;
+  width: 44px;
+  height: 44px;
   place-items: center;
+}
+
+.subpage-header > :deep(.app-icon-button:first-child) {
+  color: var(--color-text);
 }
 </style>

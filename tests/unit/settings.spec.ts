@@ -90,59 +90,65 @@ describe("settings and exports", () => {
       ],
     };
 
-    expect(parsePlanImport(JSON.stringify(base)).plans[0]?.selections[0]?.key).toBe(
-      "1|had|h",
+    expect(
+      parsePlanImport(JSON.stringify(base)).plans[0]?.selections[0]?.key,
+    ).toBe("1|had|h");
+    const restored = parsePlanImport(
+      JSON.stringify({
+        ...base,
+        matches: [
+          {
+            matchId: 1,
+            matchNum: "周三001",
+            matchDateTime: "2026-06-01 19:30:00",
+            homeTeam: "主队",
+            awayTeam: "客队",
+            payload: { odds: {} },
+            updatedAt: timestamp,
+          },
+          {
+            matchId: 99,
+            matchNum: "未引用",
+            matchDateTime: "2026-06-01 20:00:00",
+            homeTeam: "甲",
+            awayTeam: "乙",
+            payload: {},
+            updatedAt: timestamp,
+          },
+        ],
+        results: [
+          {
+            matchId: 1,
+            matchNum: "周三001",
+            homeTeam: "主队",
+            awayTeam: "客队",
+            halfTimeScore: "0:0",
+            fullTimeScore: "1:0",
+            goalLine: 0,
+            officialResults: { had: "h" },
+            fetchedAt: "2026-06-02T01:00:00.000+08:00",
+          },
+          {
+            matchId: 1,
+            matchNum: "周三001",
+            homeTeam: "主队",
+            awayTeam: "客队",
+            halfTimeScore: "1 : 0",
+            fullTimeScore: "2 : 0",
+            goalLine: 0,
+            officialResults: { had: "h" },
+            fetchedAt: "2026-06-01T21:00:00.000Z",
+          },
+        ],
+      }),
     );
-    const restored = parsePlanImport(JSON.stringify({
-      ...base,
-      matches: [
-        {
-          matchId: 1,
-          matchNum: "周三001",
-          matchDateTime: "2026-06-01 19:30:00",
-          homeTeam: "主队",
-          awayTeam: "客队",
-          payload: { odds: {} },
-          updatedAt: timestamp,
-        },
-        {
-          matchId: 99,
-          matchNum: "未引用",
-          matchDateTime: "2026-06-01 20:00:00",
-          homeTeam: "甲",
-          awayTeam: "乙",
-          payload: {},
-          updatedAt: timestamp,
-        },
-      ],
-      results: [
-        {
-          matchId: 1,
-          matchNum: "周三001",
-          homeTeam: "主队",
-          awayTeam: "客队",
-          halfTimeScore: "0:0",
-          fullTimeScore: "1:0",
-          goalLine: 0,
-          officialResults: { had: "h" },
-          fetchedAt: "2026-06-02T01:00:00.000+08:00",
-        },
-        {
-          matchId: 1,
-          matchNum: "周三001",
-          homeTeam: "主队",
-          awayTeam: "客队",
-          halfTimeScore: "1 : 0",
-          fullTimeScore: "2 : 0",
-          goalLine: 0,
-          officialResults: { had: "h" },
-          fetchedAt: "2026-06-01T21:00:00.000Z",
-        },
-      ],
-    }));
     expect(restored.matches.map((match) => match.matchId)).toEqual([1]);
     expect(restored.results).toEqual([
-      expect.objectContaining({ matchId: 1, halfTimeScore: "1:0", fullTimeScore: "2:0" }),
+      expect.objectContaining({
+        matchId: 1,
+        halfTimeScore: "1:0",
+        fullTimeScore: "2:0",
+      }),
     ]);
     expect(() =>
       parsePlanImport(
@@ -157,6 +163,15 @@ describe("settings and exports", () => {
         }),
       ),
     ).toThrow("标签超过 8 个");
+    expect(() =>
+      parsePlanImport(
+        JSON.stringify({
+          ...base,
+          tags: [{ ...base.tags[0], name: "九字标签名称过长了" }],
+          plans: [{ ...plan, tags: ["九字标签名称过长了"] }],
+        }),
+      ),
+    ).toThrow("超过 8 个字符");
     expect(() =>
       parsePlanImport(
         JSON.stringify({
@@ -183,10 +198,12 @@ describe("settings and exports", () => {
       parsePlanImport(
         JSON.stringify({
           ...base,
-          plans: [{
-            ...plan,
-            selections: [{ ...plan.selections[0], outcome: "home" }],
-          }],
+          plans: [
+            {
+              ...plan,
+              selections: [{ ...plan.selections[0], outcome: "home" }],
+            },
+          ],
         }),
       ),
     ).toThrow("无效投注选项“had/home”");
@@ -194,7 +211,9 @@ describe("settings and exports", () => {
       parsePlanImport(
         JSON.stringify({
           ...base,
-          plans: [{ ...plan, selections: [{ ...plan.selections[0], odds: "无效" }] }],
+          plans: [
+            { ...plan, selections: [{ ...plan.selections[0], odds: "无效" }] },
+          ],
         }),
       ),
     ).toThrow("无效赔率");
@@ -202,76 +221,94 @@ describe("settings and exports", () => {
       parsePlanImport(
         JSON.stringify({
           ...base,
-          plans: [{ ...plan, selections: [{ ...plan.selections[0], odds: "0" }] }],
+          plans: [
+            { ...plan, selections: [{ ...plan.selections[0], odds: "0" }] },
+          ],
         }),
       ),
     ).toThrow("无效赔率");
     expect(() =>
-      parsePlanImport(JSON.stringify({
-        ...base,
-        results: [{
-          matchId: 1,
-          matchNum: "周三001",
-          homeTeam: "主队",
-          awayTeam: "客队",
-          halfTimeScore: "",
-          fullTimeScore: "已完场",
-          goalLine: 0,
-          officialResults: {},
-          fetchedAt: timestamp,
-        }],
-      })),
+      parsePlanImport(
+        JSON.stringify({
+          ...base,
+          results: [
+            {
+              matchId: 1,
+              matchNum: "周三001",
+              homeTeam: "主队",
+              awayTeam: "客队",
+              halfTimeScore: "",
+              fullTimeScore: "已完场",
+              goalLine: 0,
+              officialResults: {},
+              fetchedAt: timestamp,
+            },
+          ],
+        }),
+      ),
     ).toThrow("全场比分格式无效");
     expect(() =>
       parsePlanImport(JSON.stringify({ ...base, matches: [] })),
     ).toThrow("缺少方案引用的比赛数据：1");
     expect(() =>
-      parsePlanImport(JSON.stringify({
-        ...base,
-        results: [{
-          matchId: 1,
-          matchNum: "周三001",
-          homeTeam: "主队",
-          awayTeam: "客队",
-          halfTimeScore: "0:0",
-          fullTimeScore: "1:0",
-          goalLine: "错误" as unknown as number,
-          officialResults: { had: "h" },
-          fetchedAt: timestamp,
-        }],
-      })),
+      parsePlanImport(
+        JSON.stringify({
+          ...base,
+          results: [
+            {
+              matchId: 1,
+              matchNum: "周三001",
+              homeTeam: "主队",
+              awayTeam: "客队",
+              halfTimeScore: "0:0",
+              fullTimeScore: "1:0",
+              goalLine: "错误" as unknown as number,
+              officialResults: { had: "h" },
+              fetchedAt: timestamp,
+            },
+          ],
+        }),
+      ),
     ).toThrow("让球值无效");
     expect(() =>
-      parsePlanImport(JSON.stringify({
-        ...base,
-        results: [{
-          matchId: 1,
-          matchNum: "周三001",
-          homeTeam: "主队",
-          awayTeam: "客队",
-          halfTimeScore: "0:0",
-          fullTimeScore: "1:0",
-          goalLine: -0.5,
-          officialResults: { had: "h" },
-          fetchedAt: timestamp,
-        }],
-      })),
+      parsePlanImport(
+        JSON.stringify({
+          ...base,
+          results: [
+            {
+              matchId: 1,
+              matchNum: "周三001",
+              homeTeam: "主队",
+              awayTeam: "客队",
+              halfTimeScore: "0:0",
+              fullTimeScore: "1:0",
+              goalLine: -0.5,
+              officialResults: { had: "h" },
+              fetchedAt: timestamp,
+            },
+          ],
+        }),
+      ),
     ).toThrow("让球值无效");
     expect(() =>
-      parsePlanImport(JSON.stringify({
-        ...base,
-        results: [{
-          matchId: 1,
-          matchNum: "周三001",
-          homeTeam: "主队",
-          awayTeam: "客队",
-          halfTimeScore: "0:0",
-          fullTimeScore: "1:0",
-          goalLine: 0,
-          officialResults: { had: "home" },
-          fetchedAt: timestamp,
-        }],
-      })),
+      parsePlanImport(
+        JSON.stringify({
+          ...base,
+          results: [
+            {
+              matchId: 1,
+              matchNum: "周三001",
+              homeTeam: "主队",
+              awayTeam: "客队",
+              halfTimeScore: "0:0",
+              fullTimeScore: "1:0",
+              goalLine: 0,
+              officialResults: { had: "home" },
+              fetchedAt: timestamp,
+            },
+          ],
+        }),
+      ),
     ).toThrow("官方赛果内容无效");
   });
 
