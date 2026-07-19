@@ -336,6 +336,20 @@ export class SyncService {
     }
   }
 
+  async syncMatchesOnly(
+    onProgress?: Parameters<SportteryGateway['collectMatches']>[1],
+  ): Promise<SyncSnapshot> {
+    const matches = await this.syncMatches(onProgress)
+    const previous = await this.latestSnapshot()
+    return this.persistSnapshot(matches, previous?.results ?? emptyReport(), 'full')
+  }
+
+  async syncResultsOnly(): Promise<SyncSnapshot> {
+    const results = await this.syncResults()
+    const previous = await this.latestSnapshot()
+    return this.persistSnapshot(previous?.matches ?? emptyReport(), results, 'full')
+  }
+
   async retryFailed(
     snapshot: SyncSnapshot,
     onProgress?: Parameters<SportteryGateway['collectMatches']>[1],

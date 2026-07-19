@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { showFailToast, showSuccessToast } from "vant";
-import { computed, onMounted } from "vue";
+import { computed, onMounted, ref } from "vue";
 
 import refreshIcon from "@/assets/ui/common/ic_refresh.svg?url";
 import AppAssetIcon from "@/components/base/AppAssetIcon.vue";
@@ -12,6 +12,7 @@ import SubpageHeader from "@/components/base/SubpageHeader.vue";
 import { useSettingsStore } from "@/stores/settings";
 
 const store = useSettingsStore();
+const activeSync = ref<"matches" | "results" | "">("");
 const progress = computed(() => {
   if (!store.syncProgress.total) return 0;
   return Math.round(
@@ -66,14 +67,29 @@ function formatSyncTime(value?: string): string {
   return new Date(value).toLocaleString("zh-CN", { hour12: false });
 }
 
-async function synchronize(): Promise<void> {
+async function synchronizeMatches(): Promise<void> {
+  activeSync.value = "matches";
   try {
-    const report = await store.synchronize();
-    const failed = report.matches.failed + report.results.failed;
-    if (failed) showFailToast(`同步完成，${failed} 项失败`);
-    else showSuccessToast("比赛和赛果已更新");
+    const report = await store.synchronizeMatches();
+    if (report.matches.failed) showFailToast(`比赛更新完成，${report.matches.failed} 项失败`);
+    else showSuccessToast("最新比赛已获取");
   } catch (reason) {
     showFailToast(reason instanceof Error ? reason.message : String(reason));
+  } finally {
+    activeSync.value = "";
+  }
+}
+
+async function synchronizeResults(): Promise<void> {
+  activeSync.value = "results";
+  try {
+    const report = await store.synchronizeResults();
+    if (report.results.failed) showFailToast(`赛果更新完成，${report.results.failed} 项失败`);
+    else showSuccessToast("比赛结果已更新");
+  } catch (reason) {
+    showFailToast(reason instanceof Error ? reason.message : String(reason));
+  } finally {
+    activeSync.value = "";
   }
 }
 
@@ -162,15 +178,27 @@ async function retryFailed(): Promise<void> {
       </section>
     </AppCard>
 
-    <AppButton
-      block
-      :loading="store.syncing"
-      :disabled="store.syncing"
-      @click="synchronize"
-    >
-      <template #icon><AppAssetIcon :src="refreshIcon" :size="20" /></template>
-      {{ store.syncing ? "正在同步…" : "立即更新全部数据" }}
-    </AppButton>
+    <section class="sync-actions" aria-label="数据更新操作">
+      <AppButton
+        block
+        :loading="store.syncing && activeSync === 'matches'"
+        :disabled="store.syncing"
+        @click="synchronizeMatches"
+      >
+        <template #icon><AppIcon name="download" :size="20" /></template>
+        获取最新比赛
+      </AppButton>
+      <AppButton
+        block
+        variant="secondary"
+        :loading="store.syncing && activeSync === 'results'"
+        :disabled="store.syncing"
+        @click="synchronizeResults"
+      >
+        <template #icon><AppAssetIcon :src="refreshIcon" :size="20" /></template>
+        更新比赛结果
+      </AppButton>
+    </section>
 
     <section v-if="store.syncReport && !store.syncing" class="recent-report">
       <h2>最近一次更新报告</h2>
@@ -227,6 +255,11 @@ async function retryFailed(): Promise<void> {
 .update-content {
   align-content: start;
   gap: 12px;
+}
+
+.sync-actions {
+  display: grid;
+  gap: 10px;
 }
 
 .sync-state-card {

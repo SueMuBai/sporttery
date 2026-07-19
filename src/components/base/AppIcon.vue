@@ -12,6 +12,7 @@ export type AppIconName =
   | "concurrency"
   | "copy"
   | "delete"
+  | "download"
   | "edit"
   | "export-json"
   | "export-markdown"
@@ -92,6 +93,10 @@ withDefaults(defineProps<{ name: AppIconName; size?: number }>(), { size: 24 });
       </template>
       <template v-else-if="name === 'delete'">
         <path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5" />
+      </template>
+      <template v-else-if="name === 'download'">
+        <path d="M12 3v11m0 0 4-4m-4 4-4-4" />
+        <path d="M5 15v4h14v-4" />
       </template>
       <template v-else-if="name === 'edit'">
         <path d="m4 20 4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z" />

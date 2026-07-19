@@ -165,6 +165,34 @@ export const useSettingsStore = defineStore("settings", () => {
     }
   }
 
+  async function synchronizeMatches(): Promise<SyncSnapshot> {
+    if (syncing.value) throw new Error("数据更新正在进行中");
+    syncing.value = true;
+    syncProgress.value = { completed: 0, total: 0, failed: 0 };
+    try {
+      const report = await syncService.syncMatchesOnly((progress) => {
+        syncProgress.value = progress;
+      });
+      syncReport.value = report;
+      return report;
+    } finally {
+      syncing.value = false;
+    }
+  }
+
+  async function synchronizeResults(): Promise<SyncSnapshot> {
+    if (syncing.value) throw new Error("数据更新正在进行中");
+    syncing.value = true;
+    syncProgress.value = { completed: 0, total: 0, failed: 0 };
+    try {
+      const report = await syncService.syncResultsOnly();
+      syncReport.value = report;
+      return report;
+    } finally {
+      syncing.value = false;
+    }
+  }
+
   async function retryFailed(): Promise<SyncSnapshot> {
     if (!syncReport.value) return synchronize();
     if (syncing.value) throw new Error("数据更新正在进行中");
@@ -201,6 +229,8 @@ export const useSettingsStore = defineStore("settings", () => {
     deleteTag,
     moveTag,
     synchronize,
+    synchronizeMatches,
+    synchronizeResults,
     retryFailed,
   };
 });
