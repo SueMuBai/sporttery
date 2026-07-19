@@ -16,7 +16,7 @@
     },
     "ticket": {
       "status": "available-for-integration",
-      "assets": ["ic_refresh.svg", "ic_search.svg", "ic_filter.svg", "ic_manage.svg", "ic_status_success.svg", "ic_view_plan.svg"]
+      "assets": ["ic_refresh.svg", "ic_search.svg", "ic_filter.svg", "ic_manage.svg", "ic_status_success.svg", "ic_view_plan.svg", "ill_empty_matches.svg"]
     },
     "ledger": {
       "status": "available-for-integration",

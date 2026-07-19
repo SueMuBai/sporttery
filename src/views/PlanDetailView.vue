@@ -16,10 +16,7 @@ import { confirmAction } from "@/components/base/confirmAction";
 import SubpageHeader from "@/components/base/SubpageHeader.vue";
 import PurchaseSheet from "@/components/ticket/PurchaseSheet.vue";
 import { groupSelections } from "@/features/betting/calculator";
-import {
-  selectionSettled,
-  selectionWins,
-} from "@/features/betting/settlement";
+import { selectionSettled, selectionWins } from "@/features/betting/settlement";
 import { PLAN_NAME_MAX_LENGTH } from "@/features/plans/planName";
 import { usePlanStore } from "@/stores/plans";
 import { useTicketStore } from "@/stores/ticket";
@@ -59,7 +56,8 @@ const detailRows = computed<DetailRow[]>(() =>
       result,
       settled,
       correct:
-        settled && Boolean(result) &&
+        settled &&
+        Boolean(result) &&
         selections.some((selection) => selectionWins(selection, result!)),
     };
   }),
@@ -90,7 +88,8 @@ onMounted(async () => {
 
 function plainOutcomeLabel(selection: PlanSelection): string {
   if (selection.market === "had" || selection.market === "hhad") {
-    const value = { h: "胜", d: "平", a: "负" }[selection.outcome] ?? selection.outcome;
+    const value =
+      { h: "胜", d: "平", a: "负" }[selection.outcome] ?? selection.outcome;
     return selection.market === "hhad" ? `让${value}` : value;
   }
   if (selection.market === "hafu") {
@@ -116,7 +115,9 @@ function selectionTone(selections: readonly PlanSelection[]): string {
 
 function matchTime(matchId: number): string {
   const value = store.matchById.get(matchId)?.matchDateTime || "";
-  const match = value.match(/(?:\d{4}[-/])?(\d{2})[-/](\d{2})[T\s]+(\d{2}:\d{2})/);
+  const match = value.match(
+    /(?:\d{4}[-/])?(\d{2})[-/](\d{2})[T\s]+(\d{2}:\d{2})/,
+  );
   return match ? `${match[1]}/${match[2]} ${match[3]}` : value;
 }
 
@@ -242,7 +243,11 @@ async function deletePlan(): Promise<void> {
     </Transition>
 
     <main class="plan-detail-content">
-      <AppState v-if="store.loading && !plan" type="loading" title="正在读取方案" />
+      <AppState
+        v-if="store.loading && !plan"
+        type="loading"
+        title="正在读取方案"
+      />
       <AppState
         v-else-if="!plan"
         type="error"
@@ -295,16 +300,22 @@ async function deletePlan(): Promise<void> {
             <div>
               <span>已完成</span>
               <strong class="numeric result-summary__completed">
-                {{ item.evaluation.settledMatches }}/{{ item.evaluation.totalMatches }}
+                {{ item.evaluation.settledMatches }}/{{
+                  item.evaluation.totalMatches
+                }}
               </strong>
             </div>
             <div>
               <span>猜对</span>
-              <strong class="numeric result-summary__correct">{{ item.evaluation.correctMatches }}</strong>
+              <strong class="numeric result-summary__correct">{{
+                item.evaluation.correctMatches
+              }}</strong>
             </div>
             <div>
               <span>猜错</span>
-              <strong class="numeric result-summary__wrong">{{ item.evaluation.wrongMatches }}</strong>
+              <strong class="numeric result-summary__wrong">{{
+                item.evaluation.wrongMatches
+              }}</strong>
             </div>
           </div>
 
@@ -331,7 +342,7 @@ async function deletePlan(): Promise<void> {
                     : 'finance-summary__loss',
                 ]"
               >
-                {{ item.evaluation.currentProfitCents >= 0 ? '+' : '-' }}¥{{
+                {{ item.evaluation.currentProfitCents >= 0 ? "+" : "-" }}¥{{
                   centsToYuan(Math.abs(item.evaluation.currentProfitCents))
                 }}
               </strong>
@@ -340,11 +351,20 @@ async function deletePlan(): Promise<void> {
           </div>
         </section>
 
-        <section class="match-result-card" aria-label="方案比赛明细">
+        <section
+          :class="[
+            'match-result-card',
+            { 'match-result-card--no-results': !hasSettledResult },
+          ]"
+          aria-label="方案比赛明细"
+        >
           <article
             v-for="(row, index) in detailRows"
             :key="row.matchId"
-            :class="['match-result-row', { 'match-result-row--settled': row.settled }]"
+            :class="[
+              'match-result-row',
+              { 'match-result-row--settled': row.settled },
+            ]"
           >
             <span class="match-index numeric">{{ index + 1 }}</span>
             <div class="match-copy">
@@ -353,7 +373,13 @@ async function deletePlan(): Promise<void> {
                 <span>vs</span>
                 {{ store.matchById.get(row.matchId)?.awayTeam || "未知球队" }}
               </h2>
-              <p>{{ matchLeague(row.matchId) || store.matchById.get(row.matchId)?.matchNum || "比赛" }}</p>
+              <p>
+                {{
+                  matchLeague(row.matchId) ||
+                    store.matchById.get(row.matchId)?.matchNum ||
+                    "比赛"
+                }}
+              </p>
             </div>
             <div class="match-choice">
               <span>选择</span>
@@ -367,11 +393,18 @@ async function deletePlan(): Promise<void> {
                 {{ row.result?.fullTimeScore || "—" }}
               </strong>
             </div>
-            <div v-else class="match-score match-score--pending">
+            <div
+              v-else-if="hasSettledResult"
+              class="match-score match-score--pending"
+            >
+              <span>赛果</span>
               <strong>—</strong>
             </div>
             <div class="match-state">
-              <span v-if="row.settled" :class="row.correct ? 'is-correct' : 'is-wrong'">
+              <span
+                v-if="row.settled"
+                :class="row.correct ? 'is-correct' : 'is-wrong'"
+              >
                 {{ row.correct ? "正确" : "错误" }}
               </span>
               <template v-else>
@@ -416,9 +449,14 @@ async function deletePlan(): Promise<void> {
       description="载入后将替换当前临时选票"
     >
       <div class="load-sheet">
-        <p>当前选票已有 {{ ticketStore.selectedMatchCount }} 场，载入后将替换当前临时内容。</p>
+        <p>
+          当前选票已有
+          {{ ticketStore.selectedMatchCount }} 场，载入后将替换当前临时内容。
+        </p>
         <AppButton block @click="applyLoad(true)">保存当前方案后载入</AppButton>
-        <AppButton block variant="secondary" @click="applyLoad(false)">放弃当前内容并载入</AppButton>
+        <AppButton block variant="secondary" @click="applyLoad(false)">
+          放弃当前内容并载入
+        </AppButton>
       </div>
     </AppBottomSheet>
   </div>
@@ -447,7 +485,9 @@ async function deletePlan(): Promise<void> {
   width: 138px;
   border-radius: 10px;
   background: var(--color-surface);
-  box-shadow: var(--outline-default), 0 8px 24px rgb(52 78 112 / 14%);
+  box-shadow:
+    var(--outline-default),
+    0 8px 24px rgb(52 78 112 / 14%);
 }
 
 .detail-menu button {
@@ -483,7 +523,9 @@ async function deletePlan(): Promise<void> {
 
 .detail-menu-enter-active,
 .detail-menu-leave-active {
-  transition: opacity 150ms ease, transform 150ms ease;
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease;
   transform-origin: top right;
 }
 
@@ -509,13 +551,13 @@ async function deletePlan(): Promise<void> {
 
 .plan-overview-card {
   display: grid;
-  gap: 12px;
-  padding: 14px;
+  gap: 10px;
+  padding: 12px 14px;
 }
 
 .plan-overview-card__heading {
   display: grid;
-  grid-template-columns: minmax(0, auto) auto 1fr 36px;
+  grid-template-columns: minmax(0, 1fr) auto 36px;
   align-items: center;
   gap: 8px;
 }
@@ -525,9 +567,9 @@ async function deletePlan(): Promise<void> {
   margin: 0;
   overflow: hidden;
   color: var(--color-text);
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 600;
-  line-height: 28px;
+  line-height: 24px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -643,7 +685,7 @@ async function deletePlan(): Promise<void> {
 }
 
 .finance-summary {
-  min-height: 58px;
+  min-height: 50px;
 }
 
 .finance-summary strong {
@@ -666,11 +708,21 @@ async function deletePlan(): Promise<void> {
 
 .match-result-row {
   display: grid;
-  grid-template-columns: 30px minmax(0, 1.6fr) minmax(48px, 0.62fr) minmax(44px, 0.56fr) minmax(68px, 0.8fr);
+  grid-template-columns: 30px minmax(0, 1.6fr) minmax(48px, 0.62fr) minmax(
+      44px,
+      0.56fr
+    ) minmax(68px, 0.8fr);
   align-items: center;
   min-height: 78px;
   gap: 8px;
   padding: 8px 12px;
+}
+
+.match-result-card--no-results .match-result-row {
+  grid-template-columns: 30px minmax(0, 1.72fr) minmax(54px, 0.72fr) minmax(
+      76px,
+      0.9fr
+    );
 }
 
 .match-result-row + .match-result-row {
@@ -780,7 +832,7 @@ async function deletePlan(): Promise<void> {
 
 .match-state time {
   color: var(--color-text-secondary);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 16px;
   white-space: nowrap;
 }
@@ -839,7 +891,10 @@ async function deletePlan(): Promise<void> {
 
 @media (max-width: 374px) {
   .match-result-row {
-    grid-template-columns: 26px minmax(0, 1.45fr) minmax(44px, 0.6fr) minmax(40px, 0.52fr) minmax(62px, 0.72fr);
+    grid-template-columns: 26px minmax(0, 1.45fr) minmax(44px, 0.6fr) minmax(
+        40px,
+        0.52fr
+      ) minmax(62px, 0.72fr);
     gap: 5px;
     padding-inline: 8px;
   }

@@ -215,7 +215,7 @@ function continueEditing(plan: SavedPlan): void {
           :padded="false"
         >
           <span class="ledger-empty__illustration">
-            <AppIcon name="history" :size="52" />
+            <img :src="billSectionIcon" alt="" />
           </span>
           <strong>暂无账单记录</strong>
           <p>所选日期内还没有购买方案</p>
@@ -620,11 +620,14 @@ function continueEditing(plan: SavedPlan): void {
   position: relative;
   display: grid;
   width: 96px;
-  height: 78px;
-  border-radius: 28px;
-  color: #a9c7f2;
-  background: linear-gradient(145deg, #f7faff, #edf4ff);
+  height: 82px;
   place-items: center;
+}
+
+.ledger-empty__illustration img {
+  width: 58px;
+  height: 58px;
+  opacity: 0.38;
 }
 
 .ledger-empty__illustration::before,
@@ -638,13 +641,13 @@ function continueEditing(plan: SavedPlan): void {
 }
 
 .ledger-empty__illustration::before {
-  top: 4px;
-  right: -8px;
+  top: 6px;
+  right: 5px;
 }
 
 .ledger-empty__illustration::after {
-  bottom: 2px;
-  left: -8px;
+  bottom: 7px;
+  left: 4px;
   background: var(--color-mint);
 }
 
@@ -666,8 +669,8 @@ function continueEditing(plan: SavedPlan): void {
 
 .date-sheet {
   display: grid;
-  gap: 16px;
-  padding: 12px var(--page-gutter);
+  gap: 12px;
+  padding: 4px 22px 8px;
 }
 
 .date-sheet__header-icon {
@@ -687,14 +690,14 @@ function continueEditing(plan: SavedPlan): void {
 
 .date-sheet section {
   display: grid;
-  gap: var(--space-3);
+  gap: 8px;
 }
 
 .date-sheet__quick,
 .date-sheet__actions {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-3);
+  gap: 14px;
 }
 
 .date-sheet__actions {
@@ -706,24 +709,49 @@ function continueEditing(plan: SavedPlan): void {
   box-shadow: var(--outline-primary);
 }
 
+.date-sheet__quick :deep(.app-button--secondary) {
+  color: var(--color-text-secondary);
+  box-shadow: var(--outline-default);
+}
+
 .ledger-date-sheet :deep(.app-bottom-sheet__header) {
   grid-template-columns: minmax(0, 1fr);
-  min-height: 58px;
-  padding-top: 18px;
+  min-height: 46px;
+  padding: 14px 22px 4px;
+  border-bottom: 0;
+}
+
+.ledger-date-sheet :deep(.app-bottom-sheet__footer) {
+  padding-inline: 22px;
 }
 
 .ledger-date-sheet--calendar .date-sheet {
-  gap: 8px;
-  padding-top: 4px;
+  gap: 6px;
+  padding: 2px 16px 8px;
 }
 
 .ledger-date-sheet--calendar .date-sheet section {
-  gap: 8px;
+  gap: 6px;
 }
 
 .ledger-date-sheet--calendar .date-sheet__quick {
   display: flex;
   gap: 8px;
+}
+
+.ledger-date-sheet--calendar .date-sheet__actions {
+  width: calc(100% - 64px);
+  grid-template-columns: repeat(2, 105px);
+  justify-content: space-between;
+  margin-inline: auto;
+}
+
+.ledger-date-sheet--calendar :deep(.app-bottom-sheet__header) {
+  padding-inline: 16px;
+}
+
+.ledger-date-sheet--calendar :deep(.app-bottom-sheet__footer) {
+  padding-inline: 12px;
 }
 
 .ledger-date-sheet--calendar .date-sheet__quick :deep(.app-button) {
@@ -736,6 +764,42 @@ function continueEditing(plan: SavedPlan): void {
 .ledger-date-sheet--calendar .date-sheet__quick :deep(.app-button--primary) {
   color: var(--color-primary);
   background: var(--color-primary-soft);
+}
+
+.ledger-date-sheet--calendar :deep(.date-range-picker) {
+  gap: 6px;
+}
+
+.ledger-date-sheet--calendar :deep(.date-range-picker__endpoints > button) {
+  min-height: 32px;
+}
+
+.ledger-date-sheet--calendar :deep(.date-range-picker__toolbar > button),
+.ledger-date-sheet--calendar :deep(.date-range-picker__toolbar div button) {
+  min-height: 32px;
+}
+
+.ledger-date-sheet--calendar :deep(.date-range-picker__wheel > div) {
+  grid-template-rows: 18px repeat(3, 28px);
+}
+
+.ledger-date-sheet--calendar :deep(.date-range-picker__wheel button) {
+  min-height: 28px;
+}
+
+.ledger-date-sheet--calendar :deep(.date-range-picker__week span) {
+  min-height: 22px;
+}
+
+.ledger-date-sheet--calendar :deep(.date-range-picker__days > span),
+.ledger-date-sheet--calendar :deep(.date-range-picker__days button) {
+  min-height: 25px;
+}
+
+.ledger-date-sheet--calendar :deep(.date-range-picker__days button.is-start::before),
+.ledger-date-sheet--calendar :deep(.date-range-picker__days button.is-end::before) {
+  width: 25px;
+  height: 25px;
 }
 
 .range-hint {

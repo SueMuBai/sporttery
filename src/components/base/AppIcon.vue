@@ -20,6 +20,7 @@ export type AppIconName =
   | "grip"
   | "history"
   | "info"
+  | "monitor"
   | "multiplier"
   | "more"
   | "refresh"
@@ -131,6 +132,10 @@ withDefaults(defineProps<{ name: AppIconName; size?: number }>(), { size: 24 });
       <template v-else-if="name === 'info'">
         <circle cx="12" cy="12" r="9" />
         <path d="M12 11v6M12 7h.01" />
+      </template>
+      <template v-else-if="name === 'monitor'">
+        <rect x="3" y="4" width="18" height="13" rx="2" />
+        <path d="M8 21h8M12 17v4" />
       </template>
       <template v-else-if="name === 'multiplier'">
         <path d="m7 7 10 10M17 7 7 17" />

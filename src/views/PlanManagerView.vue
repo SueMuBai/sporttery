@@ -425,7 +425,9 @@ async function applyLoad(): Promise<void> {
         <span class="plan-state__icon"><AppIcon name="search" :size="48" /></span>
         <strong>未找到相关方案</strong>
         <p>试试其他名称、标签或筛选条件</p>
-        <AppButton variant="secondary" @click="clearAllFilters">清除筛选</AppButton>
+        <AppButton variant="secondary" @click="clearAllFilters">
+          清除筛选
+        </AppButton>
         <div v-if="searchSuggestions.length" class="search-suggestions">
           <span>搜索建议</span>
           <div>
@@ -442,6 +444,24 @@ async function applyLoad(): Promise<void> {
       </section>
 
       <template v-else>
+        <section
+          v-if="store.error"
+          class="plan-state plan-state--error plan-state--error-cached"
+          role="alert"
+        >
+          <span class="plan-state__icon plan-state__icon--error">
+            <AppIcon name="warning" :size="46" />
+          </span>
+          <strong>方案加载失败</strong>
+          <p>无法读取本机方案，请检查存储后重试</p>
+          <code>{{ errorCode }}</code>
+          <div class="plan-state__actions">
+            <AppButton variant="secondary" @click="router.push('/settings')">
+              返回设置
+            </AppButton>
+            <AppButton @click="store.load">重新加载</AppButton>
+          </div>
+        </section>
         <div v-if="store.error" class="offline-notice" role="status">
           <AppIcon name="warning" :size="18" />
           <span>当前为离线模式，已显示本地缓存数据，部分信息可能过期</span>
@@ -729,7 +749,9 @@ async function applyLoad(): Promise<void> {
 
 .header-plan-menu-enter-active,
 .header-plan-menu-leave-active {
-  transition: opacity 140ms ease, transform 140ms ease;
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
 }
 
 .header-plan-menu-enter-from,
@@ -833,7 +855,7 @@ async function applyLoad(): Promise<void> {
 
 .plan-state {
   display: grid;
-  min-height: min(540px, calc(100dvh - 190px));
+  min-height: calc(100dvh - 190px);
   align-content: center;
   justify-items: center;
   gap: 10px;
@@ -847,6 +869,43 @@ async function applyLoad(): Promise<void> {
 .plan-state--error {
   background: var(--color-surface);
   box-shadow: var(--outline-default);
+}
+
+.plan-state--error {
+  min-height: 228px;
+}
+
+.plan-state--error-cached {
+  grid-template-columns: 88px minmax(0, 1fr);
+  align-content: center;
+  justify-items: start;
+  column-gap: 14px;
+  padding: 20px 18px;
+  text-align: left;
+}
+
+.plan-state--error-cached .plan-state__icon {
+  grid-row: 1 / span 4;
+  align-self: center;
+  width: 80px;
+  height: 80px;
+}
+
+.plan-state--error-cached strong {
+  align-self: end;
+}
+
+.plan-state--error-cached p {
+  margin: 0;
+}
+
+.plan-state--error-cached code {
+  margin: 0;
+}
+
+.plan-state--error-cached .plan-state__actions {
+  width: 100%;
+  margin-top: 4px;
 }
 
 .plan-state strong {

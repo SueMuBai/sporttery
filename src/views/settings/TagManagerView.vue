@@ -225,8 +225,103 @@ async function confirmRemove(): Promise<void> {
         </template>
       </SubpageHeader>
     </template>
-    <p class="tag-tip">最多{{ MAX_PLAN_TAGS }}个标签 · 已使用{{ store.tags.length }}/{{ MAX_PLAN_TAGS }}</p>
-    <AppCard v-if="store.tags.length" class="tag-list" :padded="false">
+    <p class="tag-tip">
+      最多{{ MAX_PLAN_TAGS }}个标签 · 已使用{{ store.tags.length }}/{{
+        MAX_PLAN_TAGS
+      }}
+    </p>
+    <template v-if="tagLimitReached">
+      <AppCard class="tag-limit-overview">
+        <div class="tag-limit-grid">
+          <button
+            v-for="tag in store.tags"
+            :key="tag.name"
+            type="button"
+            :aria-label="`删除标签 ${tag.name}`"
+            @click="remove(tag)"
+          >
+            <span :style="{ backgroundColor: tag.color }" />
+            <strong>{{ tag.name }}</strong>
+            <AppIcon name="close" :size="15" />
+          </button>
+        </div>
+        <p class="tag-limit-warning" role="status">
+          <AppIcon name="warning" :size="18" />
+          <span>标签数量已达上限，删除后可继续添加</span>
+        </p>
+        <button type="button" class="tag-add-collapsed" disabled>
+          <AppIcon name="add" :size="18" />
+          <span>新增标签</span>
+        </button>
+      </AppCard>
+      <section class="tag-usage-section">
+        <h2>标签使用情况</h2>
+        <AppCard class="tag-usage-list" :padded="false">
+          <button
+            v-for="tag in store.tags"
+            :key="tag.name"
+            type="button"
+            @click="openEditor(tag)"
+          >
+            <span :style="{ backgroundColor: tag.color }" />
+            <strong>{{ tag.name }}</strong>
+            <small>{{ store.tagUsage[tag.name] || 0 }}个方案</small>
+            <AppIcon name="chevron-right" :size="17" />
+          </button>
+        </AppCard>
+        <AppCard v-if="editing" class="tag-limit-editor">
+          <div class="tag-edit-main">
+            <label
+              :class="[
+                'tag-edit-input',
+                { 'tag-edit-input--error': editError || editDuplicateError },
+              ]"
+            >
+              <input
+                v-model="name"
+                :maxlength="MAX_PLAN_TAG_NAME_LENGTH"
+                aria-label="标签名称"
+                @input="editError = ''"
+                @keydown.enter.prevent="saveEdit"
+                @keydown.esc.prevent="cancelEdit"
+              >
+              <span>{{ name.length }}/{{ MAX_PLAN_TAG_NAME_LENGTH }}</span>
+            </label>
+            <button type="button" class="tag-edit-cancel" @click="cancelEdit">
+              取消
+            </button>
+            <AppButton
+              :loading="store.saving"
+              :disabled="!name.trim() || Boolean(editDuplicateError)"
+              @click="saveEdit"
+            >
+              保存
+            </AppButton>
+          </div>
+          <div class="tag-edit-colors">
+            <span>颜色</span>
+            <button
+              v-for="item in colors"
+              :key="item"
+              type="button"
+              :class="{ selected: color === item }"
+              :style="{ backgroundColor: item }"
+              :aria-label="item"
+              @click="color = item"
+            />
+            <span
+              class="tag-preview"
+              :style="{ color, backgroundColor: `${color}18` }"
+            >{{ name.trim() || editing.name }}</span>
+          </div>
+          <p v-if="editError || editDuplicateError" class="tag-error" role="alert">
+            <AppIcon name="warning" :size="17" />
+            <span>{{ editError || editDuplicateError }}</span>
+          </p>
+        </AppCard>
+      </section>
+    </template>
+    <AppCard v-else-if="store.tags.length" class="tag-list" :padded="false">
       <div class="tag-list__heading">
         <strong>已有标签</strong><span>{{ store.tags.length }}/8</span>
       </div>
@@ -331,26 +426,20 @@ async function confirmRemove(): Promise<void> {
           <small>修改后，已关联的{{
             store.tagUsage[tag.name] || 0
           }}个方案同步更新</small>
-          <p v-if="editError || editDuplicateError" class="tag-error" role="alert">
+          <p
+            v-if="editError || editDuplicateError"
+            class="tag-error"
+            role="alert"
+          >
             <AppIcon name="warning" :size="17" />
             <span>{{ editError || editDuplicateError }}</span>
           </p>
         </div>
       </div>
     </AppCard>
-    <section ref="addSection" class="tag-add-section">
+    <section v-if="!tagLimitReached" ref="addSection" class="tag-add-section">
       <h2>新增标签</h2>
-      <div v-if="tagLimitReached" class="tag-limit-state">
-        <p class="tag-limit-warning" role="status">
-          <AppIcon name="warning" :size="18" />
-          <span>标签数量已达上限，删除后可继续添加</span>
-        </p>
-        <button type="button" class="tag-add-collapsed" disabled>
-          <AppIcon name="add" :size="18" />
-          <span>新增标签</span>
-        </button>
-      </div>
-      <AppCard v-else-if="addExpanded && !editing" class="tag-add-card">
+      <AppCard v-if="addExpanded && !editing" class="tag-add-card">
         <div class="tag-add-row">
           <label
             :class="[
@@ -665,15 +754,101 @@ async function confirmRemove(): Promise<void> {
   border-color: transparent;
   background: var(--color-disabled);
   cursor: not-allowed;
+  justify-content: center;
 }
 
-.tag-limit-state {
+.tag-limit-overview {
   display: grid;
   gap: 10px;
-  padding: 12px;
-  border-radius: var(--radius-card);
+}
+
+.tag-limit-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tag-limit-grid button {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) 16px;
+  align-items: center;
+  min-width: 0;
+  height: 40px;
+  gap: 6px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--color-text);
   background: var(--color-surface);
   box-shadow: var(--outline-default);
+}
+
+.tag-limit-grid button > span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.tag-limit-grid button strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag-usage-section {
+  display: grid;
+  gap: 8px;
+}
+
+.tag-usage-section h2 {
+  margin: 0 4px;
+  font-size: 15px;
+  line-height: 21px;
+}
+
+.tag-usage-list {
+  display: grid;
+}
+
+.tag-usage-list button {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto 18px;
+  align-items: center;
+  min-height: 46px;
+  gap: 8px;
+  padding: 0 12px;
+  border: 0;
+  color: var(--color-text);
+  background: transparent;
+  text-align: left;
+}
+
+.tag-usage-list button + button {
+  border-top: 1px solid var(--color-divider);
+}
+
+.tag-usage-list button > span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.tag-usage-list strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.tag-usage-list small {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+}
+
+.tag-limit-editor {
+  display: grid;
+  gap: 10px;
 }
 
 .tag-limit-warning {

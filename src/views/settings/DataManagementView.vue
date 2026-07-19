@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { showFailToast, showLoadingToast, showSuccessToast } from 'vant'
-import { ref } from 'vue'
+import { showFailToast, showLoadingToast, showSuccessToast } from "vant";
+import { onMounted, ref } from "vue";
 
-import exportJsonIcon from '@/assets/ui/settings/ic_export_json.svg?url'
-import exportMarkdownIcon from '@/assets/ui/settings/ic_export_markdown.svg?url'
-import AppAssetIcon from '@/components/base/AppAssetIcon.vue'
-import AppCard from '@/components/base/AppCard.vue'
-import AppIcon from '@/components/base/AppIcon.vue'
-import AppPage from '@/components/base/AppPage.vue'
-import SubpageHeader from '@/components/base/SubpageHeader.vue'
-import { confirmAction } from '@/components/base/confirmAction'
+import exportJsonIcon from "@/assets/ui/settings/ic_export_json.svg?url";
+import exportMarkdownIcon from "@/assets/ui/settings/ic_export_markdown.svg?url";
+import AppAssetIcon from "@/components/base/AppAssetIcon.vue";
+import AppButton from "@/components/base/AppButton.vue";
+import AppCard from "@/components/base/AppCard.vue";
+import AppIcon from "@/components/base/AppIcon.vue";
+import AppPage from "@/components/base/AppPage.vue";
+import SubpageHeader from "@/components/base/SubpageHeader.vue";
+import { confirmAction } from "@/components/base/confirmAction";
+import { getDatabase } from "@/services/database/createDatabase";
 import {
   createExportBundle,
   exportFilename,
@@ -18,64 +20,132 @@ import {
   saveTextFile,
   serializeJsonExport,
   serializeMarkdownExport,
-} from '@/services/export/exportData'
+} from "@/services/export/exportData";
+import type { DatabaseCounts } from "@/types/domain";
 
-const exporting = ref<'markdown' | 'json'>()
-const importing = ref(false)
-const fileInput = ref<HTMLInputElement>()
+const exporting = ref<"markdown" | "json">();
+const importing = ref(false);
+const fileInput = ref<HTMLInputElement>();
+const counts = ref<DatabaseCounts>();
+const lastBackupAt = ref(localStorage.getItem("caiguo.lastBackupAt") || "");
 
-async function exportData(type: 'markdown' | 'json'): Promise<void> {
-  exporting.value = type
-  const toast = showLoadingToast({ message: '正在生成文件…', forbidClick: true, duration: 0 })
+onMounted(async () => {
   try {
-    const bundle = await createExportBundle()
-    const markdown = type === 'markdown'
-    const filename = exportFilename(markdown ? 'md' : 'json')
+    const database = getDatabase();
+    await database.initialize();
+    counts.value = await database.getCounts();
+  } catch {
+    counts.value = undefined;
+  }
+});
+
+function formatBackupTime(value: string): string {
+  if (!value) return "尚未备份";
+  return new Date(value).toLocaleString("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+async function exportData(type: "markdown" | "json"): Promise<void> {
+  exporting.value = type;
+  const toast = showLoadingToast({
+    message: "正在生成文件…",
+    forbidClick: true,
+    duration: 0,
+  });
+  try {
+    const bundle = await createExportBundle();
+    const markdown = type === "markdown";
+    const filename = exportFilename(markdown ? "md" : "json");
     const result = await saveTextFile(
       filename,
       markdown ? serializeMarkdownExport(bundle) : serializeJsonExport(bundle),
-      markdown ? 'text/markdown;charset=utf-8' : 'application/json;charset=utf-8',
-    )
-    showSuccessToast(`已生成 ${result.filename}`)
+      markdown
+        ? "text/markdown;charset=utf-8"
+        : "application/json;charset=utf-8",
+    );
+    if (type === "json") {
+      const completedAt = new Date().toISOString();
+      localStorage.setItem("caiguo.lastBackupAt", completedAt);
+      lastBackupAt.value = completedAt;
+    }
+    showSuccessToast(`已生成 ${result.filename}`);
   } catch (reason) {
-    showFailToast(reason instanceof Error ? reason.message : String(reason))
+    showFailToast(reason instanceof Error ? reason.message : String(reason));
   } finally {
-    exporting.value = undefined
-    toast.close()
+    exporting.value = undefined;
+    toast.close();
   }
 }
 
 async function importFile(event: Event): Promise<void> {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  input.value = ''
-  if (!file) return
-  importing.value = true
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = "";
+  if (!file) return;
+  importing.value = true;
   try {
-    const content = await file.text()
-    const preview = parsePlanImport(content)
+    const content = await file.text();
+    const preview = parsePlanImport(content);
     await confirmAction({
-      title: '导入方案备份？',
+      title: "导入方案备份？",
       message: `文件可恢复 ${preview.plans.length} 个方案、${preview.tags.length} 个标签、${preview.matches.length} 场比赛和 ${preview.results.length} 条最新赛果。同 ID 方案会被覆盖；本地更新的比赛和赛果会保留，账单不会导入。`,
-      confirmText: '确认导入',
-    })
-    const result = await importPlansFromJson(content)
-    showSuccessToast(`已导入 ${result.plans} 个方案、${result.matches} 场比赛、${result.results} 条赛果`)
+      confirmText: "确认导入",
+    });
+    const result = await importPlansFromJson(content);
+    showSuccessToast(
+      `已导入 ${result.plans} 个方案、${result.matches} 场比赛、${result.results} 条赛果`,
+    );
   } catch (reason) {
-    if (reason === 'cancel' || reason === 'close') return
-    showFailToast(reason instanceof Error ? reason.message : String(reason))
+    if (reason === "cancel" || reason === "close") return;
+    showFailToast(reason instanceof Error ? reason.message : String(reason));
   } finally {
-    importing.value = false
+    importing.value = false;
   }
 }
 </script>
 
 <template>
   <AppPage secondary content-class="data-content">
-    <template #header><SubpageHeader title="数据与备份" subtitle="导出账单报告与完整结构化数据" /></template>
-    <AppCard class="data-info">
-      导出不会删除或修改本地数据。JSON 可恢复方案、标签及其比赛赛果，Markdown 适合阅读和归档。
-    </AppCard>
+    <template #header><SubpageHeader title="数据与备份" /></template>
+    <section class="data-section">
+      <h2>本机数据</h2>
+      <AppCard class="data-list" :padded="false">
+        <div class="data-row data-row--summary">
+          <span class="data-row__icon">
+            <AppIcon name="folder" :size="22" />
+          </span>
+          <span class="data-row__copy"><strong>比赛与方案</strong></span>
+          <span class="data-row__value">
+            {{ counts ? `${counts.matches}场 · ${counts.plans}个` : "读取中" }}
+          </span>
+        </div>
+        <div class="data-row data-row--summary">
+          <span class="data-row__icon data-row__icon--import">
+            <AppIcon name="tag" :size="22" />
+          </span>
+          <span class="data-row__copy"><strong>账单与标签</strong></span>
+          <span class="data-row__value">
+            {{
+              counts ? `${counts.ledgerOrders}笔 · ${counts.tags}个` : "读取中"
+            }}
+          </span>
+        </div>
+        <div class="data-row data-row--summary">
+          <span class="data-row__icon data-row__icon--history">
+            <AppIcon name="history" :size="22" />
+          </span>
+          <span class="data-row__copy"><strong>最后备份</strong></span>
+          <span class="data-row__value">{{
+            formatBackupTime(lastBackupAt)
+          }}</span>
+        </div>
+      </AppCard>
+    </section>
     <section class="data-section">
       <h2>导出</h2>
       <AppCard class="data-list" :padded="false">
@@ -90,7 +160,7 @@ async function importFile(event: Event): Promise<void> {
           </span>
           <span class="data-row__copy">
             <strong>导出 Markdown</strong>
-            <small>比赛、方案与账单摘要，适合阅读和归档</small>
+            <small>比赛、方案与账单摘要</small>
           </span>
           <van-loading v-if="exporting === 'markdown'" size="18" />
           <AppIcon v-else name="chevron-right" :size="18" />
@@ -106,7 +176,7 @@ async function importFile(event: Event): Promise<void> {
           </span>
           <span class="data-row__copy">
             <strong>导出 JSON</strong>
-            <small>完整结构化数据，适合迁移和存档</small>
+            <small>完整结构化数据</small>
           </span>
           <van-loading v-if="exporting === 'json'" size="18" />
           <AppIcon v-else name="chevron-right" :size="18" />
@@ -114,24 +184,27 @@ async function importFile(event: Event): Promise<void> {
       </AppCard>
     </section>
     <section class="data-section">
-      <h2>恢复</h2>
-      <AppCard class="data-list" :padded="false">
-        <button
-          type="button"
-          class="data-row"
-          :disabled="importing"
+      <h2>备份</h2>
+      <AppCard class="backup-actions">
+        <AppButton
+          block
+          :loading="exporting === 'json'"
+          :disabled="Boolean(exporting)"
+          @click="exportData('json')"
+        >
+          <template #icon><AppIcon name="save" :size="20" /></template>
+          立即备份
+        </AppButton>
+        <AppButton
+          block
+          variant="secondary"
+          :loading="importing"
+          :disabled="Boolean(exporting)"
           @click="fileInput?.click()"
         >
-          <span class="data-row__icon data-row__icon--import">
-            <AppIcon name="copy" :size="22" />
-          </span>
-          <span class="data-row__copy">
-            <strong>从 JSON 恢复方案</strong>
-            <small>恢复方案、标签及引用的比赛赛果；账单保持不变</small>
-          </span>
-          <van-loading v-if="importing" size="18" />
-          <AppIcon v-else name="chevron-right" :size="18" />
-        </button>
+          <template #icon><AppIcon name="refresh" :size="20" /></template>
+          从备份恢复
+        </AppButton>
       </AppCard>
     </section>
     <input
@@ -148,13 +221,8 @@ async function importFile(event: Event): Promise<void> {
 <style scoped>
 .data-content {
   align-content: start;
-  gap: 12px;
-}
-
-.data-info {
-  color: var(--color-text-secondary);
-  font-size: 11px;
-  line-height: 16px;
+  gap: 18px;
+  padding-top: 18px;
 }
 
 .data-section {
@@ -186,6 +254,18 @@ async function importFile(event: Event): Promise<void> {
   text-align: left;
 }
 
+.data-row--summary {
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  min-height: 58px;
+}
+
+.data-row__value {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
 .data-row + .data-row {
   border-top: 1px solid var(--color-divider);
 }
@@ -214,6 +294,11 @@ async function importFile(event: Event): Promise<void> {
 }
 
 .data-row__icon--json {
+  color: var(--color-violet);
+  background: rgb(154 145 245 / 12%);
+}
+
+.data-row__icon--history {
   color: var(--color-violet);
   background: rgb(154 145 245 / 12%);
 }
@@ -249,5 +334,11 @@ async function importFile(event: Event): Promise<void> {
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+.backup-actions {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
 }
 </style>

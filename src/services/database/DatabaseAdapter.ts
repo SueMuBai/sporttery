@@ -58,6 +58,7 @@ export interface DatabaseAdapter {
     id: string,
     returnCents: number,
     expectedUpdatedAt?: string,
+    previousReturnCents?: number,
   ): Promise<void>;
   updateLedgerNotes(
     id: string,

@@ -5,17 +5,11 @@ import { onBeforeRouteLeave } from "vue-router";
 
 import AppButton from "@/components/base/AppButton.vue";
 import AppBottomSheet from "@/components/base/AppBottomSheet.vue";
-import AppCard from "@/components/base/AppCard.vue";
 import AppState from "@/components/base/AppState.vue";
 import AppAssetIcon from "@/components/base/AppAssetIcon.vue";
-import AppIcon from "@/components/base/AppIcon.vue";
 import AppPage from "@/components/base/AppPage.vue";
 import SubpageHeader from "@/components/base/SubpageHeader.vue";
-import refreshIcon from "@/assets/ui/common/ic_refresh.svg?url";
-import concurrencyIcon from "@/assets/ui/settings/ic_concurrency.svg?url";
-import multiplierIcon from "@/assets/ui/settings/ic_multiplier.svg?url";
-import retryIcon from "@/assets/ui/settings/ic_retry.svg?url";
-import timeoutIcon from "@/assets/ui/settings/ic_timeout.svg?url";
+import systemSettingsIcon from "@/assets/ui/settings/ic_system_settings.svg?url";
 import { useSettingsStore } from "@/stores/settings";
 import { DEFAULT_SETTINGS, type AppSettings } from "@/types/domain";
 
@@ -23,8 +17,6 @@ interface SettingDefinition {
   key: keyof AppSettings;
   title: string;
   description: string;
-  iconSrc: string;
-  suffix?: string;
   min: number;
   max: number;
 }
@@ -36,66 +28,41 @@ const saved = ref(false);
 const leaveSheetVisible = ref(false);
 let resolveLeaveDecision: ((allow: boolean) => void) | undefined;
 
-const settingGroups: Array<{
-  title: string;
-  items: SettingDefinition[];
-}> = [
+const settingItems: SettingDefinition[] = [
   {
-    title: "比赛数据",
-    items: [
-      {
-        key: "historyLimits",
-        title: "每场历史条数",
-        description: "历史交锋最多读取的比赛数量",
-        iconSrc: refreshIcon,
-        min: 1,
-        max: 50,
-      },
-    ],
+    key: "historyLimits",
+    title: "每场历史条数",
+    description: "每场比赛保留的历史记录条数",
+    min: 1,
+    max: 50,
   },
   {
-    title: "请求策略",
-    items: [
-      {
-        key: "workers",
-        title: "并发请求数",
-        description: "同时请求历史数据的任务数量",
-        iconSrc: concurrencyIcon,
-        min: 1,
-        max: 12,
-      },
-      {
-        key: "timeoutSeconds",
-        title: "接口超时",
-        description: "单次网络请求的最长等待时间",
-        iconSrc: timeoutIcon,
-        suffix: "秒",
-        min: 5,
-        max: 120,
-      },
-      {
-        key: "retries",
-        title: "失败重试次数",
-        description: "网络失败后的自动重试次数",
-        iconSrc: retryIcon,
-        min: 0,
-        max: 8,
-      },
-    ],
+    key: "workers",
+    title: "并发请求数",
+    description: "同时向接口发起的最大请求数",
+    min: 1,
+    max: 12,
   },
   {
-    title: "投注默认值",
-    items: [
-      {
-        key: "defaultMultiplier",
-        title: "默认倍数",
-        description: "新选票默认使用的投注倍数",
-        iconSrc: multiplierIcon,
-        suffix: "倍",
-        min: 1,
-        max: 999,
-      },
-    ],
+    key: "timeoutSeconds",
+    title: "接口超时（秒）",
+    description: "接口请求超时时间，单位：秒",
+    min: 5,
+    max: 120,
+  },
+  {
+    key: "retries",
+    title: "失败重试次数",
+    description: "接口请求失败后的重试次数",
+    min: 0,
+    max: 8,
+  },
+  {
+    key: "defaultMultiplier",
+    title: "默认倍数",
+    description: "生成方案的默认倍数",
+    min: 1,
+    max: 999,
   },
 ];
 
@@ -144,6 +111,7 @@ async function saveAndLeave(): Promise<void> {
 }
 
 function update(key: keyof AppSettings, value: number): void {
+  if (!Number.isFinite(value)) return;
   draft.value = { ...draft.value, [key]: value };
   saved.value = false;
 }
@@ -163,7 +131,18 @@ async function save(): Promise<void> {
 <template>
   <AppPage secondary content-class="system-content">
     <template #header>
-      <SubpageHeader title="系统设置" subtitle="调整数据获取与投注默认参数" />
+      <SubpageHeader title="系统设置">
+        <template #action>
+          <button
+            type="button"
+            class="header-save"
+            :disabled="!dirty || store.saving"
+            @click="save"
+          >
+            保存
+          </button>
+        </template>
+      </SubpageHeader>
     </template>
     <AppState
       v-if="store.loading && !store.settings"
@@ -179,41 +158,38 @@ async function save(): Promise<void> {
       @action="store.load"
     />
     <template v-else>
-      <section
-        v-for="group in settingGroups"
-        :key="group.title"
-        class="setting-group"
-      >
-        <h2>{{ group.title }}</h2>
-        <AppCard class="setting-list" :padded="false">
-          <div v-for="item in group.items" :key="item.key" class="setting-row">
-            <span class="setting-row__icon">
-              <AppAssetIcon :src="item.iconSrc" :size="20" />
-            </span>
-            <div class="setting-row__copy">
+      <section class="setting-group">
+        <h2>
+          <AppAssetIcon :src="systemSettingsIcon" :size="22" />
+          <span>系统参数</span>
+        </h2>
+        <div class="setting-list">
+          <label
+            v-for="item in settingItems"
+            :key="item.key"
+            class="setting-row"
+          >
+            <span class="setting-row__copy">
               <strong>{{ item.title }}</strong>
               <small>{{ item.description }}</small>
-            </div>
-            <van-stepper
-              :model-value="draft[item.key]"
+            </span>
+            <input
+              :value="draft[item.key]"
+              type="number"
+              inputmode="numeric"
               :min="item.min"
               :max="item.max"
-              integer
-              :aria-label="`${item.title}，当前 ${draft[item.key]}${item.suffix || ''}`"
-              @update:model-value="update(item.key, Number($event))"
+              :aria-label="item.title"
+              @input="
+                update(
+                  item.key,
+                  Number(($event.target as HTMLInputElement).value),
+                )
+              "
             />
-            <span v-if="item.suffix" class="setting-row__suffix">{{
-              item.suffix
-            }}</span>
-          </div>
-        </AppCard>
+          </label>
+        </div>
       </section>
-      <AppCard class="info-banner">
-        <AppIcon name="info" :size="21" />
-        <p>
-          并发数过高可能触发接口限制。修改会在下一次数据同步或新建方案时生效。
-        </p>
-      </AppCard>
       <p v-if="dirty" class="save-state">有尚未保存的修改</p>
       <p v-else-if="saved" class="save-state save-state--success">
         所有设置已保存
@@ -260,62 +236,68 @@ async function save(): Promise<void> {
 <style scoped>
 .system-content {
   align-content: start;
-  gap: 12px;
+  gap: 16px;
+  padding-top: 18px;
   padding-bottom: calc(76px + env(safe-area-inset-bottom));
+}
+
+.header-save {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  color: var(--color-primary);
+  background: transparent;
+  font-size: 14px;
+  line-height: 20px;
+  place-items: center;
+}
+
+.header-save:disabled {
+  color: var(--color-text-tertiary);
 }
 
 .setting-group {
   display: grid;
-  gap: 8px;
+  gap: 12px;
 }
 
 .setting-group h2 {
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+  gap: 10px;
   margin: 0 4px;
+  color: var(--color-text);
   font-size: 15px;
   font-weight: 600;
   line-height: 21px;
 }
 
-.info-banner {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
+.setting-group h2 :deep(.app-asset-icon) {
   color: var(--color-primary);
-  background: var(--color-primary-soft);
-}
-
-.info-banner p {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  line-height: 1.5;
 }
 
 .setting-list {
   display: grid;
+  overflow: hidden;
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--outline-default), var(--shadow-card);
 }
 
 .setting-row {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) 112px;
   align-items: center;
-  min-height: 52px;
-  gap: 8px;
-  padding: 6px 10px;
+  min-height: 68px;
+  gap: 10px;
+  padding: 8px 16px;
 }
 
 .setting-row + .setting-row {
   border-top: 1px solid var(--color-divider);
-}
-
-.setting-row__icon {
-  display: grid;
-  width: 34px;
-  height: 34px;
-  border-radius: var(--radius-control);
-  place-items: center;
-  color: var(--color-primary);
-  background: var(--color-primary-soft);
 }
 
 .setting-row__copy {
@@ -326,38 +308,37 @@ async function save(): Promise<void> {
 
 .setting-row__copy strong {
   font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
 }
 
 .setting-row__copy small {
   color: var(--color-text-secondary);
-  font-size: 10px;
-  line-height: 1.35;
-}
-
-.setting-row__suffix {
-  color: var(--color-text-secondary);
   font-size: 11px;
+  line-height: 16px;
 }
 
-.setting-row :deep(.van-stepper__minus),
-.setting-row :deep(.van-stepper__plus),
-.setting-row :deep(.van-stepper__input) {
-  height: 36px;
-  background: var(--color-surface-soft);
+.setting-row input {
+  width: 112px;
+  height: 40px;
+  padding: 0 12px;
+  border: 0;
+  outline: 0;
+  border-radius: 8px;
+  color: var(--color-text);
+  background: var(--color-surface);
+  box-shadow: var(--outline-default);
+  font: inherit;
+  font-size: 14px;
+  line-height: 40px;
 }
 
-.setting-row :deep(.van-stepper__minus),
-.setting-row :deep(.van-stepper__plus) {
-  width: 36px;
-  color: var(--color-primary);
-}
-
-.setting-row :deep(.van-stepper__input) {
-  width: 40px;
+.setting-row input:focus {
+  box-shadow: var(--outline-primary);
 }
 
 .save-state {
-  margin: 0;
+  margin: -4px 0 0;
   color: var(--color-warning);
   font-size: var(--font-size-sm);
   text-align: center;

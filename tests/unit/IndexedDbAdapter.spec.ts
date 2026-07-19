@@ -439,7 +439,7 @@ describe("IndexedDbAdapter", () => {
       updatedAt: timestamp,
     });
 
-    await adapter.updateLedgerReturn("ledger-concurrent", 356, timestamp);
+    await adapter.updateLedgerReturn("ledger-concurrent", 356, timestamp, 250);
     await expect(
       adapter.updateLedgerNotes("ledger-concurrent", "长".repeat(81)),
     ).rejects.toThrow("80");
@@ -452,7 +452,7 @@ describe("IndexedDbAdapter", () => {
     expect((await adapter.listLedger())[0]?.returnCents).toBe(356);
     expect(await adapter.listLedgerAdjustments("ledger-concurrent")).toEqual([
       expect.objectContaining({
-        previousReturnCents: 0,
+        previousReturnCents: 250,
         nextReturnCents: 356,
       }),
     ]);
@@ -470,7 +470,7 @@ describe("IndexedDbAdapter", () => {
     });
     await adapter.undoLatestLedgerAdjustment(withNotes.id, withNotes.updatedAt);
     expect((await adapter.listLedger())[0]).toMatchObject({
-      returnCents: 0,
+      returnCents: 250,
       returnManual: false,
     });
     expect(await adapter.listLedgerAdjustments("ledger-concurrent")).toEqual([]);

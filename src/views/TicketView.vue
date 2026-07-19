@@ -21,6 +21,7 @@ import { centsToYuan } from '@/utils/money'
 import clearIcon from '@/assets/ui/ticket/ic_clear.svg?url'
 import manageIcon from '@/assets/ui/ticket/ic_manage.svg?url'
 import searchIcon from '@/assets/ui/ticket/ic_search.svg?url'
+import emptyMatchesIllustration from '@/assets/ui/ticket/ill_empty_matches.svg?url'
 
 const store = useTicketStore()
 const router = useRouter()
@@ -133,8 +134,8 @@ watch(
   () => [store.activeMarket, visibleMatches.value[0]?.matchId] as const,
   ([market, firstMatchId]) => {
     if (market !== 'mixed' || firstMatchId === undefined) return
-    if (Object.values(store.expandedHistory).some(Boolean)) return
-    store.toggleHistory(firstMatchId)
+    const expandedMatch = visibleMatches.value.find((match) => store.expandedHistory[match.matchId])
+    store.expandedHistory = { [expandedMatch?.matchId ?? firstMatchId]: true }
   },
   { immediate: true },
 )
@@ -177,6 +178,15 @@ function openMultiplierEditor(): void {
 function purchaseFromMultiplierEditor(): void {
   showMultiplierEditor.value = false
   showPurchase.value = true
+}
+
+function toggleMatch(matchId: number): void {
+  if (store.activeMarket !== 'mixed') {
+    store.toggleHistory(matchId)
+    return
+  }
+  const willExpand = !store.expandedHistory[matchId]
+  store.expandedHistory = willExpand ? { [matchId]: true } : {}
 }
 
 async function clearSelections(): Promise<void> {
@@ -306,7 +316,7 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
         @action="store.initialize"
       />
       <section v-else-if="!visibleMatches.length" class="ticket-empty-card" role="status">
-        <span class="ticket-empty-card__icon"><AppIcon name="folder" :size="46" /></span>
+        <img class="ticket-empty-card__illustration" :src="emptyMatchesIllustration" alt="" aria-hidden="true">
         <strong>暂无可选比赛</strong>
         <p>当前筛选条件下没有比赛</p>
         <AppButton size="small" @click="refresh">立即刷新</AppButton>
@@ -320,7 +330,7 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
           :selected-keys="selectedKeys"
           :expanded="Boolean(store.expandedHistory[match.matchId])"
           :mixed-market="store.mixedMarketFor(match.matchId)"
-          @toggle-history="store.toggleHistory(match.matchId)"
+          @toggle-history="toggleMatch(match.matchId)"
           @change-mixed-market="store.setMixedMarket(match.matchId, $event)"
           @select="selectOption(match.matchId, $event)"
         />
@@ -507,15 +517,12 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
   text-align: center;
 }
 
-.ticket-empty-card__icon {
-  display: grid;
-  width: 72px;
-  height: 72px;
+.ticket-empty-card__illustration {
+  display: block;
+  width: 96px;
+  height: 76px;
   margin-bottom: 8px;
-  border-radius: 22px;
-  place-items: center;
-  color: var(--color-primary);
-  background: var(--color-primary-soft);
+  object-fit: contain;
 }
 
 .ticket-empty-card strong {

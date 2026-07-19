@@ -1,0 +1,21 @@
+<svg width="96" height="76" viewBox="0 0 96 76" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="ticket" x1="18" y1="17" x2="70" y2="62" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#BBD7FF"/>
+      <stop offset="1" stop-color="#78AFFF"/>
+    </linearGradient>
+    <linearGradient id="ball" x1="55" y1="38" x2="84" y2="67" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8FC1FF"/>
+      <stop offset="1" stop-color="#5797F5"/>
+    </linearGradient>
+  </defs>
+  <path d="M9 19v8M5 23h8M72 11v6M69 14h6M86 25v4M84 27h4" stroke="#9CC5FF" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="15" cy="51" r="2.2" fill="#C9DFFF"/>
+  <circle cx="78" cy="20" r="2" fill="#C9DFFF"/>
+  <path d="M24 17h43a5 5 0 0 1 5 5v10.5a7.5 7.5 0 0 0 0 15V54a5 5 0 0 1-5 5H24a5 5 0 0 1-5-5v-6.5a7.5 7.5 0 0 0 0-15V22a5 5 0 0 1 5-5Z" fill="#F4F8FF" stroke="url(#ticket)" stroke-width="3"/>
+  <path d="M36 22v32" stroke="#D5E5FB" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 5"/>
+  <path d="M44 30h17M44 38h13M44 46h18" stroke="#8DBAFF" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="69" cy="52" r="16" fill="white" stroke="url(#ball)" stroke-width="3"/>
+  <path d="m69 43 5 3-2 6h-6l-2-6 5-3Zm-11 4 6-1m-5 11 7-5m10 8-4-8m9-5-7-1m5 13-3-7" stroke="#6EA7F8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="69" cy="52" r="3.2" fill="#6EA7F8"/>
+</svg>

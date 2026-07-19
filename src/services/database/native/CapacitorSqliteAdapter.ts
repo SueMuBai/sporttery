@@ -702,9 +702,16 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
     id: string,
     returnCents: number,
     expectedUpdatedAt?: string,
+    previousReturnCents?: number,
   ): Promise<void> {
     if (!Number.isSafeInteger(returnCents) || returnCents < 0) {
       throw new TypeError("回款金额必须是非负整数分");
+    }
+    if (
+      previousReturnCents !== undefined &&
+      (!Number.isSafeInteger(previousReturnCents) || previousReturnCents < 0)
+    ) {
+      throw new TypeError("原回款金额必须是非负整数分");
     }
     await this.transaction(async () => {
       const rows = await this.query("SELECT return_cents,updated_at FROM ledger_orders WHERE id=?", [id]);
@@ -716,7 +723,13 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
       const stamp = now();
       await this.runInTransaction(
         "INSERT INTO ledger_adjustments(order_id,previous_return_cents,next_return_cents,occurred_at,note) VALUES(?,?,?,?,?)",
-        [id, Number(existing.return_cents), returnCents, stamp, "手工修改实际回款"],
+        [
+          id,
+          previousReturnCents ?? Number(existing.return_cents),
+          returnCents,
+          stamp,
+          "手工修改实际回款",
+        ],
       );
       await this.runInTransaction(
         "UPDATE ledger_orders SET return_cents=?,return_manual=?,updated_at=? WHERE id=?",

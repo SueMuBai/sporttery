@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 
-import headerBackground from '@/assets/ui/common/bg_header.svg?url'
+import billIcon from '@/assets/icons/navigation/ic_nav_bill_selected.svg?url'
 import AppBottomSheet from '@/components/base/AppBottomSheet.vue'
 import AppIcon from '@/components/base/AppIcon.vue'
 import { useLedgerStore, type EvaluatedLedgerOrder } from '@/stores/ledger'
@@ -17,10 +17,21 @@ const emit = defineEmits<{
 }>()
 
 const store = useLedgerStore()
-const historyHeaderBackground = `url("${headerBackground}")`
 const adjustments = computed(() =>
   props.item ? (store.adjustments[props.item.order.id] ?? []) : [],
 )
+const systemSettlementAt = computed(() => {
+  if (!props.item) return ''
+  const matchIds = new Set(
+    props.item.order.planSnapshot.selections.map((selection) => selection.matchId),
+  )
+  const fetchedTimes = store.results
+    .filter((result) => matchIds.has(result.matchId))
+    .map((result) => result.fetchedAt)
+    .filter(Boolean)
+    .sort()
+  return fetchedTimes.at(-1) ?? props.item.order.createdAt
+})
 
 watch(
   () => [props.show, props.item?.order.id] as const,
@@ -48,23 +59,22 @@ function formatDateTime(value: string): string {
   <AppBottomSheet
     :show="show"
     class="ledger-history-sheet"
-    :style="{ '--history-header-background': historyHeaderBackground }"
     title="回款修改历史"
     close-label="关闭回款修改历史"
     @update:show="emit('update:show', $event)"
   >
     <div v-if="item" class="history-sheet">
       <div class="history-plan">
-        <AppIcon name="history" :size="22" />
+        <img :src="billIcon" alt="" />
         <strong>{{ item.order.planName }}</strong>
         <span>· {{ formatDateTime(item.order.purchasedAt) }}</span>
       </div>
 
       <div class="history-timeline">
         <article v-if="item.status === 'settled'" class="history-entry history-entry--system">
-          <div class="history-entry__icon"><AppIcon name="system" :size="20" /></div>
+          <div class="history-entry__icon"><AppIcon name="monitor" :size="18" /></div>
           <div class="history-entry__card">
-            <header><strong>系统结算</strong><time>{{ formatDateTime(item.order.updatedAt) }}</time></header>
+            <header><strong>系统结算</strong><time>{{ formatDateTime(systemSettlementAt) }}</time></header>
             <div class="history-entry__amounts">
               <div><span>旧回款</span><b>¥0.00</b></div>
               <AppIcon name="chevron-right" :size="18" />
@@ -102,10 +112,10 @@ function formatDateTime(value: string): string {
 <style scoped>
 .history-sheet {
   display: grid;
-  gap: 14px;
-  min-height: calc(100dvh - 116px - env(safe-area-inset-top));
+  gap: 12px;
+  min-height: calc(100dvh - 44px - env(safe-area-inset-top));
   align-content: start;
-  padding: 12px 14px calc(22px + env(safe-area-inset-bottom));
+  padding: 12px var(--page-gutter) calc(18px + env(safe-area-inset-bottom));
   background: var(--color-page);
 }
 
@@ -122,14 +132,11 @@ function formatDateTime(value: string): string {
 
 .ledger-history-sheet :deep(.app-bottom-sheet__header) {
   grid-template-columns: 44px minmax(0, 1fr) 44px;
-  min-height: calc(88px + env(safe-area-inset-top));
+  min-height: calc(44px + env(safe-area-inset-top));
   padding: env(safe-area-inset-top) 14px 0;
-  color: #fff;
-  background-color: #80c3ff;
-  background-image: var(--history-header-background);
-  background-position: center;
-  background-size: cover;
-  border-bottom: 0;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-divider);
 }
 
 .ledger-history-sheet :deep(.app-bottom-sheet__header > div) {
@@ -138,14 +145,15 @@ function formatDateTime(value: string): string {
 }
 
 .ledger-history-sheet :deep(.app-bottom-sheet__header h2) {
-  font-size: 19px;
+  font-size: 17px;
+  font-weight: 600;
 }
 
 .ledger-history-sheet :deep(.app-bottom-sheet__close) {
   position: relative;
   grid-row: 1;
   grid-column: 1;
-  color: #fff;
+  color: var(--color-text);
 }
 
 .ledger-history-sheet :deep(.app-bottom-sheet__close .app-icon) {
@@ -163,19 +171,24 @@ function formatDateTime(value: string): string {
 
 .history-plan {
   display: flex;
-  min-height: 50px;
+  min-height: 48px;
   align-items: center;
   gap: 7px;
-  padding: 0 14px;
+  padding: 0 12px;
   border-radius: var(--radius-card);
   color: var(--color-primary);
   background: var(--color-surface);
   box-shadow: var(--outline-default);
 }
 
+.history-plan img {
+  width: 24px;
+  height: 24px;
+}
+
 .history-plan strong {
   overflow: hidden;
-  font-size: 16px;
+  font-size: 15px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -189,15 +202,15 @@ function formatDateTime(value: string): string {
 .history-timeline {
   position: relative;
   display: grid;
-  gap: 12px;
-  padding-left: 48px;
+  gap: 10px;
+  padding-left: 40px;
 }
 
 .history-timeline::before {
   position: absolute;
   top: 22px;
   bottom: 22px;
-  left: 21px;
+  left: 17px;
   width: 1px;
   background: var(--color-border);
   content: "";
@@ -210,11 +223,11 @@ function formatDateTime(value: string): string {
 .history-entry__icon {
   position: absolute;
   z-index: 1;
-  top: 14px;
-  left: -48px;
+  top: 12px;
+  left: -40px;
   display: grid;
-  width: 42px;
-  height: 42px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   place-items: center;
   color: #fff;
@@ -227,9 +240,9 @@ function formatDateTime(value: string): string {
 
 .history-entry__card {
   display: grid;
-  gap: 12px;
-  min-height: 116px;
-  padding: 14px;
+  gap: 10px;
+  min-height: 106px;
+  padding: 12px;
   border-radius: var(--radius-card);
   background: var(--color-surface);
   box-shadow: var(--outline-default);
@@ -240,12 +253,12 @@ function formatDateTime(value: string): string {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding-bottom: 10px;
+  padding-bottom: 8px;
   border-bottom: 1px solid var(--color-divider);
 }
 
 .history-entry__card header strong {
-  font-size: 16px;
+  font-size: 15px;
 }
 
 .history-entry__card time {
@@ -272,7 +285,7 @@ function formatDateTime(value: string): string {
 }
 
 .history-entry__amounts b {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 500;
 }
 
@@ -280,7 +293,7 @@ function formatDateTime(value: string): string {
   display: flex;
   gap: 8px;
   margin: 0;
-  padding-top: 10px;
+  padding-top: 8px;
   border-top: 1px solid var(--color-divider);
 }
 
@@ -300,7 +313,7 @@ function formatDateTime(value: string): string {
 
 .history-note {
   display: flex;
-  min-height: 48px;
+  min-height: 42px;
   align-items: center;
   gap: 8px;
   padding: 8px 10px;

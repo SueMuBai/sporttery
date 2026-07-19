@@ -161,6 +161,7 @@ export const useLedgerStore = defineStore("ledger", () => {
         item.order.id,
         returnCents,
         item.order.updatedAt,
+        item.displayedReturnCents,
       );
       await load();
     } finally {

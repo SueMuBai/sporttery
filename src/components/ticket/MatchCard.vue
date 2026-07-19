@@ -37,25 +37,18 @@ function sectionKeyForMarket(market: MarketCode): string | undefined {
   return mixedSections.find((section) => section.openMarket === market)?.key
 }
 
-const expandedMixedSections = ref(new Set([
-  'score',
-  ...(sectionKeyForMarket(props.mixedMarket) ? [sectionKeyForMarket(props.mixedMarket)!] : []),
-]))
+const expandedMixedSection = ref(sectionKeyForMarket(props.mixedMarket) ?? 'score')
 
 watch(
   () => props.mixedMarket,
   (market) => {
     const key = sectionKeyForMarket(market)
-    if (!key || expandedMixedSections.value.has(key)) return
-    expandedMixedSections.value = new Set([...expandedMixedSections.value, key])
+    if (key) expandedMixedSection.value = key
   },
 )
 
 function toggleMixedSection(section: (typeof mixedSections)[number]): void {
-  const next = new Set(expandedMixedSections.value)
-  if (next.has(section.key)) next.delete(section.key)
-  else next.add(section.key)
-  expandedMixedSections.value = next
+  expandedMixedSection.value = expandedMixedSection.value === section.key ? '' : section.key
   emit('changeMixedMarket', section.openMarket)
 }
 </script>
@@ -146,9 +139,9 @@ function toggleMixedSection(section: (typeof mixedSections)[number]): void {
       <section v-for="section in mixedSections" :key="section.key" class="mixed-section">
         <button type="button" class="mixed-section__header" @click="toggleMixedSection(section)">
           <strong>{{ section.label }}</strong>
-          <AppIcon :name="expandedMixedSections.has(section.key) ? 'chevron-up' : 'chevron-down'" :size="16" />
+          <AppIcon :name="expandedMixedSection === section.key ? 'chevron-up' : 'chevron-down'" :size="16" />
         </button>
-        <div v-if="expandedMixedSections.has(section.key)" class="mixed-section__content">
+        <div v-if="expandedMixedSection === section.key" class="mixed-section__content">
           <MarketGrid
             :match-id="match.matchId"
             :market="section.openMarket"

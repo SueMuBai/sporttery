@@ -147,8 +147,15 @@ async function saveReturn(): Promise<void> {
   try {
     returnError.value = "";
     const cents = yuanToCents(returnValue.value);
+    if (cents < 0) {
+      throw new RangeError("回款金额不能小于 0.00 元");
+    }
     if (cents > 99_999_999) {
       throw new RangeError("回款金额不能超过 999999.99 元");
+    }
+    if (cents === item.value.displayedReturnCents) {
+      showSuccessToast("回款金额未变化");
+      return;
     }
     await store.updateReturn(item.value, cents);
     await store.loadAdjustments(id.value);
@@ -209,6 +216,9 @@ async function saveReturn(): Promise<void> {
                 v-model="returnValue"
                 type="number"
                 inputmode="decimal"
+                min="0"
+                max="999999.99"
+                step="0.01"
                 aria-label="回款金额"
                 @input="returnError = ''"
               />
@@ -329,11 +339,11 @@ async function saveReturn(): Promise<void> {
 .detail-hero {
   position: relative;
   display: grid;
-  min-height: 120px;
+  min-height: 110px;
   align-content: center;
   gap: 6px;
   overflow: hidden;
-  padding: 18px 24px;
+  padding: 15px 22px;
   color: #fff;
   background-color: #80c3ff;
   background-position: center;
@@ -369,7 +379,7 @@ async function saveReturn(): Promise<void> {
 
 .detail-hero__calendar {
   position: absolute;
-  top: 28px;
+  top: 26px;
   right: 34px;
   display: grid;
   width: 54px;
@@ -416,8 +426,8 @@ async function saveReturn(): Promise<void> {
 .return-card {
   display: grid;
   grid-template-columns: minmax(74px, 0.85fr) minmax(144px, 1.65fr) minmax(82px, 0.95fr);
-  min-height: 150px;
-  padding: 16px 10px;
+  min-height: 140px;
+  padding: 12px 10px;
 }
 
 .return-card > div {
@@ -502,7 +512,7 @@ async function saveReturn(): Promise<void> {
 
 .result-card > header {
   display: flex;
-  min-height: 44px;
+  min-height: 40px;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
@@ -534,7 +544,7 @@ async function saveReturn(): Promise<void> {
   display: grid;
   grid-template-columns: 26px minmax(56px, 0.72fr) minmax(0, 1.7fr) minmax(42px, 0.55fr) 16px;
   align-items: center;
-  min-height: 66px;
+  min-height: 62px;
   gap: 7px;
   padding: 6px 8px;
   border-radius: var(--radius-control);

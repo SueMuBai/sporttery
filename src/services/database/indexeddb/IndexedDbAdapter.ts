@@ -492,9 +492,16 @@ export class IndexedDbAdapter implements DatabaseAdapter {
     id: string,
     returnCents: number,
     expectedUpdatedAt?: string,
+    previousReturnCents?: number,
   ): Promise<void> {
     if (!Number.isSafeInteger(returnCents) || returnCents < 0) {
       throw new TypeError("回款金额必须是非负整数分");
+    }
+    if (
+      previousReturnCents !== undefined &&
+      (!Number.isSafeInteger(previousReturnCents) || previousReturnCents < 0)
+    ) {
+      throw new TypeError("原回款金额必须是非负整数分");
     }
     await this.db.transaction("rw", this.db.ledgerOrders, this.db.ledgerAdjustments, async () => {
       const existing = await this.db.ledgerOrders.get(id);
@@ -504,7 +511,7 @@ export class IndexedDbAdapter implements DatabaseAdapter {
       }
       await this.db.ledgerAdjustments.add({
         orderId: id,
-        previousReturnCents: existing.returnCents,
+        previousReturnCents: previousReturnCents ?? existing.returnCents,
         nextReturnCents: returnCents,
         occurredAt: now(),
         note: "手工修改实际回款",

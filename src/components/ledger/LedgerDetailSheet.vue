@@ -127,6 +127,7 @@ async function saveReturn(): Promise<void> {
   try {
     returnError.value = ''
     const cents = yuanToCents(returnValue.value)
+    if (cents < 0) throw new RangeError('回款金额不能小于 0.00 元')
     if (cents > 99_999_999) throw new RangeError('回款金额不能超过 999999.99 元')
     if (cents === props.item.displayedReturnCents) {
       showSuccessToast('回款金额未变化')
@@ -193,6 +194,9 @@ async function saveReturn(): Promise<void> {
           v-model="returnValue"
           type="number"
           inputmode="decimal"
+          min="0"
+          max="999999.99"
+          step="0.01"
           label="¥"
           placeholder="0.00"
           clearable
