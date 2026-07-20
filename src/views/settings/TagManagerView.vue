@@ -150,7 +150,7 @@ function openEditor(tag?: PlanTag): void {
   color.value = tag?.color ?? colors[store.tags.length % colors.length]!;
   editError.value = "";
   addError.value = "";
-  addExpanded.value = false;
+  addExpanded.value = true;
 }
 
 function cancelEdit(): void {
@@ -491,7 +491,10 @@ async function confirmRemove(): Promise<void> {
     </AppCard>
     <section v-if="!tagLimitReached" ref="addSection" class="tag-add-section">
       <h2>新增标签</h2>
-      <AppCard v-if="addExpanded && !editing" class="tag-add-card">
+      <AppCard
+        v-if="addExpanded"
+        :class="['tag-add-card', { 'tag-add-card--locked': editing }]"
+      >
         <div class="tag-add-row">
           <label
             :class="[
@@ -503,6 +506,7 @@ async function confirmRemove(): Promise<void> {
               ref="addInput"
               v-model="newName"
               :maxlength="MAX_PLAN_TAG_NAME_LENGTH"
+              :disabled="Boolean(editing)"
               placeholder="标签名称"
               @input="addError = ''"
               @keydown.enter.prevent="addTag"
@@ -510,7 +514,11 @@ async function confirmRemove(): Promise<void> {
             <span>{{ newName.length }}/{{ MAX_PLAN_TAG_NAME_LENGTH }}</span>
           </label>
           <AppButton
-            :disabled="!newName.trim() || Boolean(addDuplicateError)"
+            :disabled="
+              Boolean(editing) ||
+                !newName.trim() ||
+                Boolean(addDuplicateError)
+            "
             :loading="store.saving"
             @click="addTag"
           >
@@ -525,6 +533,7 @@ async function confirmRemove(): Promise<void> {
             :class="{ selected: newColor === item }"
             :style="{ backgroundColor: item }"
             :aria-label="item"
+            :disabled="Boolean(editing)"
             @click="newColor = item"
           />
           <span
@@ -534,6 +543,9 @@ async function confirmRemove(): Promise<void> {
         <p v-if="addError || addDuplicateError" class="tag-error" role="alert">
           <AppIcon name="warning" :size="17" />
           <span>{{ addError || addDuplicateError }}</span>
+        </p>
+        <p v-else-if="editing" class="tag-add-lock-note" role="status">
+          请先完成或取消上方标签编辑，再新增标签
         </p>
       </AppCard>
       <button v-else type="button" class="tag-add-collapsed" @click="focusAdd">
@@ -695,6 +707,26 @@ async function confirmRemove(): Promise<void> {
 .tag-add-card {
   display: grid;
   gap: 8px;
+}
+
+.tag-add-card--locked .tag-add-input,
+.tag-add-card--locked .inline-colors {
+  opacity: 0.62;
+}
+
+.tag-add-card--locked .tag-add-input {
+  background: var(--color-disabled);
+}
+
+.tag-add-card--locked .inline-colors button {
+  cursor: not-allowed;
+}
+
+.tag-add-lock-note {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  line-height: 16px;
 }
 
 .tag-add-row {

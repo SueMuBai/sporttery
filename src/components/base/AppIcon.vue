@@ -6,6 +6,7 @@ export type AppIconName =
   | "calendar-filter"
   | "check"
   | "chevron-down"
+  | "chevron-left"
   | "chevron-right"
   | "chevron-up"
   | "close"
@@ -75,6 +76,9 @@ withDefaults(defineProps<{ name: AppIconName; size?: number }>(), { size: 24 });
       </template>
       <template v-else-if="name === 'chevron-down'">
         <path d="m5 9 7 7 7-7" />
+      </template>
+      <template v-else-if="name === 'chevron-left'">
+        <path d="m15 5-7 7 7 7" />
       </template>
       <template v-else-if="name === 'chevron-right'">
         <path d="m9 5 7 7-7 7" />

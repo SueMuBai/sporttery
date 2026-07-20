@@ -57,4 +57,34 @@ describe('BetMultiplierSheet', () => {
     expect(wrapper.emitted('save')).toHaveLength(1)
     expect(wrapper.emitted('purchase')).toHaveLength(1)
   })
+
+  it('uses the in-app keypad without opening a system input method', async () => {
+    const wrapper = await openSheet(12)
+    const input = wrapper.get('.bet-multiplier-input input')
+
+    expect(input.attributes('readonly')).toBeDefined()
+    expect(input.attributes('inputmode')).toBe('none')
+    expect(wrapper.findAll('.bet-number-keyboard button')).toHaveLength(14)
+
+    await wrapper.get('.bet-number-keyboard__key').trigger('click')
+    expect(wrapper.emitted('update:multiplier')?.at(-1)).toEqual([1])
+
+    await wrapper.get('.bet-number-keyboard__side').trigger('click')
+    expect(wrapper.emitted('update:multiplier')?.at(-1)).toEqual([1])
+  })
+
+  it('supports keypad input, deletion and completion', async () => {
+    const wrapper = await openSheet(2)
+    const keys = wrapper.findAll('.bet-number-keyboard__key')
+
+    await keys[1]!.trigger('click')
+    await keys[5]!.trigger('click')
+    expect(wrapper.emitted('update:multiplier')?.at(-1)).toEqual([25])
+
+    await wrapper.get('[aria-label="删除一位"]').trigger('click')
+    expect(wrapper.emitted('update:multiplier')?.at(-1)).toEqual([2])
+
+    await wrapper.get('.bet-number-keyboard__done').trigger('click')
+    expect(wrapper.emitted('update:show')?.at(-1)).toEqual([false])
+  })
 })

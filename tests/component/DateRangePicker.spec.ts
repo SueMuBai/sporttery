@@ -37,6 +37,25 @@ describe('DateRangePicker', () => {
     expect(wrapper.find('.date-range-picker__days').exists()).toBe(true)
   })
 
+  it('renders symmetric month navigation and exposes the bounded disabled state', async () => {
+    const wrapper = mountPicker()
+    const previous = wrapper.get('button[aria-label="上一页"]')
+    const next = wrapper.get('button[aria-label="下一页"]')
+
+    expect(previous.get('.app-icon path').attributes('d')).toBe('m15 5-7 7 7 7')
+    expect(next.get('.app-icon path').attributes('d')).toBe('m9 5 7 7-7 7')
+    expect(previous.attributes('disabled')).toBeUndefined()
+    expect(next.attributes('disabled')).toBeDefined()
+
+    await previous.trigger('click')
+    expect(wrapper.get('.date-range-picker__toolbar').text()).toContain('6月')
+    expect(wrapper.get('button[aria-label="下一页"]').attributes('disabled')).toBeUndefined()
+
+    await wrapper.get('button[aria-label="下一页"]').trigger('click')
+    expect(wrapper.get('.date-range-picker__toolbar').text()).toContain('7月')
+    expect(wrapper.get('button[aria-label="下一页"]').attributes('disabled')).toBeDefined()
+  })
+
   it('renders the compact V2 Sunday-first calendar layout', () => {
     const wrapper = mountPicker()
     const weekdays = wrapper.findAll('.date-range-picker__week span').map((item) => item.text())

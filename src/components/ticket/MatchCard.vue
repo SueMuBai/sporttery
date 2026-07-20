@@ -163,7 +163,7 @@ function toggleMixedSection(section: (typeof mixedSections)[number]): void {
 
 .match-card__header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto 18px;
+  grid-template-columns: minmax(0, 1fr) minmax(112px, auto) 18px;
   align-items: start;
   gap: var(--space-2);
   width: 100%;
@@ -242,7 +242,9 @@ function toggleMixedSection(section: (typeof mixedSections)[number]): void {
 }
 
 .history-summary {
-  width: 100px;
+  width: auto;
+  min-width: 112px;
+  max-width: 120px;
   justify-items: end;
   gap: 4px;
   text-align: right;
@@ -269,10 +271,13 @@ function toggleMixedSection(section: (typeof mixedSections)[number]): void {
 }
 
 .history-summary small {
-  max-width: 100px;
+  max-width: 120px;
+  overflow: hidden;
   color: var(--color-text-secondary);
-  font-size: 10px;
+  font-size: 9px;
   line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dual-market {
@@ -443,11 +448,12 @@ function toggleMixedSection(section: (typeof mixedSections)[number]): void {
 
 @media (max-width: 374px) {
   .match-card__header {
-    grid-template-columns: minmax(0, 1fr) 88px 18px;
+    grid-template-columns: minmax(0, 1fr) 104px 18px;
   }
 
   .history-summary {
-    width: 88px;
+    min-width: 104px;
+    max-width: 104px;
   }
 
   .dual-market {

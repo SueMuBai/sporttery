@@ -32,6 +32,7 @@ const quickMultipliers = [1, 2, 5, 10, 20, 50, 100] as const
 const draft = ref('1')
 const originalMultiplier = ref(1)
 const inputRef = ref<HTMLInputElement>()
+const replaceOnNextInput = ref(false)
 let committedClose = false
 
 function normalized(value: string | number): number {
@@ -46,14 +47,30 @@ function updateDraft(value: string): void {
 
 function chooseMultiplier(value: number): void {
   draft.value = String(value)
+  replaceOnNextInput.value = false
   emit('update:multiplier', value)
-  void nextTick(() => inputRef.value?.focus())
 }
 
 function clearDraft(): void {
   draft.value = ''
+  replaceOnNextInput.value = false
   emit('update:multiplier', 1)
-  void nextTick(() => inputRef.value?.focus())
+}
+
+function inputDigit(value: string): void {
+  const nextValue = replaceOnNextInput.value
+    ? value
+    : draft.value === '0'
+      ? value
+      : `${draft.value}${value}`
+  replaceOnNextInput.value = false
+  updateDraft(nextValue)
+}
+
+function deleteDigit(): void {
+  replaceOnNextInput.value = false
+  draft.value = draft.value.slice(0, -1)
+  emit('update:multiplier', normalized(draft.value))
 }
 
 function closeCommitted(): void {
@@ -82,9 +99,9 @@ watch(
     if (!show) return
     originalMultiplier.value = props.multiplier
     draft.value = String(props.multiplier)
+    replaceOnNextInput.value = true
     await nextTick()
-    inputRef.value?.focus()
-    inputRef.value?.select()
+    inputRef.value?.focus({ preventScroll: true })
   },
 )
 </script>
@@ -130,13 +147,11 @@ watch(
               ref="inputRef"
               :value="draft"
               type="text"
-              inputmode="numeric"
-              enterkeyhint="done"
+              inputmode="none"
               maxlength="4"
               autocomplete="off"
+              readonly
               aria-label="输入投注倍数"
-              @input="updateDraft(($event.target as HTMLInputElement).value)"
-              @keydown.enter.prevent="closeCommitted"
             />
             <button v-if="draft" type="button" aria-label="清空倍数" @click="clearDraft">
               <AppIcon name="close" :size="14" />
@@ -161,6 +176,49 @@ watch(
         <button type="button" class="cancel" @click="cancel">取消</button>
         <button type="button" class="confirm" @click="closeCommitted">确认投注</button>
       </footer>
+
+      <div class="bet-number-keyboard" role="group" aria-label="投注倍数数字键盘">
+        <button
+          v-for="value in ['1', '2', '3']"
+          :key="value"
+          type="button"
+          class="bet-number-keyboard__key"
+          @click="inputDigit(value)"
+        >
+          {{ value }}
+        </button>
+        <button type="button" class="bet-number-keyboard__key bet-number-keyboard__side" aria-label="删除一位" @click="deleteDigit">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M9 5h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-6-7 6-7Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="m12 9 6 6m0-6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+          </svg>
+        </button>
+
+        <button
+          v-for="value in ['4', '5', '6']"
+          :key="value"
+          type="button"
+          class="bet-number-keyboard__key"
+          @click="inputDigit(value)"
+        >
+          {{ value }}
+        </button>
+        <button type="button" class="bet-number-keyboard__key bet-number-keyboard__side" disabled aria-label="负号不可用于投注倍数">−</button>
+
+        <button
+          v-for="value in ['7', '8', '9']"
+          :key="value"
+          type="button"
+          class="bet-number-keyboard__key"
+          @click="inputDigit(value)"
+        >
+          {{ value }}
+        </button>
+        <button type="button" class="bet-number-keyboard__key bet-number-keyboard__side" disabled aria-label="小数点不可用于投注倍数">·</button>
+
+        <button type="button" class="bet-number-keyboard__key bet-number-keyboard__zero" @click="inputDigit('0')">0</button>
+        <button type="button" class="bet-number-keyboard__done" @click="closeCommitted">完成</button>
+      </div>
     </section>
   </van-popup>
 </template>
@@ -168,15 +226,15 @@ watch(
 <style scoped>
 .bet-multiplier-popup {
   overflow: hidden;
-  max-height: min(72dvh, 620px);
+  max-height: min(82dvh, 680px);
   background: var(--color-surface);
 }
 
 .bet-multiplier-sheet {
   position: relative;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  max-height: min(72dvh, 620px);
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  max-height: min(82dvh, 680px);
   padding-top: 12px;
 }
 
@@ -394,6 +452,55 @@ watch(
   background: var(--color-primary);
 }
 
+.bet-number-keyboard {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  padding: 12px var(--page-gutter) calc(10px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--color-divider);
+  background: #f4f7fb;
+}
+
+.bet-number-keyboard button {
+  min-width: 0;
+  height: 52px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  color: var(--color-text);
+  background: var(--color-surface);
+  box-shadow: var(--outline-default);
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.bet-number-keyboard button:active:not(:disabled) {
+  background: var(--color-primary-soft);
+}
+
+.bet-number-keyboard__side {
+  background: #edf2f8 !important;
+}
+
+.bet-number-keyboard__side:disabled {
+  color: var(--color-text-secondary);
+  opacity: 1;
+}
+
+.bet-number-keyboard__zero {
+  grid-column: span 2;
+}
+
+.bet-number-keyboard .bet-number-keyboard__done {
+  grid-column: span 2;
+  color: #fff;
+  background: linear-gradient(135deg, #69b0ff, #5797f5 58%, #8d83f5);
+  box-shadow: inset 0 0 0 1px rgb(71 137 234 / 55%);
+  font-size: 18px;
+  font-weight: 500;
+}
+
 @media (max-width: 374px) {
   .bet-quick-row {
     grid-template-columns: 44px repeat(7, minmax(0, 1fr));
@@ -405,6 +512,14 @@ watch(
 
   .bet-multiplier-sheet__summary > div {
     justify-content: flex-end;
+  }
+
+  .bet-number-keyboard {
+    gap: 6px;
+  }
+
+  .bet-number-keyboard button {
+    height: 48px;
   }
 }
 </style>

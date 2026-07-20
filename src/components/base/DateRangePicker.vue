@@ -167,7 +167,22 @@ function moveMonth(delta: number): void {
   visibleMonth.value = month
 }
 
+function canMovePicker(delta: number): boolean {
+  if (mode.value === 'year') {
+    const targetStart = yearPageStart.value + delta * 12
+    return Array.from({ length: 12 }, (_, index) => targetStart + index).some(
+      (year) => !yearDisabled(year),
+    )
+  }
+  if (mode.value === 'month') {
+    return !yearDisabled(visibleYear.value + delta)
+  }
+  const target = new Date(visibleYear.value, visibleMonth.value - 1 + delta, 1)
+  return !monthDisabled(target.getFullYear(), target.getMonth() + 1)
+}
+
 function movePicker(delta: number): void {
+  if (!canMovePicker(delta)) return
   if (mode.value === 'year') yearPageStart.value += delta * 12
   else if (mode.value === 'month') visibleYear.value += delta
   else moveMonth(delta)
@@ -212,7 +227,12 @@ function selectedMonth(): boolean {
     </div>
 
     <div v-if="expanded" class="date-range-picker__toolbar">
-      <button type="button" aria-label="上一页" @click="movePicker(-1)">
+      <button
+        type="button"
+        aria-label="上一页"
+        :disabled="!canMovePicker(-1)"
+        @click="movePicker(-1)"
+      >
         <AppIcon name="chevron-left" :size="20" />
       </button>
       <div>
@@ -226,7 +246,12 @@ function selectedMonth(): boolean {
         <button type="button" :class="{ active: mode === 'month' }" @click="mode = 'month'">{{ visibleMonth }}月</button>
         <button type="button" :class="{ active: mode === 'day' }" @click="mode = 'day'">日期</button>
       </div>
-      <button type="button" aria-label="下一页" @click="movePicker(1)">
+      <button
+        type="button"
+        aria-label="下一页"
+        :disabled="!canMovePicker(1)"
+        @click="movePicker(1)"
+      >
         <AppIcon name="chevron-right" :size="20" />
       </button>
     </div>
@@ -395,6 +420,11 @@ function selectedMonth(): boolean {
   min-height: 40px;
   place-items: center;
   color: var(--color-primary);
+}
+
+.date-range-picker__toolbar > button:disabled {
+  color: var(--color-text-tertiary);
+  opacity: 0.52;
 }
 
 .date-range-picker__toolbar div {
