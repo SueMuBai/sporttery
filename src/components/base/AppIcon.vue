@@ -17,9 +17,11 @@ export type AppIconName =
   | "export-json"
   | "export-markdown"
   | "filter"
+  | "feedback"
   | "folder"
   | "grip"
   | "history"
+  | "help"
   | "info"
   | "monitor"
   | "multiplier"
@@ -28,11 +30,13 @@ export type AppIconName =
   | "retry"
   | "save"
   | "search"
+  | "shield"
   | "sort"
   | "success"
   | "system"
   | "tag"
   | "timeout"
+  | "update"
   | "warning";
 
 withDefaults(defineProps<{ name: AppIconName; size?: number }>(), { size: 24 });
@@ -118,6 +122,10 @@ withDefaults(defineProps<{ name: AppIconName; size?: number }>(), { size: 24 });
         <circle cx="15" cy="12" r="1.5" fill="currentColor" stroke="none" />
         <circle cx="12" cy="18" r="1.5" fill="currentColor" stroke="none" />
       </template>
+      <template v-else-if="name === 'feedback'">
+        <path d="M4 4h16v12H8l-4 4V4Z" />
+        <path d="M8 8h8M8 12h5" />
+      </template>
       <template v-else-if="name === 'folder'">
         <path d="M3 6h7l2 2h9v12H3z" />
         <path d="M7 12h10M7 16h10" />
@@ -133,6 +141,10 @@ withDefaults(defineProps<{ name: AppIconName; size?: number }>(), { size: 24 });
       <template v-else-if="name === 'history'">
         <circle cx="12" cy="12" r="9" />
         <path d="M12 7v5l3 2M4 4v5h5" />
+      </template>
+      <template v-else-if="name === 'help'">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M9.8 9a2.3 2.3 0 1 1 3.2 2.1c-.7.4-1 1-1 1.9M12 17h.01" />
       </template>
       <template v-else-if="name === 'info'">
         <circle cx="12" cy="12" r="9" />
@@ -166,6 +178,11 @@ withDefaults(defineProps<{ name: AppIconName; size?: number }>(), { size: 24 });
         <circle cx="11" cy="11" r="7" />
         <path d="m20 20-4-4" />
       </template>
+      <template v-else-if="name === 'shield'">
+        <path d="M12 3 5 6v5c0 4.6 2.8 7.7 7 10 4.2-2.3 7-5.4 7-10V6l-7-3Z" />
+        <rect x="9.5" y="10" width="5" height="5" rx="1" />
+        <path d="M10.5 10V8.8a1.5 1.5 0 0 1 3 0V10" />
+      </template>
       <template v-else-if="name === 'sort'">
         <path d="M8 5v14M5 16l3 3 3-3M16 19V5M13 8l3-3 3 3" />
       </template>
@@ -186,6 +203,10 @@ withDefaults(defineProps<{ name: AppIconName; size?: number }>(), { size: 24 });
       <template v-else-if="name === 'timeout'">
         <circle cx="12" cy="13" r="8" />
         <path d="M12 9v5l3 2M9 3h6M12 3v2" />
+      </template>
+      <template v-else-if="name === 'update'">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 16V8m0 0-3 3m3-3 3 3" />
       </template>
       <template v-else-if="name === 'warning'">
         <path d="m12 3 10 18H2z" />
