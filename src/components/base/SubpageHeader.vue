@@ -1,24 +1,29 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
+import { useRouter } from "vue-router";
 
-import AppIconButton from '@/components/base/AppIconButton.vue'
+import AppIconButton from "@/components/base/AppIconButton.vue";
 
 withDefaults(
   defineProps<{
-    title: string
-    subtitle?: string
+    title: string;
+    subtitle?: string;
   }>(),
   {
-    subtitle: '',
+    subtitle: "",
   },
-)
+);
 
-const router = useRouter()
+const router = useRouter();
 </script>
 
 <template>
   <header class="subpage-header">
-    <AppIconButton label="返回" icon="back" variant="plain" @click="router.back()" />
+    <AppIconButton
+      label="返回"
+      icon="back"
+      variant="plain"
+      @click="router.back()"
+    />
     <div class="subpage-header__copy">
       <h1>{{ title }}</h1>
     </div>
@@ -52,8 +57,8 @@ const router = useRouter()
   margin: 0;
   overflow: hidden;
   font-size: 17px;
-  font-weight: 600;
-  line-height: 24px;
+  font-weight: 500;
+  line-height: 22px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

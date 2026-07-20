@@ -12,6 +12,7 @@ import AppState from "@/components/base/AppState.vue";
 import LedgerDetailSheet from "@/components/ledger/LedgerDetailSheet.vue";
 import DateRangePicker from "@/components/base/DateRangePicker.vue";
 import billSectionIcon from "@/assets/icons/navigation/ic_nav_bill_selected.svg?url";
+import ledgerEmptyIllustration from "@/assets/ui/ledger/ill_ledger_empty.svg?url";
 import {
   rangeForPreset,
   useLedgerStore,
@@ -170,9 +171,13 @@ function continueEditing(plan: SavedPlan): void {
                 : 'amount-negative',
             ]"
           >
-            {{ store.summary.profitCents > 0 ? "+" : store.summary.profitCents < 0 ? "-" : "" }}¥{{
-              centsToYuan(Math.abs(store.summary.profitCents))
-            }}
+            {{
+              store.summary.profitCents > 0
+                ? "+"
+                : store.summary.profitCents < 0
+                  ? "-"
+                  : ""
+            }}¥{{ centsToYuan(Math.abs(store.summary.profitCents)) }}
           </strong>
         </div>
         <p>共 {{ store.summary.count }} 笔方案</p>
@@ -190,17 +195,25 @@ function continueEditing(plan: SavedPlan): void {
             @click="store.sort = store.sort === 'desc' ? 'asc' : 'desc'"
           >
             按时间{{ store.sort === "desc" ? "倒序" : "正序" }}
-            <AppIcon :name="store.sort === 'desc' ? 'chevron-down' : 'chevron-up'" :size="14" />
+            <AppIcon
+              :name="store.sort === 'desc' ? 'chevron-down' : 'chevron-up'"
+              :size="14"
+            />
           </button>
         </div>
 
-        <AppCard v-if="store.loading && !store.orders.length" class="ledger-state-card" :padded="false">
-          <AppState
-            type="loading"
-            title="正在读取账单"
-          />
+        <AppCard
+          v-if="store.loading && !store.orders.length"
+          class="ledger-state-card"
+          :padded="false"
+        >
+          <AppState type="loading" title="正在读取账单" />
         </AppCard>
-        <AppCard v-else-if="store.error" class="ledger-state-card" :padded="false">
+        <AppCard
+          v-else-if="store.error"
+          class="ledger-state-card"
+          :padded="false"
+        >
           <AppState
             type="error"
             title="账单读取失败"
@@ -215,11 +228,13 @@ function continueEditing(plan: SavedPlan): void {
           :padded="false"
         >
           <span class="ledger-empty__illustration">
-            <img :src="billSectionIcon" alt="" />
+            <img :src="ledgerEmptyIllustration" alt="" />
           </span>
           <strong>暂无账单记录</strong>
           <p>所选日期内还没有购买方案</p>
-          <AppButton variant="secondary" @click="showDateSheet = true">调整日期</AppButton>
+          <AppButton variant="secondary" @click="showDateSheet = true">
+            调整日期
+          </AppButton>
         </AppCard>
         <div v-else class="ledger-list">
           <AppCard
@@ -244,7 +259,10 @@ function continueEditing(plan: SavedPlan): void {
             <div class="ledger-item__title-row">
               <div>
                 <h3>{{ item.order.planName }}</h3>
-                <p>{{ item.evaluation.totalMatches }}场 · {{ item.order.planSnapshot.selections.length }}个选项</p>
+                <p>
+                  {{ item.evaluation.totalMatches }}场 ·
+                  {{ item.order.planSnapshot.selections.length }}个选项
+                </p>
               </div>
             </div>
             <div class="ledger-item__finance">
@@ -256,7 +274,9 @@ function continueEditing(plan: SavedPlan): void {
                 <strong
                   :class="[
                     'numeric',
-                    item.displayedReturnCents > 0 ? 'amount-positive' : 'amount-muted',
+                    item.displayedReturnCents > 0
+                      ? 'amount-positive'
+                      : 'amount-muted',
                   ]"
                 >¥{{ centsToYuan(item.displayedReturnCents) }}</strong>
               </div>
@@ -270,9 +290,13 @@ function continueEditing(plan: SavedPlan): void {
                       : 'amount-negative',
                   ]"
                 >
-                  {{ item.profitCents > 0 ? "+" : item.profitCents < 0 ? "-" : "" }}¥{{
-                    centsToYuan(Math.abs(item.profitCents))
-                  }}
+                  {{
+                    item.profitCents > 0
+                      ? "+"
+                      : item.profitCents < 0
+                        ? "-"
+                        : ""
+                  }}¥{{ centsToYuan(Math.abs(item.profitCents)) }}
                 </strong>
               </div>
             </div>
@@ -283,13 +307,21 @@ function continueEditing(plan: SavedPlan): void {
 
     <AppBottomSheet
       v-model:show="showDateSheet"
-      :class="['ledger-date-sheet', { 'ledger-date-sheet--calendar': showCalendar }]"
+      :class="[
+        'ledger-date-sheet',
+        { 'ledger-date-sheet--calendar': showCalendar },
+      ]"
       title="日期筛选"
       :show-close="false"
       drag-handle
     >
       <div class="date-sheet">
-        <AppIcon v-if="showCalendar" class="date-sheet__header-icon" name="calendar" :size="22" />
+        <AppIcon
+          v-if="showCalendar"
+          class="date-sheet__header-icon"
+          name="calendar"
+          :size="22"
+        />
         <section>
           <h3 v-if="!showCalendar">快捷选择</h3>
           <div class="date-sheet__quick">
@@ -327,13 +359,19 @@ function continueEditing(plan: SavedPlan): void {
             @update:start="markCustomRange"
             @update:end="markCustomRange"
           />
-          <p v-if="!showCalendar" class="range-hint">最多可查询最近 12 个月的账单</p>
+          <p v-if="!showCalendar" class="range-hint">
+            最多可查询最近 12 个月的账单
+          </p>
         </section>
       </div>
       <template #footer>
         <div class="date-sheet__actions">
-          <AppButton variant="secondary" block @click="resetDraftRange">重置</AppButton>
-          <AppButton block :loading="store.loading" @click="applyDraftRange">确定</AppButton>
+          <AppButton variant="secondary" block @click="resetDraftRange">
+            重置
+          </AppButton>
+          <AppButton block :loading="store.loading" @click="applyDraftRange">
+            确定
+          </AppButton>
         </div>
       </template>
     </AppBottomSheet>
@@ -617,38 +655,15 @@ function continueEditing(plan: SavedPlan): void {
 }
 
 .ledger-empty__illustration {
-  position: relative;
   display: grid;
-  width: 96px;
-  height: 82px;
+  width: 120px;
+  height: 100px;
   place-items: center;
 }
 
 .ledger-empty__illustration img {
-  width: 58px;
-  height: 58px;
-  opacity: 0.38;
-}
-
-.ledger-empty__illustration::before,
-.ledger-empty__illustration::after {
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  content: "";
-  background: var(--color-primary);
-  transform: rotate(45deg);
-}
-
-.ledger-empty__illustration::before {
-  top: 6px;
-  right: 5px;
-}
-
-.ledger-empty__illustration::after {
-  bottom: 7px;
-  left: 4px;
-  background: var(--color-mint);
+  width: 120px;
+  height: 100px;
 }
 
 .ledger-empty strong {
@@ -796,8 +811,10 @@ function continueEditing(plan: SavedPlan): void {
   min-height: 25px;
 }
 
-.ledger-date-sheet--calendar :deep(.date-range-picker__days button.is-start::before),
-.ledger-date-sheet--calendar :deep(.date-range-picker__days button.is-end::before) {
+.ledger-date-sheet--calendar
+  :deep(.date-range-picker__days button.is-start::before),
+.ledger-date-sheet--calendar
+  :deep(.date-range-picker__days button.is-end::before) {
   width: 25px;
   height: 25px;
 }

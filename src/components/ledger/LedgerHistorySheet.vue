@@ -1,57 +1,68 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, watch } from "vue";
 
-import billIcon from '@/assets/icons/navigation/ic_nav_bill_selected.svg?url'
-import AppBottomSheet from '@/components/base/AppBottomSheet.vue'
-import AppIcon from '@/components/base/AppIcon.vue'
-import { useLedgerStore, type EvaluatedLedgerOrder } from '@/stores/ledger'
-import { centsToYuan } from '@/utils/money'
+import billIcon from "@/assets/icons/navigation/ic_nav_bill_selected.svg?url";
+import headerBackground from "@/assets/ui/common/bg_header.svg?url";
+import AppBottomSheet from "@/components/base/AppBottomSheet.vue";
+import AppIcon from "@/components/base/AppIcon.vue";
+import { useLedgerStore, type EvaluatedLedgerOrder } from "@/stores/ledger";
+import type { LedgerAdjustment } from "@/types/domain";
+import { centsToYuan } from "@/utils/money";
+
+interface DisplayAdjustment extends LedgerAdjustment {
+  status?: "success" | "failed";
+  failureReason?: string;
+  operator?: string;
+}
 
 const props = defineProps<{
-  show: boolean
-  item?: EvaluatedLedgerOrder
-}>()
+  show: boolean;
+  item?: EvaluatedLedgerOrder;
+}>();
 
 const emit = defineEmits<{
-  'update:show': [show: boolean]
-}>()
+  "update:show": [show: boolean];
+}>();
 
-const store = useLedgerStore()
-const adjustments = computed(() =>
+const store = useLedgerStore();
+const adjustments = computed<DisplayAdjustment[]>(() =>
   props.item ? (store.adjustments[props.item.order.id] ?? []) : [],
-)
+);
+const headerBackgroundImage = `url("${headerBackground}")`;
 const systemSettlementAt = computed(() => {
-  if (!props.item) return ''
+  if (!props.item) return "";
   const matchIds = new Set(
-    props.item.order.planSnapshot.selections.map((selection) => selection.matchId),
-  )
+    props.item.order.planSnapshot.selections.map(
+      (selection) => selection.matchId,
+    ),
+  );
   const fetchedTimes = store.results
     .filter((result) => matchIds.has(result.matchId))
     .map((result) => result.fetchedAt)
     .filter(Boolean)
-    .sort()
-  return fetchedTimes.at(-1) ?? props.item.order.createdAt
-})
+    .sort();
+  return fetchedTimes.at(-1) ?? props.item.order.createdAt;
+});
 
 watch(
   () => [props.show, props.item?.order.id] as const,
   ([show]) => {
-    if (show && props.item) void store.loadAdjustments(props.item.order.id)
+    if (show && props.item) void store.loadAdjustments(props.item.order.id);
   },
   { immediate: true },
-)
+);
 
 function formatDateTime(value: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value.replace('T', ' ').slice(0, 16)
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value.replace("T", " ").slice(0, 16);
+  return date.toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
     hour12: false,
-  })
+  });
 }
 </script>
 
@@ -59,6 +70,7 @@ function formatDateTime(value: string): string {
   <AppBottomSheet
     :show="show"
     class="ledger-history-sheet"
+    :style="{ '--history-header-background': headerBackgroundImage }"
     title="回款修改历史"
     close-label="关闭回款修改历史"
     @update:show="emit('update:show', $event)"
@@ -71,32 +83,88 @@ function formatDateTime(value: string): string {
       </div>
 
       <div class="history-timeline">
-        <article v-if="item.status === 'settled'" class="history-entry history-entry--system">
-          <div class="history-entry__icon"><AppIcon name="monitor" :size="18" /></div>
+        <article
+          v-if="item.status === 'settled'"
+          class="history-entry history-entry--system"
+        >
+          <div class="history-entry__icon">
+            <AppIcon name="monitor" :size="18" />
+          </div>
           <div class="history-entry__card">
-            <header><strong>系统结算</strong><time>{{ formatDateTime(systemSettlementAt) }}</time></header>
+            <header>
+              <strong>系统结算</strong><time>{{ formatDateTime(systemSettlementAt) }}</time>
+            </header>
             <div class="history-entry__amounts">
               <div><span>旧回款</span><b>¥0.00</b></div>
               <AppIcon name="chevron-right" :size="18" />
-              <div><span>新回款</span><b class="amount-positive">¥{{ centsToYuan(item.automaticReturnCents) }}</b></div>
+              <div>
+                <span>新回款</span><b class="amount-positive">¥{{ centsToYuan(item.automaticReturnCents) }}</b>
+              </div>
             </div>
           </div>
         </article>
 
-        <article v-for="adjustment in adjustments" :key="adjustment.id" class="history-entry">
-          <div class="history-entry__icon"><AppIcon name="edit" :size="20" /></div>
+        <article
+          v-for="adjustment in adjustments"
+          :key="adjustment.id"
+          :class="[
+            'history-entry',
+            { 'history-entry--failed': adjustment.status === 'failed' },
+          ]"
+        >
+          <div class="history-entry__icon">
+            <AppIcon
+              :name="adjustment.status === 'failed' ? 'info' : 'edit'"
+              :size="20"
+            />
+          </div>
           <div class="history-entry__card">
-            <header><strong>手动修改</strong><time>{{ formatDateTime(adjustment.occurredAt) }}</time></header>
+            <header>
+              <strong>{{
+                adjustment.status === "failed" ? "手动修改失败" : "手动修改"
+              }}</strong>
+              <time>{{ formatDateTime(adjustment.occurredAt) }}</time>
+            </header>
             <div class="history-entry__amounts">
-              <div><span>旧回款</span><b>¥{{ centsToYuan(adjustment.previousReturnCents) }}</b></div>
+              <div>
+                <span>旧回款</span><b>¥{{ centsToYuan(adjustment.previousReturnCents) }}</b>
+              </div>
               <AppIcon name="chevron-right" :size="18" />
-              <div><span>新回款</span><b class="amount-positive">¥{{ centsToYuan(adjustment.nextReturnCents) }}</b></div>
+              <div>
+                <span>新回款</span>
+                <b
+                  :class="
+                    adjustment.status === 'failed'
+                      ? 'amount-negative'
+                      : 'amount-positive'
+                  "
+                >
+                  {{
+                    adjustment.status === "failed"
+                      ? "—"
+                      : `¥${centsToYuan(adjustment.nextReturnCents)}`
+                  }}
+                </b>
+              </div>
             </div>
-            <p><span>修改备注</span>{{ adjustment.note }}</p>
+            <p v-if="adjustment.status === 'failed'">
+              <span>失败原因</span>{{
+                adjustment.failureReason || adjustment.note || "回款修改未保存"
+              }}
+            </p>
+            <p v-else-if="adjustment.note">
+              <span>修改备注</span>{{ adjustment.note }}
+            </p>
+            <p v-else-if="adjustment.operator">
+              <span>操作者</span>{{ adjustment.operator }}
+            </p>
           </div>
         </article>
 
-        <div v-if="item.status === 'pending' && !adjustments.length" class="history-empty">
+        <div
+          v-if="item.status === 'pending' && !adjustments.length"
+          class="history-empty"
+        >
           暂无回款修改记录
         </div>
       </div>
@@ -113,10 +181,11 @@ function formatDateTime(value: string): string {
 .history-sheet {
   display: grid;
   gap: 12px;
-  min-height: calc(100dvh - 44px - env(safe-area-inset-top));
+  min-height: calc(100dvh - 90px - env(safe-area-inset-top));
   align-content: start;
   padding: 12px var(--page-gutter) calc(18px + env(safe-area-inset-bottom));
-  background: var(--color-page);
+  border-radius: 18px 18px 0 0;
+  background: linear-gradient(180deg, #fff 0%, var(--color-page) 100%);
 }
 
 .ledger-history-sheet {
@@ -132,11 +201,14 @@ function formatDateTime(value: string): string {
 
 .ledger-history-sheet :deep(.app-bottom-sheet__header) {
   grid-template-columns: 44px minmax(0, 1fr) 44px;
-  min-height: calc(44px + env(safe-area-inset-top));
-  padding: env(safe-area-inset-top) 14px 0;
-  color: var(--color-text);
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-divider);
+  min-height: calc(90px + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) 14px 8px;
+  color: #fff;
+  background-color: #80c3ff;
+  background-image: var(--history-header-background);
+  background-position: center;
+  background-size: cover;
+  border-bottom: 0;
 }
 
 .ledger-history-sheet :deep(.app-bottom-sheet__header > div) {
@@ -145,7 +217,7 @@ function formatDateTime(value: string): string {
 }
 
 .ledger-history-sheet :deep(.app-bottom-sheet__header h2) {
-  font-size: 17px;
+  font-size: 20px;
   font-weight: 600;
 }
 
@@ -153,7 +225,7 @@ function formatDateTime(value: string): string {
   position: relative;
   grid-row: 1;
   grid-column: 1;
-  color: var(--color-text);
+  color: #fff;
 }
 
 .ledger-history-sheet :deep(.app-bottom-sheet__close .app-icon) {
@@ -236,6 +308,14 @@ function formatDateTime(value: string): string {
 
 .history-entry--system .history-entry__icon {
   background: var(--color-mint);
+}
+
+.history-entry--failed .history-entry__icon {
+  background: var(--color-danger);
+}
+
+.history-entry--failed .history-entry__card header strong {
+  color: var(--color-danger);
 }
 
 .history-entry__card {
@@ -325,5 +405,9 @@ function formatDateTime(value: string): string {
 
 .amount-positive {
   color: var(--color-success);
+}
+
+.amount-negative {
+  color: var(--color-danger);
 }
 </style>

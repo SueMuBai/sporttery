@@ -16,16 +16,51 @@
     },
     "ticket": {
       "status": "available-for-integration",
-      "assets": ["ic_refresh.svg", "ic_search.svg", "ic_filter.svg", "ic_manage.svg", "ic_status_success.svg", "ic_view_plan.svg", "ill_empty_matches.svg"]
+      "assets": [
+        "ic_refresh.svg",
+        "ic_search.svg",
+        "ic_filter.svg",
+        "ic_manage.svg",
+        "ic_status_success.svg",
+        "ic_view_plan.svg",
+        "ill_empty_matches.svg"
+      ]
     },
     "ledger": {
-      "status": "available-for-integration",
-      "assets": ["ic_calendar.svg", "ic_calendar_filter.svg", "ic_edit.svg", "ic_close.svg"]
+      "status": "integrated",
+      "assets": [
+        "ic_calendar.svg",
+        "ic_calendar_filter.svg",
+        "ic_edit.svg",
+        "ic_close.svg",
+        "ill_ledger_empty.svg"
+      ],
+      "consumers": ["LedgerView", "LedgerDetailView", "LedgerHistorySheet"]
     },
     "settings": {
       "status": "integrated",
-      "assets": ["ic_system_settings.svg", "ic_tag.svg", "ic_folder.svg", "ic_export_markdown.svg", "ic_export_json.svg", "ic_concurrency.svg", "ic_timeout.svg", "ic_retry.svg", "ic_multiplier.svg", "ic_add.svg", "ic_back.svg", "ic_delete.svg", "ic_app_caiguo.svg"],
-      "consumers": ["SettingsView", "SystemSettingsView", "DataManagementView", "AboutView"]
+      "assets": [
+        "ic_system_settings.svg",
+        "ic_tag.svg",
+        "ic_folder.svg",
+        "ic_data_backup.svg",
+        "ic_export_markdown.svg",
+        "ic_export_json.svg",
+        "ic_concurrency.svg",
+        "ic_timeout.svg",
+        "ic_retry.svg",
+        "ic_multiplier.svg",
+        "ic_add.svg",
+        "ic_back.svg",
+        "ic_delete.svg",
+        "ic_app_caiguo.svg"
+      ],
+      "consumers": [
+        "SettingsView",
+        "SystemSettingsView",
+        "DataManagementView",
+        "AboutView"
+      ]
     },
     "date": {
       "status": "integrated-before-supplement",
@@ -44,7 +79,14 @@
     "navigation": {
       "path": "src/assets/icons/navigation",
       "status": "verified-identical",
-      "assets": ["ic_nav_bill_default.svg", "ic_nav_bill_selected.svg", "ic_nav_ticket_default.svg", "ic_nav_ticket_selected.svg", "ic_nav_settings_default.svg", "ic_nav_settings_selected.svg"]
+      "assets": [
+        "ic_nav_bill_default.svg",
+        "ic_nav_bill_selected.svg",
+        "ic_nav_ticket_default.svg",
+        "ic_nav_ticket_selected.svg",
+        "ic_nav_settings_default.svg",
+        "ic_nav_settings_selected.svg"
+      ]
     }
   },
   "settingsEffectCalibration": [

@@ -5,7 +5,7 @@ import { useRouter } from "vue-router";
 import { APP_VERSION } from "@/app/version";
 import infoIcon from "@/assets/ui/common/ic_info.svg?url";
 import refreshIcon from "@/assets/ui/common/ic_refresh.svg?url";
-import exportJsonIcon from "@/assets/ui/settings/ic_export_json.svg?url";
+import dataBackupIcon from "@/assets/ui/settings/ic_data_backup.svg?url";
 import folderIcon from "@/assets/ui/settings/ic_folder.svg?url";
 import systemSettingsIcon from "@/assets/ui/settings/ic_system_settings.svg?url";
 import tagIcon from "@/assets/ui/settings/ic_tag.svg?url";
@@ -44,7 +44,7 @@ const groups = computed<Array<{ title: string; items: SettingsItem[] }>>(() => [
       },
       {
         title: "数据更新",
-        description: "获取最新比赛并同步比赛结果",
+        description: "获取最新比赛与更新比赛结果",
         icon: "refresh",
         iconSrc: refreshIcon,
         color: "#61D6BF",
@@ -57,7 +57,7 @@ const groups = computed<Array<{ title: string; items: SettingsItem[] }>>(() => [
     items: [
       {
         title: "标签管理",
-        description: "新增、编辑、排序和删除方案标签",
+        description: "管理方案标签",
         icon: "tag",
         iconSrc: tagIcon,
         color: "#9A91F5",
@@ -79,10 +79,10 @@ const groups = computed<Array<{ title: string; items: SettingsItem[] }>>(() => [
     items: [
       {
         title: "数据与备份",
-        description: "导出账单报告或完整数据备份",
+        description: "导出、导入与本机备份",
         icon: "export-json",
-        iconSrc: exportJsonIcon,
-        color: "#FF8FB3",
+        iconSrc: dataBackupIcon,
+        color: "#61D6BF",
         route: "/settings/data",
       },
     ],
@@ -92,7 +92,7 @@ const groups = computed<Array<{ title: string; items: SettingsItem[] }>>(() => [
     items: [
       {
         title: "关于彩果",
-        description: "版本、数据说明与隐私信息",
+        description: "",
         icon: "info",
         iconSrc: infoIcon,
         color: "#61D6BF",
@@ -119,7 +119,7 @@ async function activate(item: SettingsItem): Promise<void> {
       <AppHeader
         class="settings-page__header"
         title="彩果·设置"
-        subtitle="配置数据、标签与应用"
+        subtitle="配置数据与标签"
       />
     </template>
     <AppListGroup

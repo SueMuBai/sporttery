@@ -316,6 +316,9 @@ async function applyLoad(): Promise<void> {
         >
           <template #left-icon><AppIcon name="search" :size="20" /></template>
         </van-field>
+      </div>
+
+      <div class="plan-filter-row">
         <button type="button" class="toolbar-action" @click="openFilters">
           <AppIcon name="filter" :size="18" /><span>筛选</span>
           <b
@@ -341,25 +344,24 @@ async function applyLoad(): Promise<void> {
               ?.text.replace("更新", "")
           }}</span><AppIcon name="chevron-down" :size="12" />
         </button>
-      </div>
-
-      <div class="quick-tags" aria-label="标签筛选">
-        <button
-          type="button"
-          :class="{ active: store.tagFilter === 'all' }"
-          @click="store.tagFilter = 'all'"
-        >
-          全部
-        </button>
-        <button
-          v-for="tag in store.tags"
-          :key="tag.name"
-          type="button"
-          :class="{ active: store.tagFilter === tag.name }"
-          @click="store.tagFilter = tag.name"
-        >
-          {{ tag.name }}
-        </button>
+        <div class="quick-tags" aria-label="标签筛选">
+          <button
+            type="button"
+            :class="{ active: store.tagFilter === 'all' }"
+            @click="store.tagFilter = 'all'"
+          >
+            全部
+          </button>
+          <button
+            v-for="tag in store.tags"
+            :key="tag.name"
+            type="button"
+            :class="{ active: store.tagFilter === tag.name }"
+            @click="store.tagFilter = tag.name"
+          >
+            {{ tag.name }}
+          </button>
+        </div>
       </div>
 
       <div
@@ -776,16 +778,21 @@ async function applyLoad(): Promise<void> {
 }
 
 .plan-toolbar {
-  display: grid;
   min-width: 0;
   max-width: 100%;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
   height: 40px;
   overflow: hidden;
   border-radius: var(--radius-control);
   box-shadow: var(--outline-default);
   background: var(--color-surface);
+}
+
+.plan-filter-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 36px;
+  gap: 4px;
 }
 
 .plan-search {
@@ -803,11 +810,14 @@ async function applyLoad(): Promise<void> {
   gap: 5px;
   padding: 0 10px;
   border: 0;
-  border-left: 1px solid var(--color-divider);
   color: var(--color-text);
   background: transparent;
   font-size: 13px;
   white-space: nowrap;
+}
+
+.toolbar-action + .toolbar-action {
+  border-left: 1px solid var(--color-divider);
 }
 
 .toolbar-action b {
@@ -828,6 +838,7 @@ async function applyLoad(): Promise<void> {
 
 .quick-tags {
   display: flex;
+  flex: 1 1 auto;
   min-width: 0;
   max-width: 100%;
   min-height: 36px;
@@ -841,10 +852,10 @@ async function applyLoad(): Promise<void> {
 }
 
 .quick-tags button {
-  min-width: 64px;
+  min-width: 48px;
   height: 28px;
   flex: 0 0 auto;
-  padding: 0 12px;
+  padding: 0 10px;
   border: 0;
   border-radius: var(--radius-control);
   color: var(--color-text);

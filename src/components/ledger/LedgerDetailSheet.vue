@@ -1,145 +1,150 @@
 <script setup lang="ts">
-import { showSuccessToast } from 'vant'
-import { computed, ref, watch } from 'vue'
+import { showSuccessToast } from "vant";
+import { computed, ref, watch } from "vue";
 
-import AppBottomSheet from '@/components/base/AppBottomSheet.vue'
-import AppButton from '@/components/base/AppButton.vue'
-import AppIcon from '@/components/base/AppIcon.vue'
-import LedgerHistorySheet from '@/components/ledger/LedgerHistorySheet.vue'
-import { groupSelections } from '@/features/betting/calculator'
-import { useLedgerStore, type EvaluatedLedgerOrder } from '@/stores/ledger'
-import type { MarketCode, PlanSelection, SavedPlan } from '@/types/domain'
-import { centsToYuan, yuanToCents } from '@/utils/money'
+import AppBottomSheet from "@/components/base/AppBottomSheet.vue";
+import AppButton from "@/components/base/AppButton.vue";
+import AppIcon from "@/components/base/AppIcon.vue";
+import LedgerHistorySheet from "@/components/ledger/LedgerHistorySheet.vue";
+import { groupSelections } from "@/features/betting/calculator";
+import { useLedgerStore, type EvaluatedLedgerOrder } from "@/stores/ledger";
+import type { MarketCode, PlanSelection, SavedPlan } from "@/types/domain";
+import { centsToYuan, yuanToCents } from "@/utils/money";
 
 const props = defineProps<{
-  show: boolean
-  item?: EvaluatedLedgerOrder
-}>()
+  show: boolean;
+  item?: EvaluatedLedgerOrder;
+}>();
 
 const emit = defineEmits<{
-  'update:show': [show: boolean]
-  'continue-edit': [plan: SavedPlan]
-}>()
+  "update:show": [show: boolean];
+  "continue-edit": [plan: SavedPlan];
+}>();
 
-const store = useLedgerStore()
-const expanded = ref(false)
-const showHistory = ref(false)
-const returnValue = ref('')
-const returnError = ref('')
+const store = useLedgerStore();
+const expanded = ref(false);
+const showHistory = ref(false);
+const returnValue = ref("");
+const returnError = ref("");
 
 const marketLabels: Record<MarketCode, string> = {
-  had: '胜平负',
-  hhad: '让球胜平负',
-  crs: '比分',
-  ttg: '总进球',
-  hafu: '半全场',
-}
+  had: "胜平负",
+  hhad: "让球胜平负",
+  crs: "比分",
+  ttg: "总进球",
+  hafu: "半全场",
+};
 
 const groups = computed(() =>
   props.item
     ? [...groupSelections(props.item.order.planSnapshot.selections)]
     : [],
-)
+);
 const visibleGroups = computed(() =>
   expanded.value ? groups.value : groups.value.slice(0, 5),
-)
+);
 const remainingGroups = computed(() =>
   Math.max(0, groups.value.length - visibleGroups.value.length),
-)
+);
 const previewProfitCents = computed(() => {
-  if (!props.item) return 0
+  if (!props.item) return 0;
   try {
-    return yuanToCents(returnValue.value || '0') - props.item.order.stakeCents
+    return yuanToCents(returnValue.value || "0") - props.item.order.stakeCents;
   } catch {
-    return props.item.profitCents
+    return props.item.profitCents;
   }
-})
+});
 
 watch(
   () => [props.show, props.item?.order.id] as const,
   ([show]) => {
-    if (!show || !props.item) return
-    expanded.value = false
-    returnValue.value = centsToYuan(props.item.displayedReturnCents)
-    returnError.value = ''
+    if (!show || !props.item) return;
+    expanded.value = false;
+    returnValue.value = centsToYuan(props.item.displayedReturnCents);
+    returnError.value = "";
   },
   { immediate: true },
-)
+);
 
 function formatDateTime(value: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value.replace('T', ' ').slice(0, 19)
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value.replace("T", " ").slice(0, 19);
+  return date.toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
     hour12: false,
-  })
+  });
 }
 
 function outcomeLabel(selection: PlanSelection): string {
-  if (selection.market === 'had' || selection.market === 'hhad') {
-    return { h: '胜', d: '平', a: '负' }[selection.outcome] ?? selection.outcome
+  if (selection.market === "had" || selection.market === "hhad") {
+    return (
+      { h: "胜", d: "平", a: "负" }[selection.outcome] ?? selection.outcome
+    );
   }
-  if (selection.market === 'hafu') {
-    const labels: Record<string, string> = { h: '胜', d: '平', a: '负' }
-    const [half, full] = selection.outcome.split('-')
-    return `${labels[half ?? ''] ?? half}${labels[full ?? ''] ?? full}`
+  if (selection.market === "hafu") {
+    const labels: Record<string, string> = { h: "胜", d: "平", a: "负" };
+    const [half, full] = selection.outcome.split("-");
+    return `${labels[half ?? ""] ?? half}${labels[full ?? ""] ?? full}`;
   }
-  return selection.outcome
+  return selection.outcome;
 }
 
 function formatMatchDateTime(value?: string): string {
-  if (!value) return '时间待定'
-  const date = new Date(value.replace(' ', 'T'))
-  if (Number.isNaN(date.getTime())) return value.slice(5, 16).replace('-', '/')
-  return date.toLocaleString('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
+  if (!value) return "时间待定";
+  const date = new Date(value.replace(" ", "T"));
+  if (Number.isNaN(date.getTime())) return value.slice(5, 16).replace("-", "/");
+  return date.toLocaleString("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
     hour12: false,
-  })
+  });
 }
 
 function continueEditing(): void {
-  if (!props.item) return
-  emit('continue-edit', props.item.order.planSnapshot)
-  emit('update:show', false)
+  if (!props.item) return;
+  emit("continue-edit", props.item.order.planSnapshot);
+  emit("update:show", false);
 }
 
 function closeSheet(): void {
-  if (props.item) returnValue.value = centsToYuan(props.item.displayedReturnCents)
-  returnError.value = ''
-  emit('update:show', false)
+  if (props.item)
+    returnValue.value = centsToYuan(props.item.displayedReturnCents);
+  returnError.value = "";
+  emit("update:show", false);
 }
 
 function handleVisibility(show: boolean): void {
-  if (show) emit('update:show', true)
-  else closeSheet()
+  if (show) emit("update:show", true);
+  else closeSheet();
 }
 
 async function saveReturn(): Promise<void> {
-  if (!props.item) return
+  if (!props.item) return;
   try {
-    returnError.value = ''
-    const cents = yuanToCents(returnValue.value)
-    if (cents < 0) throw new RangeError('回款金额不能小于 0.00 元')
-    if (cents > 99_999_999) throw new RangeError('回款金额不能超过 999999.99 元')
+    returnError.value = "";
+    const cents = yuanToCents(returnValue.value);
+    if (cents < 0) throw new RangeError("回款金额不能小于 0.00 元");
+    if (cents > 99_999_999)
+      throw new RangeError("回款金额不能超过 999999.99 元");
     if (cents === props.item.displayedReturnCents) {
-      showSuccessToast('回款金额未变化')
-      emit('update:show', false)
-      return
+      showSuccessToast("回款金额未变化");
+      emit("update:show", false);
+      return;
     }
-    await store.updateReturn(props.item, cents)
-    await store.loadAdjustments(props.item.order.id)
-    showSuccessToast('实际回款已保存')
-    emit('update:show', false)
+    await store.updateReturn(props.item, cents);
+    await store.loadAdjustments(props.item.order.id);
+    showSuccessToast("实际回款已保存");
+    emit("update:show", false);
   } catch (reason) {
-    returnError.value = reason instanceof Error ? reason.message : String(reason)
+    returnError.value =
+      reason instanceof Error ? reason.message : String(reason);
   }
 }
 </script>
@@ -157,7 +162,7 @@ async function saveReturn(): Promise<void> {
           <div>
             <h3>{{ item.order.planName }}</h3>
             <span :class="['status-pill', `status-pill--${item.status}`]">
-              {{ item.status === 'settled' ? '已完成' : '进行中' }}
+              {{ item.status === "settled" ? "已完成" : "进行中" }}
             </span>
           </div>
           <time>{{ formatDateTime(item.order.purchasedAt) }}</time>
@@ -171,14 +176,28 @@ async function saveReturn(): Promise<void> {
         </div>
         <div>
           <span>回款</span>
-          <strong :class="['numeric', item.displayedReturnCents > 0 ? 'amount-positive' : 'amount-muted']">
+          <strong
+            :class="[
+              'numeric',
+              item.displayedReturnCents > 0
+                ? 'amount-positive'
+                : 'amount-muted',
+            ]"
+          >
             ¥{{ centsToYuan(item.displayedReturnCents) }}
           </strong>
         </div>
         <div>
           <span>净盈亏</span>
-          <strong :class="['numeric', item.profitCents > 0 ? 'amount-positive' : 'amount-negative']">
-            {{ item.profitCents > 0 ? '+' : item.profitCents < 0 ? '-' : '' }}¥{{ centsToYuan(Math.abs(item.profitCents)) }}
+          <strong
+            :class="[
+              'numeric',
+              item.profitCents > 0 ? 'amount-positive' : 'amount-negative',
+            ]"
+          >
+            {{
+              item.profitCents > 0 ? "+" : item.profitCents < 0 ? "-" : ""
+            }}¥{{ centsToYuan(Math.abs(item.profitCents)) }}
           </strong>
         </div>
       </section>
@@ -203,34 +222,57 @@ async function saveReturn(): Promise<void> {
           :error-message="returnError"
           @update:model-value="returnError = ''"
         />
-        <p class="return-editor__help">金额范围 0.00～999999.99，最多保留两位小数</p>
+        <p class="return-editor__help">
+          金额范围 0.00～999999.99，最多保留两位小数
+        </p>
         <div class="return-preview">
           <span>修改后净盈亏</span>
-          <strong :class="previewProfitCents >= 0 ? 'amount-positive' : 'amount-negative'">
-            {{ previewProfitCents >= 0 ? '+' : '-' }}¥{{ centsToYuan(Math.abs(previewProfitCents)) }}
+          <strong
+            :class="
+              previewProfitCents >= 0 ? 'amount-positive' : 'amount-negative'
+            "
+          >
+            {{ previewProfitCents >= 0 ? "+" : "-" }}¥{{
+              centsToYuan(Math.abs(previewProfitCents))
+            }}
           </strong>
         </div>
       </section>
 
       <section class="detail-section">
         <div class="match-list">
-          <div v-for="[matchId, selections] in visibleGroups" :key="matchId" class="match-row">
+          <div
+            v-for="[matchId, selections] in visibleGroups"
+            :key="matchId"
+            class="match-row"
+          >
             <div class="match-row__meta">
-              <strong>{{ store.matchById.get(matchId)?.matchNum || matchId }}</strong>
-              <span>{{ formatMatchDateTime(store.matchById.get(matchId)?.matchDateTime) }}</span>
+              <strong>{{
+                store.matchById.get(matchId)?.matchNum || matchId
+              }}</strong>
+              <span>{{
+                formatMatchDateTime(store.matchById.get(matchId)?.matchDateTime)
+              }}</span>
             </div>
             <div class="match-row__copy">
               <strong>
-                {{ store.matchById.get(matchId)?.homeTeam || '未知球队' }}
+                {{ store.matchById.get(matchId)?.homeTeam || "未知球队" }}
                 <em>vs</em>
-                {{ store.matchById.get(matchId)?.awayTeam || '未知球队' }}
+                {{ store.matchById.get(matchId)?.awayTeam || "未知球队" }}
               </strong>
-              <small>{{ store.matchById.get(matchId)?.payload.league || '联赛待定' }}</small>
+              <small>{{
+                store.matchById.get(matchId)?.payload.league || "联赛待定"
+              }}</small>
             </div>
             <div class="match-row__selections">
               <small>{{ marketLabels[selections[0]!.market] }}</small>
-              <span v-for="selection in selections" :key="selection.key" class="selection-pill">
-                {{ outcomeLabel(selection) }} <b class="numeric">({{ selection.odds }})</b>
+              <span
+                v-for="selection in selections"
+                :key="selection.key"
+                class="selection-pill"
+              >
+                {{ outcomeLabel(selection) }}
+                <b class="numeric">({{ selection.odds }})</b>
               </span>
             </div>
           </div>
@@ -241,34 +283,35 @@ async function saveReturn(): Promise<void> {
             :aria-expanded="expanded"
             @click="expanded = !expanded"
           >
-            {{ expanded ? '收起方案内容' : `查看其余${remainingGroups}场` }}
-            <AppIcon :name="expanded ? 'chevron-up' : 'chevron-down'" :size="16" />
+            {{ expanded ? "收起方案内容" : `查看其余${remainingGroups}场` }}
+            <AppIcon
+              :name="expanded ? 'chevron-up' : 'chevron-down'"
+              :size="16"
+            />
           </button>
         </div>
       </section>
-
-      <div v-if="item.status === 'pending'" class="pending-banner">
-        <AppIcon name="info" :size="18" />
-        <span>方案进行中，比赛完成后可录入实际回款金额</span>
-      </div>
     </div>
 
     <template #footer>
       <div v-if="item?.status === 'settled'" class="sheet-actions">
-        <AppButton variant="secondary" block @click="closeSheet">取消</AppButton>
-        <AppButton block :loading="store.saving" @click="saveReturn">保存修改</AppButton>
+        <AppButton variant="secondary" block @click="closeSheet">
+          取消
+        </AppButton>
+        <AppButton block :loading="store.saving" @click="saveReturn">
+          保存修改
+        </AppButton>
       </div>
       <div v-else class="sheet-actions">
-        <AppButton variant="secondary" block @click="showHistory = true">查看购买记录</AppButton>
+        <AppButton variant="secondary" block @click="showHistory = true">
+          查看购买记录
+        </AppButton>
         <AppButton block @click="continueEditing">继续编辑</AppButton>
       </div>
     </template>
   </AppBottomSheet>
 
-  <LedgerHistorySheet
-    v-model:show="showHistory"
-    :item="item"
-  />
+  <LedgerHistorySheet v-model:show="showHistory" :item="item" />
 </template>
 
 <style scoped>
@@ -531,21 +574,6 @@ async function saveReturn(): Promise<void> {
   color: var(--color-primary);
   background: var(--color-surface);
   font-size: 13px;
-}
-
-.pending-banner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 46px;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: var(--radius-control);
-  color: #956f18;
-  background: #fff8e6;
-  box-shadow: inset 0 0 0 1px rgb(232 170 50 / 28%);
-  font-size: 12px;
-  text-align: center;
 }
 
 .sheet-actions {
