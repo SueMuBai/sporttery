@@ -305,22 +305,23 @@ async function saveReturn(): Promise<void> {
           </button>
         </div>
       </section>
+
+      <div v-if="item.status !== 'settled'" class="sheet-actions detail-inline-actions">
+        <AppButton variant="secondary" block @click="showHistory = true">
+          查看购买记录
+        </AppButton>
+        <AppButton block @click="continueEditing">继续编辑</AppButton>
+      </div>
     </div>
 
-    <template #footer>
-      <div v-if="item?.status === 'settled'" class="sheet-actions">
+    <template v-if="item?.status === 'settled'" #footer>
+      <div class="sheet-actions">
         <AppButton variant="secondary" block @click="closeSheet">
           取消
         </AppButton>
         <AppButton block :loading="store.saving" @click="saveReturn">
           保存修改
         </AppButton>
-      </div>
-      <div v-else class="sheet-actions">
-        <AppButton variant="secondary" block @click="showHistory = true">
-          查看购买记录
-        </AppButton>
-        <AppButton block @click="continueEditing">继续编辑</AppButton>
       </div>
     </template>
   </AppBottomSheet>
@@ -594,6 +595,10 @@ async function saveReturn(): Promise<void> {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.detail-inline-actions {
+  margin-top: 2px;
 }
 
 .amount-positive {

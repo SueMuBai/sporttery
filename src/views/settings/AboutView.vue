@@ -110,7 +110,10 @@ function activateMenuItem(item: (typeof menuItems)[number]): void {
       </button>
     </AppCard>
 
-    <p class="about-copyright">© 2026 彩果 · 数据仅供个人记录</p>
+    <p class="about-copyright">
+      <span class="about-copyright__mark">© 2026</span>
+      <span>彩果 · 数据仅供个人记录</span>
+    </p>
 
     <AppBottomSheet
       :show="Boolean(activeContent)"
@@ -218,12 +221,24 @@ function activateMenuItem(item: (typeof menuItems)[number]): void {
 }
 
 .about-copyright {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   margin: 8px 0 0;
   color: #758398;
   font-size: 11px;
   font-weight: 400;
   line-height: 16px;
   text-align: center;
+  -webkit-text-fill-color: #758398;
+}
+
+.about-copyright__mark {
+  color: #758398;
+  font-family: Arial, "Helvetica Neue", sans-serif;
+  font-variant-emoji: text;
+  letter-spacing: 0;
   -webkit-text-fill-color: #758398;
 }
 

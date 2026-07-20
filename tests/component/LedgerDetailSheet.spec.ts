@@ -113,6 +113,11 @@ describe("LedgerDetailSheet", () => {
     expect(wrapper.findAll(".match-row")).toHaveLength(5);
     expect(wrapper.text()).toContain("查看其余1场");
     expect(wrapper.find(".pending-banner").exists()).toBe(false);
+    expect(wrapper.get(".detail-inline-actions").text()).toContain(
+      "查看购买记录",
+    );
+    expect(wrapper.get(".detail-inline-actions").text()).toContain("继续编辑");
+    expect(wrapper.get(".bottom-sheet-stub > footer").text()).toBe("");
 
     await wrapper.get(".match-list__expand").trigger("click");
     expect(wrapper.findAll(".match-row")).toHaveLength(6);

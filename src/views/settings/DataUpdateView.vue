@@ -320,6 +320,7 @@ function showTask(task: RecentTask): void {
         >
           <van-loading
             v-if="store.syncing"
+            type="spinner"
             size="30"
             color="var(--color-primary)"
           />
@@ -417,7 +418,6 @@ function showTask(task: RecentTask): void {
       <AppButton
         block
         size="large"
-        :loading="store.syncing && activeSync === 'matches'"
         :disabled="store.syncing"
         @click="synchronizeMatches"
       >
@@ -430,7 +430,6 @@ function showTask(task: RecentTask): void {
         block
         size="large"
         variant="secondary"
-        :loading="store.syncing && activeSync === 'results'"
         :disabled="store.syncing"
         @click="synchronizeResults"
       >
@@ -446,7 +445,11 @@ function showTask(task: RecentTask): void {
       <AppCard class="sync-log-list" :padded="false">
         <div v-for="log in liveLogs" :key="log.id" class="sync-log-row">
           <span :class="['sync-log-status', `sync-log-status--${log.status}`]">
-            <van-loading v-if="log.status === 'syncing'" size="18" />
+            <van-loading
+              v-if="log.status === 'syncing'"
+              type="spinner"
+              size="18"
+            />
             <AppIcon
               v-else
               :name="log.status === 'failed' ? 'close' : 'success'"
