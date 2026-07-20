@@ -15,7 +15,7 @@
       "consumers": ["SettingsView", "DataUpdateView", "AboutView"]
     },
     "ticket": {
-      "status": "available-for-integration",
+      "status": "integrated",
       "assets": [
         "ic_refresh.svg",
         "ic_search.svg",
@@ -24,7 +24,8 @@
         "ic_status_success.svg",
         "ic_view_plan.svg",
         "ill_empty_matches.svg"
-      ]
+      ],
+      "consumers": ["TicketView", "AppSyncIndicator"]
     },
     "ledger": {
       "status": "integrated",

@@ -1,5 +1,9 @@
 <script setup lang="ts">
+import AppAssetIcon from '@/components/base/AppAssetIcon.vue'
 import AppIcon from '@/components/base/AppIcon.vue'
+
+import refreshIcon from '@/assets/ui/ticket/ic_refresh.svg?url'
+import statusSuccessIcon from '@/assets/ui/ticket/ic_status_success.svg?url'
 
 export interface SyncIndicatorStat {
   label: string
@@ -52,9 +56,19 @@ const emit = defineEmits<{
     >
       <span class="app-sync-indicator__icon" aria-hidden="true">
         <van-loading v-if="statusItem.state === 'loading'" size="22" color="var(--color-primary)" />
+        <AppAssetIcon
+          v-else-if="statusItem.state === 'idle'"
+          :src="refreshIcon"
+          :size="22"
+        />
+        <AppAssetIcon
+          v-else-if="statusItem.state === 'success'"
+          :src="statusSuccessIcon"
+          :size="24"
+        />
         <AppIcon
           v-else
-          :name="statusItem.state === 'success' ? 'success' : statusItem.state === 'warning' || statusItem.state === 'error' ? 'warning' : 'refresh'"
+          :name="statusItem.state === 'warning' || statusItem.state === 'error' ? 'warning' : 'refresh'"
           :size="24"
         />
       </span>
@@ -98,17 +112,17 @@ const emit = defineEmits<{
 
 .app-sync-indicator__status {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) auto;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
   align-items: center;
   min-height: 64px;
-  gap: 10px;
+  gap: 8px;
   padding: 8px 10px;
 }
 
 .app-sync-indicator__icon {
   display: grid;
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   place-items: center;
   color: var(--color-primary);

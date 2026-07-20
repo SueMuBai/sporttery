@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   confirmAction: vi.fn(),
   initialize: vi.fn(),
   getCounts: vi.fn(),
+  createBackupSnapshot: vi.fn(),
+  restoreBackupSnapshot: vi.fn(),
   clearLocalData: vi.fn(),
   showFailToast: vi.fn(),
   showLoadingToast: vi.fn(() => ({ close: vi.fn() })),
@@ -21,6 +23,8 @@ vi.mock("@/services/database/createDatabase", () => ({
   getDatabase: () => ({
     initialize: mocks.initialize,
     getCounts: mocks.getCounts,
+    createBackupSnapshot: mocks.createBackupSnapshot,
+    restoreBackupSnapshot: mocks.restoreBackupSnapshot,
     clearLocalData: mocks.clearLocalData,
   }),
 }));
@@ -41,6 +45,27 @@ const counts = {
   ledgerOrders: 7,
 };
 
+const emptySnapshot = {
+  settings: {
+    historyLimits: 10,
+    workers: 4,
+    timeoutSeconds: 15,
+    retries: 2,
+    defaultMultiplier: 1,
+    autoSyncMatches: true,
+    expandMatchDetails: false,
+  },
+  tags: [],
+  plans: [],
+  ledgerOrders: [],
+  ledgerAdjustments: [],
+  matches: [],
+  results: [],
+  syncJobs: [],
+  oddsHistory: [],
+  appEvents: [],
+};
+
 function buttonByText(wrapper: ReturnType<typeof mount>, text: string) {
   const button = wrapper
     .findAll("button")
@@ -56,6 +81,8 @@ describe("DataManagementView clear local data", () => {
     vi.useFakeTimers();
     mocks.initialize.mockResolvedValue(undefined);
     mocks.getCounts.mockResolvedValue(counts);
+    mocks.createBackupSnapshot.mockResolvedValue(emptySnapshot);
+    mocks.restoreBackupSnapshot.mockResolvedValue(counts);
     mocks.clearLocalData.mockResolvedValue({
       ...counts,
       tags: 0,
@@ -152,5 +179,61 @@ describe("DataManagementView clear local data", () => {
 
     expect(wrapper.find('input[placeholder="清空数据"]').exists()).toBe(false);
     expect(mocks.clearLocalData).not.toHaveBeenCalled();
+  });
+
+  it("requires an exact phrase before replacing local data from a complete backup", async () => {
+    const wrapper = mount(DataManagementView, {
+      global: {
+        stubs: {
+          SubpageHeader: { template: "<header><slot name='action' /></header>" },
+          "van-loading": { template: "<span />" },
+          "van-popup": {
+            props: ["show"],
+            template: '<div v-if="show"><slot /></div>',
+          },
+          "van-button": {
+            props: ["disabled", "loading"],
+            emits: ["click"],
+            template:
+              '<button :disabled="disabled" @click="$emit(\'click\', $event)"><slot /></button>',
+          },
+        },
+      },
+    });
+    await flushPromises();
+
+    const backup = JSON.stringify({
+      formatVersion: 2,
+      exportedAt: "2026-07-20T12:00:00.000Z",
+      ...emptySnapshot,
+    });
+    const file = new File([backup], "caiguo-backup.json", {
+      type: "application/json",
+    });
+    Object.defineProperty(file, "text", {
+      value: vi.fn(async () => backup),
+    });
+    const input = wrapper.get('input[type="file"]');
+    Object.defineProperty(input.element, "files", {
+      configurable: true,
+      value: [file],
+    });
+    await input.trigger("change");
+    await flushPromises();
+
+    const restoreButton = buttonByText(wrapper, "完整恢复");
+    expect(restoreButton.attributes("disabled")).toBeDefined();
+    const phrase = wrapper.get('input[placeholder="恢复备份"]');
+    await phrase.setValue("恢复");
+    expect(buttonByText(wrapper, "完整恢复").attributes("disabled")).toBeDefined();
+    await phrase.setValue("恢复备份");
+    await buttonByText(wrapper, "完整恢复").trigger("click");
+    await flushPromises();
+
+    expect(mocks.restoreBackupSnapshot).toHaveBeenCalledWith(emptySnapshot);
+    expect(localStorage.getItem("caiguo.lastBackupAt")).toBe(
+      "2026-07-20T12:00:00.000Z",
+    );
+    expect(mocks.showSuccessToast).toHaveBeenCalledWith("完整备份已恢复");
   });
 });

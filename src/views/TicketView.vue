@@ -14,6 +14,7 @@ import type { SyncIndicatorStatus } from '@/components/base/AppSyncIndicator.vue
 import { confirmAction } from '@/components/base/confirmAction'
 import BetMultiplierSheet from '@/components/ticket/BetMultiplierSheet.vue'
 import MatchCard from '@/components/ticket/MatchCard.vue'
+import PlanPreviewDialog from '@/components/ticket/PlanPreviewDialog.vue'
 import PurchaseSheet from '@/components/ticket/PurchaseSheet.vue'
 import { useTicketStore, type TicketMarket } from '@/stores/ticket'
 import type { MarketCode } from '@/types/domain'
@@ -22,6 +23,7 @@ import { centsToYuan } from '@/utils/money'
 import clearIcon from '@/assets/ui/ticket/ic_clear.svg?url'
 import manageIcon from '@/assets/ui/ticket/ic_manage.svg?url'
 import searchIcon from '@/assets/ui/ticket/ic_search.svg?url'
+import viewPlanIcon from '@/assets/ui/ticket/ic_view_plan.svg?url'
 import emptyMatchesIllustration from '@/assets/ui/ticket/ill_empty_matches.svg?url'
 
 const store = useTicketStore()
@@ -29,6 +31,7 @@ const router = useRouter()
 const betExpanded = ref(false)
 const saving = ref(false)
 const showPurchase = ref(false)
+const showPlanPreview = ref(false)
 const showMultiplierEditor = ref(false)
 const syncFeedback = ref<'idle' | 'success' | 'warning'>('idle')
 let syncFeedbackTimer: ReturnType<typeof setTimeout> | undefined
@@ -264,6 +267,11 @@ function purchaseFromMultiplierEditor(): void {
   showPurchase.value = true
 }
 
+function confirmPlanPreview(): void {
+  showPlanPreview.value = false
+  showPurchase.value = true
+}
+
 function toggleMatch(matchId: number): void {
   if (store.activeMarket !== 'mixed') {
     store.toggleHistory(matchId)
@@ -383,7 +391,9 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
         clearable
         aria-label="搜索比赛"
       >
-        <template #left-icon><AppAssetIcon :src="searchIcon" :size="20" /></template>
+        <template #left-icon>
+          <AppAssetIcon class="match-search__icon" :src="searchIcon" :size="18" />
+        </template>
       </van-field>
 
       <AppState
@@ -463,11 +473,33 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
           <p>理论奖金 <strong class="numeric">¥{{ centsToYuan(store.prizeRange.minCents) }}～{{ centsToYuan(store.prizeRange.maxCents) }}</strong><AppIcon name="info" :size="16" /></p>
         </div>
         <div class="bet-dock__actions">
-          <AppButton variant="secondary" block :loading="saving" :disabled="!store.betCount || !store.canSavePlan" @click="savePlan">{{ store.editingPlanId ? '保存修改' : '保存方案' }}</AppButton>
-          <AppButton block :disabled="!store.betCount" @click="showPurchase = true">记录购买</AppButton>
+          <AppButton variant="secondary" block :loading="saving" :disabled="!store.betCount || !store.canSavePlan" @click="savePlan">
+            <template #icon><AppIcon name="save" :size="18" /></template>
+            {{ store.editingPlanId ? '保存修改' : '保存方案' }}
+          </AppButton>
+          <AppButton block :disabled="!store.betCount" @click="showPurchase = true">
+            <template #icon><AppIcon name="check" :size="18" /></template>
+            记录购买
+          </AppButton>
+          <AppButton variant="secondary" block :disabled="!store.betCount" @click="showPlanPreview = true">
+            <template #icon><AppAssetIcon :src="viewPlanIcon" :size="18" /></template>
+            查看方案
+          </AppButton>
         </div>
       </div>
     </aside>
+
+    <PlanPreviewDialog
+      v-model:show="showPlanPreview"
+      :selections="store.selectedSelections"
+      :matches="store.matches"
+      :pass-counts="store.passCounts"
+      :multiplier="store.multiplier"
+      :bet-count="store.betCount"
+      :stake-cents="store.stakeCents"
+      :prize-range="store.prizeRange"
+      @confirm="confirmPlanPreview"
+    />
 
     <BetMultiplierSheet
       v-model:show="showMultiplierEditor"
@@ -577,6 +609,14 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
 
 .match-search:focus-within {
   box-shadow: var(--outline-primary);
+}
+
+.match-search__icon {
+  color: #8f9bad;
+}
+
+.match-search:focus-within .match-search__icon {
+  color: var(--color-primary);
 }
 
 .match-search :deep(.van-field__control) {
@@ -832,12 +872,19 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
 
 .bet-dock__actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
 .bet-dock__actions :deep(.app-button) {
   min-height: 36px;
+  padding-inline: 7px;
+  font-size: 12px;
+}
+
+.bet-dock__actions :deep(.app-button__icon) {
+  width: 18px;
+  height: 18px;
 }
 
 @media (min-width: 600px) {

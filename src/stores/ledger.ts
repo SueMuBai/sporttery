@@ -7,7 +7,11 @@ import {
 } from "@/features/betting/calculator";
 import type { NormalizedMatch } from "@/features/matches/types";
 import { getDatabase } from "@/services/database/createDatabase";
-import type { LedgerAdjustment, LedgerOrder, MatchResult } from "@/types/domain";
+import type {
+  LedgerAdjustment,
+  LedgerOrder,
+  MatchResult,
+} from "@/types/domain";
 import { addCents } from "@/utils/money";
 
 export type LedgerRangePreset = "month" | "three-months" | "all" | "custom";
@@ -169,7 +173,26 @@ export const useLedgerStore = defineStore("ledger", () => {
     }
   }
 
-  async function updateNotes(item: EvaluatedLedgerOrder, notes: string): Promise<void> {
+  async function recordReturnFailure(
+    item: EvaluatedLedgerOrder,
+    attemptedValue: string,
+    reason: unknown,
+  ): Promise<void> {
+    const failureReason =
+      reason instanceof Error ? reason.message : String(reason);
+    await database.recordLedgerAdjustmentFailure(
+      item.order.id,
+      item.displayedReturnCents,
+      attemptedValue,
+      failureReason,
+    );
+    await loadAdjustments(item.order.id);
+  }
+
+  async function updateNotes(
+    item: EvaluatedLedgerOrder,
+    notes: string,
+  ): Promise<void> {
     saving.value = true;
     try {
       await database.updateLedgerNotes(
@@ -197,7 +220,10 @@ export const useLedgerStore = defineStore("ledger", () => {
   async function undoLatestReturn(item: EvaluatedLedgerOrder): Promise<void> {
     saving.value = true;
     try {
-      await database.undoLatestLedgerAdjustment(item.order.id, item.order.updatedAt);
+      await database.undoLatestLedgerAdjustment(
+        item.order.id,
+        item.order.updatedAt,
+      );
       await load();
       await loadAdjustments(item.order.id);
     } finally {
@@ -223,6 +249,7 @@ export const useLedgerStore = defineStore("ledger", () => {
     applyPreset,
     applyCustomRange,
     updateReturn,
+    recordReturnFailure,
     updateNotes,
     find,
     loadAdjustments,

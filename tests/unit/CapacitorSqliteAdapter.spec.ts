@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { CapacitorSqliteAdapter } from "@/services/database/native/CapacitorSqliteAdapter";
+import type { DatabaseBackupSnapshot } from "@/services/database/backup";
 import { DEFAULT_SETTINGS } from "@/types/domain";
 
 function nativeConnection(activeStates: boolean[] = [false]) {
@@ -10,6 +11,7 @@ function nativeConnection(activeStates: boolean[] = [false]) {
   return {
     open: vi.fn(async () => undefined),
     close: vi.fn(async () => undefined),
+    execute: vi.fn(async () => ({ changes: { changes: 0 } })),
     isTransactionActive,
     beginTransaction: vi.fn(async () => ({ changes: {} })),
     commitTransaction: vi.fn(async () => ({ changes: {} })),
@@ -20,6 +22,57 @@ function nativeConnection(activeStates: boolean[] = [false]) {
 }
 
 describe("CapacitorSqliteAdapter native transactions", () => {
+  it("registers and defensively applies the ledger adjustment audit migration", async () => {
+    const connection = nativeConnection([false]);
+    connection.query.mockImplementation(async (statement: string) => ({
+      values: statement.includes("PRAGMA table_info(ledger_adjustments)")
+        ? [
+            { name: "id" },
+            { name: "order_id" },
+            { name: "previous_return_cents" },
+            { name: "next_return_cents" },
+            { name: "occurred_at" },
+            { name: "note" },
+          ]
+        : [],
+    }));
+    const sqlite = {
+      addUpgradeStatement: vi.fn(async () => undefined),
+      checkConnectionsConsistency: vi.fn(async () => ({ result: true })),
+      isConnection: vi.fn(async () => ({ result: true })),
+      retrieveConnection: vi.fn(async () => connection),
+    };
+    const adapter = new CapacitorSqliteAdapter();
+    Object.assign(adapter, { sqlite });
+
+    await adapter.initialize();
+
+    expect(sqlite.addUpgradeStatement).toHaveBeenCalledWith("caiguo_app_v2", [
+      expect.objectContaining({ toVersion: 2 }),
+    ]);
+    const migrationStatements = connection.run.mock.calls
+      .map(([statement]) => String(statement))
+      .filter((statement) =>
+        statement.startsWith("ALTER TABLE ledger_adjustments"),
+      );
+    expect(migrationStatements).toHaveLength(5);
+    expect(migrationStatements.join("\n")).toContain("failure_reason");
+    expect(connection.commitTransaction).toHaveBeenCalledOnce();
+  });
+
+  const emptyBackup = (): DatabaseBackupSnapshot => ({
+    settings: DEFAULT_SETTINGS,
+    tags: [],
+    plans: [],
+    ledgerOrders: [],
+    ledgerAdjustments: [],
+    matches: [],
+    results: [],
+    syncJobs: [],
+    oddsHistory: [],
+    appEvents: [],
+  });
+
   it("clears every business table and restores defaults in one native transaction", async () => {
     const connection = nativeConnection([false]);
     const adapter = new CapacitorSqliteAdapter();
@@ -81,6 +134,62 @@ describe("CapacitorSqliteAdapter native transactions", () => {
       expect.anything(),
       expect.anything(),
     );
+  });
+
+  it("replaces a complete backup in one native transaction", async () => {
+    const connection = nativeConnection([false]);
+    const adapter = new CapacitorSqliteAdapter();
+    Object.assign(adapter, { connection });
+
+    await adapter.restoreBackupSnapshot(emptyBackup());
+
+    expect(connection.beginTransaction).toHaveBeenCalledOnce();
+    expect(connection.commitTransaction).toHaveBeenCalledOnce();
+    expect(connection.rollbackTransaction).not.toHaveBeenCalled();
+    const statements = connection.run.mock.calls.map(([statement]) =>
+      String(statement),
+    );
+    expect(
+      statements.filter((statement) => statement.startsWith("DELETE FROM ")),
+    ).toEqual([
+      "DELETE FROM ledger_adjustments",
+      "DELETE FROM ledger_orders",
+      "DELETE FROM plan_tags",
+      "DELETE FROM plan_selections",
+      "DELETE FROM plans",
+      "DELETE FROM tags",
+      "DELETE FROM match_results",
+      "DELETE FROM match_snapshots",
+      "DELETE FROM odds_history",
+      "DELETE FROM sync_jobs",
+      "DELETE FROM app_events",
+      "DELETE FROM settings",
+    ]);
+    expect(
+      statements.filter((statement) =>
+        statement.startsWith("INSERT INTO settings"),
+      ),
+    ).toHaveLength(7);
+  });
+
+  it("rolls back every restore write when native SQLite fails after clearing", async () => {
+    const connection = nativeConnection([false]);
+    connection.run.mockImplementation(async (statement: string) => {
+      if (statement.startsWith("INSERT INTO settings")) {
+        throw new Error("simulated restore failure");
+      }
+      return { changes: { changes: 1 } };
+    });
+    const adapter = new CapacitorSqliteAdapter();
+    Object.assign(adapter, { connection });
+
+    await expect(adapter.restoreBackupSnapshot(emptyBackup())).rejects.toThrow(
+      "simulated restore failure",
+    );
+
+    expect(connection.beginTransaction).toHaveBeenCalledOnce();
+    expect(connection.commitTransaction).not.toHaveBeenCalled();
+    expect(connection.rollbackTransaction).toHaveBeenCalledOnce();
   });
 
   it("serializes transactions across adapter instances sharing one native database", async () => {
@@ -866,5 +975,104 @@ describe("CapacitorSqliteAdapter native transactions", () => {
       "no",
     );
     expect(connection.commitTransaction).toHaveBeenCalledTimes(1);
+  });
+
+  it("writes complete success metadata in the same transaction as the return", async () => {
+    const connection = nativeConnection([false]);
+    connection.query.mockResolvedValueOnce({
+      values: [
+        {
+          return_cents: 8250,
+          updated_at: "2026-07-19T10:32:00.000Z",
+        },
+      ],
+    });
+    const adapter = new CapacitorSqliteAdapter();
+    Object.assign(adapter, { connection });
+
+    await adapter.updateLedgerReturn(
+      "ledger-1",
+      8616,
+      "2026-07-19T10:32:00.000Z",
+      8250,
+    );
+
+    expect(connection.beginTransaction).toHaveBeenCalledOnce();
+    expect(connection.commitTransaction).toHaveBeenCalledOnce();
+    expect(connection.run).toHaveBeenCalledWith(
+      expect.stringContaining("status,source,operator,failure_reason"),
+      [
+        "ledger-1",
+        8250,
+        8616,
+        expect.any(String),
+        "",
+        "success",
+        "manual",
+        "本机",
+        "",
+        "8616",
+      ],
+      false,
+      "no",
+    );
+    expect(connection.run).toHaveBeenCalledWith(
+      expect.stringContaining("UPDATE ledger_orders SET return_cents"),
+      [8616, 1, expect.any(String), "ledger-1"],
+      false,
+      "no",
+    );
+  });
+
+  it("rolls back a rejected return then commits its failure audit independently", async () => {
+    const connection = nativeConnection([false, false]);
+    connection.query
+      .mockResolvedValueOnce({
+        values: [
+          {
+            return_cents: 8616,
+            updated_at: "2026-07-19T10:51:00.000Z",
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ values: [{ return_cents: 8616 }] });
+    const adapter = new CapacitorSqliteAdapter();
+    Object.assign(adapter, { connection });
+
+    await expect(
+      adapter.updateLedgerReturn(
+        "ledger-1",
+        8800,
+        "2026-07-19T10:45:00.000Z",
+        8616,
+      ),
+    ).rejects.toThrow("账单已在其他页面更新");
+
+    expect(connection.beginTransaction).toHaveBeenCalledTimes(2);
+    expect(connection.rollbackTransaction).toHaveBeenCalledOnce();
+    expect(connection.commitTransaction).toHaveBeenCalledOnce();
+    expect(connection.run).not.toHaveBeenCalledWith(
+      expect.stringContaining("UPDATE ledger_orders SET return_cents"),
+      expect.anything(),
+      false,
+      "no",
+    );
+    expect(connection.run).toHaveBeenCalledWith(
+      expect.stringContaining("status,source,operator,failure_reason"),
+      [
+        "ledger-1",
+        8616,
+        8616,
+        expect.any(String),
+        "",
+        "failed",
+        "manual",
+        "本机",
+        "账单已在其他页面更新，请刷新后重试",
+        "8800",
+      ],
+      false,
+      "no",
+    );
   });
 });

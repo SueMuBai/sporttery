@@ -127,12 +127,26 @@ function handleVisibility(show: boolean): void {
 
 async function saveReturn(): Promise<void> {
   if (!props.item) return;
+  let cents: number;
   try {
     returnError.value = "";
-    const cents = yuanToCents(returnValue.value);
+    cents = yuanToCents(returnValue.value);
     if (cents < 0) throw new RangeError("回款金额不能小于 0.00 元");
     if (cents > 99_999_999)
       throw new RangeError("回款金额不能超过 999999.99 元");
+  } catch (reason) {
+    returnError.value =
+      reason instanceof Error ? reason.message : String(reason);
+    try {
+      await store.recordReturnFailure(props.item, returnValue.value, reason);
+    } catch (auditError) {
+      const auditMessage =
+        auditError instanceof Error ? auditError.message : String(auditError);
+      returnError.value = `${returnError.value}（失败记录未保存：${auditMessage}）`;
+    }
+    return;
+  }
+  try {
     if (cents === props.item.displayedReturnCents) {
       showSuccessToast("回款金额未变化");
       emit("update:show", false);

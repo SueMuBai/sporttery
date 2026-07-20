@@ -391,10 +391,6 @@ function continueEditing(plan: SavedPlan): void {
   padding-top: 14px;
 }
 
-.ledger-page :deep(.app-header) {
-  min-height: calc(86px + env(safe-area-inset-top));
-}
-
 .period-card {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr) auto;

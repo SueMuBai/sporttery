@@ -1,9 +1,18 @@
 import { createPinia, setActivePinia } from "pinia";
-import { mount } from "@vue/test-utils";
-import { beforeEach, describe, expect, it } from "vitest";
+import { flushPromises, mount } from "@vue/test-utils";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import LedgerDetailSheet from "@/components/ledger/LedgerDetailSheet.vue";
 import type { EvaluatedLedgerOrder } from "@/stores/ledger";
+
+const database = vi.hoisted(() => ({
+  recordLedgerAdjustmentFailure: vi.fn(),
+  listLedgerAdjustments: vi.fn(),
+}));
+
+vi.mock("@/services/database/createDatabase", () => ({
+  getDatabase: () => database,
+}));
 
 const bottomSheetStub = {
   props: ["show", "title"],
@@ -18,9 +27,10 @@ const bottomSheetStub = {
 };
 
 const fieldStub = {
-  props: ["modelValue"],
+  props: ["modelValue", "errorMessage"],
   emits: ["update:modelValue"],
-  template: '<input class="van-field-stub" :value="modelValue" />',
+  template:
+    '<label><input class="van-field-stub" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" /><span>{{ errorMessage }}</span></label>',
 };
 
 function ledgerItem(status: "pending" | "settled"): EvaluatedLedgerOrder {
@@ -88,7 +98,13 @@ function mountSheet(item: EvaluatedLedgerOrder) {
 }
 
 describe("LedgerDetailSheet", () => {
-  beforeEach(() => setActivePinia(createPinia()));
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    database.recordLedgerAdjustmentFailure.mockReset();
+    database.recordLedgerAdjustmentFailure.mockResolvedValue(undefined);
+    database.listLedgerAdjustments.mockReset();
+    database.listLedgerAdjustments.mockResolvedValue([]);
+  });
 
   it("keeps the plan detail in a sheet and expands the folded match list", async () => {
     const wrapper = mountSheet(ledgerItem("pending"));
@@ -116,5 +132,25 @@ describe("LedgerDetailSheet", () => {
     expect(wrapper.text()).toContain("取消");
     expect(wrapper.text()).toContain("保存修改");
     expect(wrapper.find(".pending-banner").exists()).toBe(false);
+  });
+
+  it("persists an invalid amount attempt without changing the return", async () => {
+    const item = ledgerItem("settled");
+    const wrapper = mountSheet(item);
+    await wrapper.get(".van-field-stub").setValue("12.345");
+    const save = wrapper
+      .findAll("button")
+      .find((button) => button.text().includes("保存修改"));
+    expect(save).toBeDefined();
+    await save!.trigger("click");
+    await flushPromises();
+
+    expect(database.recordLedgerAdjustmentFailure).toHaveBeenCalledWith(
+      "ledger-1",
+      1200,
+      "12.345",
+      "无效金额：12.345",
+    );
+    expect(wrapper.text()).toContain("无效金额：12.345");
   });
 });

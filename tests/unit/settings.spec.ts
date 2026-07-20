@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   exportFilename,
+  parseBackupImport,
   parsePlanImport,
   parseJsonExport,
   serializeJsonExport,
@@ -51,9 +52,45 @@ describe("settings and exports", () => {
   it("round-trips a JSON export and rejects unknown formats", () => {
     const serialized = serializeJsonExport(bundle);
     expect(parseJsonExport(serialized)).toEqual(bundle);
-    expect(() => parseJsonExport('{"formatVersion":2}')).toThrow(
+    expect(() => parseJsonExport('{"formatVersion":3}')).toThrow(
       "不支持的导出文件版本",
     );
+  });
+
+  it("validates complete backups and upgrades legacy exports safely", () => {
+    const complete = {
+      ...bundle,
+      formatVersion: 2 as const,
+      ledgerAdjustments: [],
+      syncJobs: [],
+      oddsHistory: [],
+      appEvents: [],
+    };
+
+    expect(parseBackupImport(JSON.stringify(complete))).toMatchObject({
+      formatVersion: 2,
+      legacy: false,
+      snapshot: {
+        settings: DEFAULT_SETTINGS,
+        ledgerOrders: [],
+        ledgerAdjustments: [],
+      },
+    });
+    expect(parseBackupImport(JSON.stringify(bundle))).toMatchObject({
+      formatVersion: 1,
+      legacy: true,
+      snapshot: {
+        ledgerAdjustments: [],
+        syncJobs: [],
+        oddsHistory: [],
+        appEvents: [],
+      },
+    });
+    expect(() =>
+      parseBackupImport(
+        JSON.stringify({ ...complete, ledgerAdjustments: undefined }),
+      ),
+    ).toThrow("导出文件缺少 ledgerAdjustments");
   });
 
   it("rejects backups that bypass tag and betting constraints", () => {

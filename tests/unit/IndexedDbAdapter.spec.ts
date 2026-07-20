@@ -1,3 +1,4 @@
+import Dexie from "dexie";
 import { describe, expect, it } from "vitest";
 
 import { IndexedDbAdapter } from "@/services/database/indexeddb/IndexedDbAdapter";
@@ -44,6 +45,37 @@ async function saveAiTag(adapter: IndexedDbAdapter): Promise<void> {
 }
 
 describe("IndexedDbAdapter", () => {
+  it("backfills audit metadata when opening version-one adjustment records", async () => {
+    const name = `caiguo-adjustment-legacy-${crypto.randomUUID()}`;
+    const legacy = new Dexie(name);
+    legacy.version(1).stores({
+      ledgerAdjustments: "++id,orderId,occurredAt",
+    });
+    await legacy.open();
+    await legacy.table("ledgerAdjustments").add({
+      orderId: "legacy-order",
+      previousReturnCents: 0,
+      nextReturnCents: 8250,
+      occurredAt: timestamp,
+      note: "手工修改实际回款",
+    });
+    legacy.close();
+
+    const adapter = new IndexedDbAdapter(name);
+    await adapter.initialize();
+
+    expect(await adapter.listLedgerAdjustments("legacy-order")).toEqual([
+      expect.objectContaining({
+        status: "success",
+        source: "manual",
+        operator: "本机",
+        failureReason: "",
+        attemptedValue: "8250",
+      }),
+    ]);
+    await adapter.deleteDatabaseForTests();
+  });
+
   it("fills new boolean defaults when reading settings saved by an older web build", async () => {
     const name = `caiguo-settings-legacy-${crypto.randomUUID()}`;
     const adapter = new IndexedDbAdapter(name);
@@ -187,6 +219,124 @@ describe("IndexedDbAdapter", () => {
     expect(await reopened.getSettings()).toEqual(DEFAULT_SETTINGS);
     expect(await reopened.getCounts()).toEqual(counts);
     await reopened.deleteDatabaseForTests();
+  });
+
+  it("round-trips a complete backup including settings, ledger history and operational data", async () => {
+    const source = new IndexedDbAdapter(
+      `caiguo-backup-source-${crypto.randomUUID()}`,
+    );
+    const target = new IndexedDbAdapter(
+      `caiguo-backup-target-${crypto.randomUUID()}`,
+    );
+    await source.initialize();
+    await target.initialize();
+    await source.saveSettings({
+      ...DEFAULT_SETTINGS,
+      historyLimits: 22,
+      workers: 5,
+      autoSyncMatches: false,
+      expandMatchDetails: true,
+    });
+    await saveAiTag(source);
+    const plan = samplePlan();
+    await source.savePlan(plan);
+    await source.saveMatches([
+      {
+        matchId: 2040532,
+        matchNum: "周五201",
+        matchDateTime: "2026-07-18 01:00:00",
+        homeTeam: "哥德堡",
+        awayTeam: "布鲁马波",
+        payload: { league: "瑞超" },
+        updatedAt: timestamp,
+      },
+    ]);
+    await source.saveResults([
+      {
+        matchId: 2040532,
+        matchNum: "周五201",
+        homeTeam: "哥德堡",
+        awayTeam: "布鲁马波",
+        halfTimeScore: "0:0",
+        fullTimeScore: "1:0",
+        goalLine: -1,
+        officialResults: { had: "h", hhad: "d" },
+        fetchedAt: "2026-07-18T05:00:00.000Z",
+      },
+      {
+        matchId: 2040532,
+        matchNum: "周五201",
+        homeTeam: "哥德堡",
+        awayTeam: "布鲁马波",
+        halfTimeScore: "1:0",
+        fullTimeScore: "2:0",
+        goalLine: -1,
+        officialResults: { had: "h", hhad: "d" },
+        fetchedAt: "2026-07-18T06:00:00.000Z",
+      },
+    ]);
+    const order: LedgerOrder = {
+      id: "backup-ledger",
+      planId: plan.id,
+      planName: plan.name,
+      planSnapshot: plan,
+      purchasedAt: timestamp,
+      stakeCents: 200,
+      returnCents: 0,
+      returnManual: false,
+      status: "settled",
+      notes: "完整备份",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+    await source.saveLedgerOrder(order);
+    await source.updateLedgerReturn(order.id, 356, order.updatedAt);
+    await source.saveSyncJob({
+      kind: "full",
+      status: "partial",
+      addedCount: 1,
+      updatedCount: 2,
+      failedCount: 1,
+      errorMessage: "一场失败",
+      startedAt: timestamp,
+      finishedAt: timestamp,
+    });
+    await source.saveOddsHistory([
+      {
+        matchId: 2040532,
+        market: "had",
+        outcome: "h",
+        odds: "1.78",
+        capturedAt: timestamp,
+      },
+    ]);
+    await source.recordEvent({
+      type: "backup.test",
+      payload: { complete: true },
+      createdAt: timestamp,
+    });
+
+    await target.saveTag({
+      name: "待替换",
+      color: "#5797F5",
+      sortOrder: 1,
+      createdAt: timestamp,
+    });
+    const snapshot = await source.createBackupSnapshot();
+    const counts = await target.restoreBackupSnapshot(snapshot);
+
+    expect(counts).toMatchObject({
+      settings: 1,
+      tags: 1,
+      plans: 1,
+      matches: 1,
+      results: 2,
+      ledgerOrders: 1,
+    });
+    expect(await target.createBackupSnapshot()).toEqual(snapshot);
+
+    await source.deleteDatabaseForTests();
+    await target.deleteDatabaseForTests();
   });
 
   it("initializes idempotently and persists normalized core records", async () => {
@@ -629,8 +779,21 @@ describe("IndexedDbAdapter", () => {
     expect((await adapter.listLedger())[0]?.returnCents).toBe(356);
     expect(await adapter.listLedgerAdjustments("ledger-concurrent")).toEqual([
       expect.objectContaining({
+        status: "failed",
+        source: "manual",
+        operator: "本机",
+        previousReturnCents: 356,
+        nextReturnCents: 356,
+        attemptedValue: "500",
+        failureReason: "账单已在其他页面更新，请刷新后重试",
+      }),
+      expect.objectContaining({
+        status: "success",
+        source: "manual",
+        operator: "本机",
         previousReturnCents: 250,
         nextReturnCents: 356,
+        failureReason: "",
       }),
     ]);
     const current = (await adapter.listLedger())[0]!;
@@ -650,9 +813,12 @@ describe("IndexedDbAdapter", () => {
       returnCents: 250,
       returnManual: false,
     });
-    expect(await adapter.listLedgerAdjustments("ledger-concurrent")).toEqual(
-      [],
-    );
+    expect(await adapter.listLedgerAdjustments("ledger-concurrent")).toEqual([
+      expect.objectContaining({
+        status: "failed",
+        attemptedValue: "500",
+      }),
+    ]);
 
     await adapter.deleteDatabaseForTests();
   });

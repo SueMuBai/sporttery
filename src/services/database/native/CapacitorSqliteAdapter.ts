@@ -18,6 +18,14 @@ import {
   assertValidMatchResult,
   assertValidMatchSnapshot,
 } from "@/features/matches/validation";
+import {
+  LOCAL_LEDGER_OPERATOR,
+  normalizeLedgerAdjustment,
+} from "@/features/ledger/adjustments";
+import {
+  normalizeBackupSnapshot,
+  type DatabaseBackupSnapshot,
+} from "@/services/database/backup";
 
 import type {
   DatabaseAdapter,
@@ -27,6 +35,7 @@ import {
   DATABASE_NAME,
   DATABASE_VERSION,
   NATIVE_SCHEMA,
+  NATIVE_UPGRADES,
 } from "@/services/database/schema";
 import { SerialTaskQueue } from "@/services/database/SerialTaskQueue";
 import {
@@ -100,6 +109,7 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
   }
 
   private async initializeOnce(): Promise<void> {
+    await this.sqlite.addUpgradeStatement(DATABASE_NAME, NATIVE_UPGRADES);
     const consistency = await this.sqlite.checkConnectionsConsistency();
     const existing = await this.sqlite.isConnection(DATABASE_NAME, false);
     if (consistency.result && existing.result) {
@@ -127,6 +137,7 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
     // setup uses the same serialized/recoverable path as all later writes.
     await this.transaction(async () => {
       await this.db.execute(NATIVE_SCHEMA, false);
+      await this.ensureLedgerAdjustmentColumnsInTransaction();
     });
     await this.run(
       "INSERT OR IGNORE INTO schema_migrations(version,applied_at) VALUES(?,?)",
@@ -718,42 +729,102 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
     expectedUpdatedAt?: string,
     previousReturnCents?: number,
   ): Promise<void> {
-    if (!Number.isSafeInteger(returnCents) || returnCents < 0) {
-      throw new TypeError("回款金额必须是非负整数分");
+    try {
+      if (!Number.isSafeInteger(returnCents) || returnCents < 0) {
+        throw new TypeError("回款金额必须是非负整数分");
+      }
+      if (
+        previousReturnCents !== undefined &&
+        (!Number.isSafeInteger(previousReturnCents) || previousReturnCents < 0)
+      ) {
+        throw new TypeError("原回款金额必须是非负整数分");
+      }
+      await this.transaction(async () => {
+        const rows = await this.query(
+          "SELECT return_cents,updated_at FROM ledger_orders WHERE id=?",
+          [id],
+        );
+        const existing = rows[0];
+        if (!existing) throw new Error("账单不存在");
+        if (
+          expectedUpdatedAt &&
+          String(existing.updated_at) !== expectedUpdatedAt
+        ) {
+          throw new Error("账单已在其他页面更新，请刷新后重试");
+        }
+        const stamp = now();
+        await this.runInTransaction(
+          `INSERT INTO ledger_adjustments(
+             order_id,previous_return_cents,next_return_cents,occurred_at,note,
+             status,source,operator,failure_reason,attempted_value
+           ) VALUES(?,?,?,?,?,?,?,?,?,?)`,
+          [
+            id,
+            previousReturnCents ?? Number(existing.return_cents),
+            returnCents,
+            stamp,
+            "",
+            "success",
+            "manual",
+            LOCAL_LEDGER_OPERATOR,
+            "",
+            String(returnCents),
+          ],
+        );
+        await this.runInTransaction(
+          "UPDATE ledger_orders SET return_cents=?,return_manual=?,updated_at=? WHERE id=?",
+          [returnCents, 1, stamp, id],
+        );
+      });
+    } catch (error) {
+      await this.auditFailedLedgerAdjustment(
+        id,
+        previousReturnCents,
+        String(returnCents),
+        error,
+      );
+      throw error;
     }
-    if (
-      previousReturnCents !== undefined &&
-      (!Number.isSafeInteger(previousReturnCents) || previousReturnCents < 0)
-    ) {
-      throw new TypeError("原回款金额必须是非负整数分");
-    }
+  }
+
+  async recordLedgerAdjustmentFailure(
+    id: string,
+    previousReturnCents: number | undefined,
+    attemptedValue: string,
+    failureReason: string,
+  ): Promise<void> {
+    const normalizedAttempt = attemptedValue.trim().slice(0, 80);
+    const normalizedReason = failureReason.trim().slice(0, 240);
+    if (!normalizedReason) throw new TypeError("失败原因不能为空");
     await this.transaction(async () => {
-      const rows = await this.query(
-        "SELECT return_cents,updated_at FROM ledger_orders WHERE id=?",
+      const [existing] = await this.query(
+        "SELECT return_cents FROM ledger_orders WHERE id=?",
         [id],
       );
-      const existing = rows[0];
       if (!existing) throw new Error("账单不存在");
-      if (
-        expectedUpdatedAt &&
-        String(existing.updated_at) !== expectedUpdatedAt
-      ) {
-        throw new Error("账单已在其他页面更新，请刷新后重试");
-      }
-      const stamp = now();
+      const previous =
+        previousReturnCents !== undefined &&
+        Number.isSafeInteger(previousReturnCents) &&
+        previousReturnCents >= 0
+          ? previousReturnCents
+          : Number(existing.return_cents);
       await this.runInTransaction(
-        "INSERT INTO ledger_adjustments(order_id,previous_return_cents,next_return_cents,occurred_at,note) VALUES(?,?,?,?,?)",
+        `INSERT INTO ledger_adjustments(
+           order_id,previous_return_cents,next_return_cents,occurred_at,note,
+           status,source,operator,failure_reason,attempted_value
+         ) VALUES(?,?,?,?,?,?,?,?,?,?)`,
         [
           id,
-          previousReturnCents ?? Number(existing.return_cents),
-          returnCents,
-          stamp,
-          "手工修改实际回款",
+          previous,
+          previous,
+          now(),
+          "",
+          "failed",
+          "manual",
+          LOCAL_LEDGER_OPERATOR,
+          normalizedReason,
+          normalizedAttempt,
         ],
-      );
-      await this.runInTransaction(
-        "UPDATE ledger_orders SET return_cents=?,return_manual=?,updated_at=? WHERE id=?",
-        [returnCents, 1, stamp, id],
       );
     });
   }
@@ -763,14 +834,21 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
       "SELECT * FROM ledger_adjustments WHERE order_id=? ORDER BY occurred_at DESC,id DESC",
       [orderId],
     );
-    return rows.map((row) => ({
-      id: Number(row.id),
-      orderId: String(row.order_id),
-      previousReturnCents: Number(row.previous_return_cents),
-      nextReturnCents: Number(row.next_return_cents),
-      occurredAt: String(row.occurred_at),
-      note: String(row.note),
-    }));
+    return rows.map((row) =>
+      normalizeLedgerAdjustment({
+        id: Number(row.id),
+        orderId: String(row.order_id),
+        previousReturnCents: Number(row.previous_return_cents),
+        nextReturnCents: Number(row.next_return_cents),
+        occurredAt: String(row.occurred_at),
+        note: String(row.note),
+        status: row.status === "failed" ? "failed" : "success",
+        source: row.source === "system" ? "system" : "manual",
+        operator: String(row.operator ?? ""),
+        failureReason: String(row.failure_reason ?? ""),
+        attemptedValue: String(row.attempted_value ?? ""),
+      }),
+    );
   }
 
   async undoLatestLedgerAdjustment(
@@ -788,13 +866,13 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
         throw new Error("账单已在其他页面更新，请刷新后重试");
       }
       const adjustments = await this.query(
-        "SELECT * FROM ledger_adjustments WHERE order_id=? ORDER BY occurred_at DESC,id DESC LIMIT 1",
+        "SELECT * FROM ledger_adjustments WHERE order_id=? AND status='success' ORDER BY occurred_at DESC,id DESC LIMIT 1",
         [id],
       );
       const latest = adjustments[0];
       if (!latest) throw new Error("没有可以撤销的回款修改");
       const remaining = await this.query(
-        "SELECT COUNT(*) count FROM ledger_adjustments WHERE order_id=? AND id<>?",
+        "SELECT COUNT(*) count FROM ledger_adjustments WHERE order_id=? AND status='success' AND id<>?",
         [id, latest.id],
       );
       await this.runInTransaction(
@@ -877,6 +955,147 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
     }));
   }
 
+  async createBackupSnapshot(): Promise<DatabaseBackupSnapshot> {
+    return this.transaction(async () => {
+      const settings = await this.getSettings();
+      const tags = await this.listTags();
+      const plans = await this.listPlans();
+      const ledgerOrders = await this.listLedger();
+      const matches = await this.listMatches();
+      const resultRows = await this.query(
+        "SELECT * FROM match_results ORDER BY match_id,julianday(fetched_at),id",
+      );
+      const adjustmentRows = await this.query(
+        "SELECT * FROM ledger_adjustments ORDER BY occurred_at,id",
+      );
+      const syncRows = await this.query(
+        "SELECT * FROM sync_jobs ORDER BY started_at,id",
+      );
+      const oddsRows = await this.query(
+        "SELECT * FROM odds_history ORDER BY captured_at,id",
+      );
+      const eventRows = await this.query(
+        "SELECT * FROM app_events ORDER BY created_at,id",
+      );
+      return {
+        settings,
+        tags,
+        plans,
+        ledgerOrders,
+        ledgerAdjustments: adjustmentRows.map((row) =>
+          this.mapLedgerAdjustment(row),
+        ),
+        matches,
+        results: resultRows.map((row) => this.mapResult(row)),
+        syncJobs: syncRows.map((row) => this.mapSyncJob(row)),
+        oddsHistory: oddsRows.map((row) => this.mapOddsHistory(row)),
+        appEvents: eventRows.map((row) => this.mapEvent(row)),
+      };
+    });
+  }
+
+  async restoreBackupSnapshot(
+    snapshot: DatabaseBackupSnapshot,
+  ): Promise<DatabaseCounts> {
+    const restored = normalizeBackupSnapshot(snapshot);
+    await this.transaction(async () => {
+      const tables = [
+        "ledger_adjustments",
+        "ledger_orders",
+        "plan_tags",
+        "plan_selections",
+        "plans",
+        "tags",
+        "match_results",
+        "match_snapshots",
+        "odds_history",
+        "sync_jobs",
+        "app_events",
+        "settings",
+      ] as const;
+      for (const table of tables) {
+        await this.runInTransaction(`DELETE FROM ${table}`);
+      }
+      await this.writeSettingsInTransaction(restored.settings);
+      for (const tag of restored.tags) {
+        await this.runInTransaction(
+          "INSERT INTO tags(name,color,sort_order,created_at) VALUES(?,?,?,?)",
+          [tag.name, tag.color, tag.sortOrder, tag.createdAt],
+        );
+      }
+      for (const plan of restored.plans) {
+        await this.writePlanInTransaction(plan);
+      }
+      for (const match of restored.matches) {
+        await this.writeMatchInTransaction(match);
+      }
+      for (const result of restored.results) {
+        await this.writeResultInTransaction(result);
+      }
+      for (const order of restored.ledgerOrders) {
+        await this.writeLedgerOrderInTransaction(order);
+      }
+      for (const adjustment of restored.ledgerAdjustments) {
+        await this.runInTransaction(
+          `INSERT INTO ledger_adjustments(
+             order_id,previous_return_cents,next_return_cents,occurred_at,note,
+             status,source,operator,failure_reason,attempted_value
+           ) VALUES(?,?,?,?,?,?,?,?,?,?)`,
+          [
+            adjustment.orderId,
+            adjustment.previousReturnCents,
+            adjustment.nextReturnCents,
+            adjustment.occurredAt,
+            adjustment.note,
+            adjustment.status,
+            adjustment.source,
+            adjustment.operator,
+            adjustment.failureReason,
+            adjustment.attemptedValue,
+          ],
+        );
+      }
+      for (const job of restored.syncJobs) {
+        await this.runInTransaction(
+          `INSERT INTO sync_jobs(
+             kind,status,added_count,updated_count,failed_count,error_message,
+             started_at,finished_at
+           ) VALUES(?,?,?,?,?,?,?,?)`,
+          [
+            job.kind,
+            job.status,
+            job.addedCount,
+            job.updatedCount,
+            job.failedCount,
+            job.errorMessage,
+            job.startedAt,
+            job.finishedAt ?? null,
+          ],
+        );
+      }
+      for (const entry of restored.oddsHistory) {
+        await this.runInTransaction(
+          `INSERT INTO odds_history(match_id,market,outcome,odds,captured_at)
+           VALUES(?,?,?,?,?)`,
+          [
+            entry.matchId,
+            entry.market,
+            entry.outcome,
+            entry.odds,
+            entry.capturedAt,
+          ],
+        );
+      }
+      for (const event of restored.appEvents) {
+        await this.runInTransaction(
+          "INSERT INTO app_events(type,payload,created_at) VALUES(?,?,?)",
+          [event.type, JSON.stringify(event.payload), event.createdAt],
+        );
+      }
+    });
+    return this.getCounts();
+  }
+
   async getCounts(): Promise<DatabaseCounts> {
     const names = [
       "settings",
@@ -932,6 +1151,51 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
       await this.seedSettingsInTransaction();
     });
     return this.getCounts();
+  }
+
+  private async ensureLedgerAdjustmentColumnsInTransaction(): Promise<void> {
+    const columns = new Set(
+      (await this.query("PRAGMA table_info(ledger_adjustments)")).map((row) =>
+        String(row.name),
+      ),
+    );
+    const missingColumns = [
+      ["status", "TEXT NOT NULL DEFAULT 'success'"],
+      ["source", "TEXT NOT NULL DEFAULT 'manual'"],
+      ["operator", "TEXT NOT NULL DEFAULT '本机'"],
+      ["failure_reason", "TEXT NOT NULL DEFAULT ''"],
+      ["attempted_value", "TEXT NOT NULL DEFAULT ''"],
+    ] as const;
+    for (const [name, definition] of missingColumns) {
+      if (!columns.has(name)) {
+        await this.runInTransaction(
+          `ALTER TABLE ledger_adjustments ADD COLUMN ${name} ${definition}`,
+        );
+      }
+    }
+  }
+
+  private async auditFailedLedgerAdjustment(
+    id: string,
+    previousReturnCents: number | undefined,
+    attemptedValue: string,
+    error: unknown,
+  ): Promise<void> {
+    const reason = nativeErrorMessage(error);
+    try {
+      await this.recordLedgerAdjustmentFailure(
+        id,
+        previousReturnCents,
+        attemptedValue,
+        reason,
+      );
+    } catch (auditError) {
+      if (nativeErrorMessage(auditError) === "账单不存在") return;
+      throw new Error(
+        `${reason}；失败记录保存失败：${nativeErrorMessage(auditError)}`,
+        { cause: error },
+      );
+    }
   }
 
   private get db(): SQLiteDBConnection {
@@ -1047,18 +1311,28 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
   }
 
   private async seedSettingsInTransaction(): Promise<void> {
+    await this.writeSettingsInTransaction(DEFAULT_SETTINGS, true);
+  }
+
+  private async writeSettingsInTransaction(
+    settings: AppSettings,
+    insertOnly = false,
+  ): Promise<void> {
     const entries: Array<[string, number | boolean]> = [
-      ["history_limits", DEFAULT_SETTINGS.historyLimits],
-      ["workers", DEFAULT_SETTINGS.workers],
-      ["timeout", DEFAULT_SETTINGS.timeoutSeconds],
-      ["retries", DEFAULT_SETTINGS.retries],
-      ["default_multiplier", DEFAULT_SETTINGS.defaultMultiplier],
-      ["auto_sync_matches", DEFAULT_SETTINGS.autoSyncMatches],
-      ["expand_match_details", DEFAULT_SETTINGS.expandMatchDetails],
+      ["history_limits", settings.historyLimits],
+      ["workers", settings.workers],
+      ["timeout", settings.timeoutSeconds],
+      ["retries", settings.retries],
+      ["default_multiplier", settings.defaultMultiplier],
+      ["auto_sync_matches", settings.autoSyncMatches],
+      ["expand_match_details", settings.expandMatchDetails],
     ];
     for (const [key, value] of entries) {
       await this.runInTransaction(
-        "INSERT OR IGNORE INTO settings(key,value,updated_at) VALUES(?,?,?)",
+        insertOnly
+          ? "INSERT OR IGNORE INTO settings(key,value,updated_at) VALUES(?,?,?)"
+          : `INSERT INTO settings(key,value,updated_at) VALUES(?,?,?)
+             ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at`,
         [key, JSON.stringify(value), now()],
       );
     }
@@ -1111,6 +1385,56 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
         String(row.official_results),
       ) as MatchResult["officialResults"],
       fetchedAt: String(row.fetched_at),
+    };
+  }
+
+  private mapLedgerAdjustment(row: SqlRow): LedgerAdjustment {
+    return normalizeLedgerAdjustment({
+      id: Number(row.id),
+      orderId: String(row.order_id),
+      previousReturnCents: Number(row.previous_return_cents),
+      nextReturnCents: Number(row.next_return_cents),
+      occurredAt: String(row.occurred_at),
+      note: String(row.note),
+      status: String(row.status) as LedgerAdjustment["status"],
+      source: String(row.source) as LedgerAdjustment["source"],
+      operator: String(row.operator ?? ""),
+      failureReason: String(row.failure_reason ?? ""),
+      attemptedValue: String(row.attempted_value ?? ""),
+    });
+  }
+
+  private mapSyncJob(row: SqlRow): SyncJob {
+    return {
+      id: Number(row.id),
+      kind: String(row.kind) as SyncJob["kind"],
+      status: String(row.status) as SyncJob["status"],
+      addedCount: Number(row.added_count),
+      updatedCount: Number(row.updated_count),
+      failedCount: Number(row.failed_count),
+      errorMessage: String(row.error_message),
+      startedAt: String(row.started_at),
+      ...(row.finished_at ? { finishedAt: String(row.finished_at) } : {}),
+    };
+  }
+
+  private mapOddsHistory(row: SqlRow): OddsHistoryEntry {
+    return {
+      id: Number(row.id),
+      matchId: Number(row.match_id),
+      market: String(row.market) as OddsHistoryEntry["market"],
+      outcome: String(row.outcome),
+      odds: String(row.odds),
+      capturedAt: String(row.captured_at),
+    };
+  }
+
+  private mapEvent(row: SqlRow): AppEvent {
+    return {
+      id: Number(row.id),
+      type: String(row.type),
+      payload: JSON.parse(String(row.payload)) as Record<string, unknown>,
+      createdAt: String(row.created_at),
     };
   }
 

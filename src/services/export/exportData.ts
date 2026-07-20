@@ -15,18 +15,27 @@ import { MAX_PLAN_TAG_NAME_LENGTH } from "@/features/plans/tagValidation";
 import { getDatabase } from "@/services/database/createDatabase";
 import { normalizePlanName } from "@/features/plans/planName";
 import { assertPersistablePlan } from "@/features/plans/validation";
+import {
+  normalizeBackupSnapshot,
+  type DatabaseBackupSnapshot,
+} from "@/services/database/backup";
 import type {
+  AppEvent,
   AppSettings,
+  DatabaseCounts,
+  LedgerAdjustment,
   LedgerOrder,
   MatchResult,
   MatchSnapshot,
+  OddsHistoryEntry,
   PlanTag,
   SavedPlan,
+  SyncJob,
 } from "@/types/domain";
 import { centsToYuan } from "@/utils/money";
 
 export interface ExportBundle {
-  formatVersion: 1;
+  formatVersion: 1 | 2;
   exportedAt: string;
   settings: AppSettings;
   tags: PlanTag[];
@@ -34,29 +43,35 @@ export interface ExportBundle {
   ledgerOrders: LedgerOrder[];
   matches: MatchSnapshot[];
   results: MatchResult[];
+  ledgerAdjustments?: LedgerAdjustment[];
+  syncJobs?: SyncJob[];
+  oddsHistory?: OddsHistoryEntry[];
+  appEvents?: AppEvent[];
 }
 
-export async function createExportBundle(): Promise<ExportBundle> {
+export interface FullBackupBundle extends ExportBundle {
+  formatVersion: 2;
+  ledgerAdjustments: LedgerAdjustment[];
+  syncJobs: SyncJob[];
+  oddsHistory: OddsHistoryEntry[];
+  appEvents: AppEvent[];
+}
+
+export interface BackupPreview {
+  formatVersion: 1 | 2;
+  exportedAt: string;
+  snapshot: DatabaseBackupSnapshot;
+  legacy: boolean;
+}
+
+export async function createExportBundle(): Promise<FullBackupBundle> {
   const database = getDatabase();
   await database.initialize();
-  const [settings, tags, plans, ledgerOrders, matches, results] =
-    await Promise.all([
-      database.getSettings(),
-      database.listTags(),
-      database.listPlans(),
-      database.listLedger(),
-      database.listMatches(),
-      database.listLatestResults(),
-    ]);
+  const snapshot = await database.createBackupSnapshot();
   return {
-    formatVersion: 1,
+    formatVersion: 2,
     exportedAt: new Date().toISOString(),
-    settings,
-    tags,
-    plans,
-    ledgerOrders,
-    matches,
-    results,
+    ...snapshot,
   };
 }
 
@@ -66,8 +81,11 @@ export function serializeJsonExport(bundle: ExportBundle): string {
 
 export function parseJsonExport(value: string): ExportBundle {
   const parsed = JSON.parse(value) as Partial<ExportBundle>;
-  if (parsed.formatVersion !== 1) throw new Error("不支持的导出文件版本");
+  if (parsed.formatVersion !== 1 && parsed.formatVersion !== 2) {
+    throw new Error("不支持的导出文件版本");
+  }
   for (const key of [
+    "exportedAt",
     "settings",
     "tags",
     "plans",
@@ -77,7 +95,51 @@ export function parseJsonExport(value: string): ExportBundle {
   ] as const) {
     if (parsed[key] === undefined) throw new Error(`导出文件缺少 ${key}`);
   }
+  if (Number.isNaN(Date.parse(String(parsed.exportedAt)))) {
+    throw new Error("导出文件时间格式无效");
+  }
+  if (parsed.formatVersion === 2) {
+    for (const key of [
+      "ledgerAdjustments",
+      "syncJobs",
+      "oddsHistory",
+      "appEvents",
+    ] as const) {
+      if (parsed[key] === undefined) throw new Error(`导出文件缺少 ${key}`);
+    }
+  }
   return parsed as ExportBundle;
+}
+
+export function parseBackupImport(value: string): BackupPreview {
+  const bundle = parseJsonExport(value);
+  const snapshot = normalizeBackupSnapshot({
+    settings: bundle.settings,
+    tags: bundle.tags,
+    plans: bundle.plans,
+    ledgerOrders: bundle.ledgerOrders,
+    ledgerAdjustments: bundle.ledgerAdjustments ?? [],
+    matches: bundle.matches,
+    results: bundle.results,
+    syncJobs: bundle.syncJobs ?? [],
+    oddsHistory: bundle.oddsHistory ?? [],
+    appEvents: bundle.appEvents ?? [],
+  });
+  return {
+    formatVersion: bundle.formatVersion,
+    exportedAt: bundle.exportedAt,
+    snapshot,
+    legacy: bundle.formatVersion === 1,
+  };
+}
+
+export async function restoreBackupFromJson(
+  value: string,
+): Promise<DatabaseCounts> {
+  const { snapshot } = parseBackupImport(value);
+  const database = getDatabase();
+  await database.initialize();
+  return database.restoreBackupSnapshot(snapshot);
 }
 
 export async function importPlansFromJson(
@@ -343,8 +405,16 @@ export function parsePlanImport(value: string): {
 }
 
 export function serializeMarkdownExport(bundle: ExportBundle): string {
+  const latestResults = [...bundle.results]
+    .sort((left, right) => Date.parse(left.fetchedAt) - Date.parse(right.fetchedAt))
+    .reduce<Map<number, MatchResult>>((latest, result) => {
+      latest.set(result.matchId, result);
+      return latest;
+    }, new Map());
   const evaluatedOrders = bundle.ledgerOrders.map((order) => {
-    const evaluation = evaluatePlan(order.planSnapshot, bundle.results);
+    const evaluation = evaluatePlan(order.planSnapshot, [
+      ...latestResults.values(),
+    ]);
     const returnCents = order.returnManual
       ? order.returnCents
       : evaluation.currentReturnCents;

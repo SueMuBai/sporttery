@@ -117,7 +117,6 @@ async function activate(item: SettingsItem): Promise<void> {
   <AppPage content-class="settings-page__content">
     <template #header>
       <AppHeader
-        class="settings-page__header"
         title="彩果·设置"
         subtitle="配置数据与标签"
       />
@@ -143,11 +142,6 @@ async function activate(item: SettingsItem): Promise<void> {
 </template>
 
 <style scoped>
-:deep(.settings-page__header) {
-  min-height: calc(86px + env(safe-area-inset-top));
-  padding-inline: 24px;
-}
-
 :deep(.settings-page__content) {
   gap: 22px;
   padding-top: 20px;

@@ -5,15 +5,10 @@ import billIcon from "@/assets/icons/navigation/ic_nav_bill_selected.svg?url";
 import headerBackground from "@/assets/ui/common/bg_header.svg?url";
 import AppBottomSheet from "@/components/base/AppBottomSheet.vue";
 import AppIcon from "@/components/base/AppIcon.vue";
+import { hasMeaningfulAdjustmentNote } from "@/features/ledger/adjustments";
 import { useLedgerStore, type EvaluatedLedgerOrder } from "@/stores/ledger";
 import type { LedgerAdjustment } from "@/types/domain";
 import { centsToYuan } from "@/utils/money";
-
-interface DisplayAdjustment extends LedgerAdjustment {
-  status?: "success" | "failed";
-  failureReason?: string;
-  operator?: string;
-}
 
 const props = defineProps<{
   show: boolean;
@@ -25,7 +20,7 @@ const emit = defineEmits<{
 }>();
 
 const store = useLedgerStore();
-const adjustments = computed<DisplayAdjustment[]>(() =>
+const adjustments = computed<LedgerAdjustment[]>(() =>
   props.item ? (store.adjustments[props.item.order.id] ?? []) : [],
 );
 const headerBackgroundImage = `url("${headerBackground}")`;
@@ -121,7 +116,11 @@ function formatDateTime(value: string): string {
           <div class="history-entry__card">
             <header>
               <strong>{{
-                adjustment.status === "failed" ? "手动修改失败" : "手动修改"
+                adjustment.status === "failed"
+                  ? "手动修改失败"
+                  : adjustment.source === "system"
+                    ? "系统结算"
+                    : "手动修改"
               }}</strong>
               <time>{{ formatDateTime(adjustment.occurredAt) }}</time>
             </header>
@@ -152,12 +151,10 @@ function formatDateTime(value: string): string {
                 adjustment.failureReason || adjustment.note || "回款修改未保存"
               }}
             </p>
-            <p v-else-if="adjustment.note">
+            <p v-else-if="hasMeaningfulAdjustmentNote(adjustment.note)">
               <span>修改备注</span>{{ adjustment.note }}
             </p>
-            <p v-else-if="adjustment.operator">
-              <span>操作者</span>{{ adjustment.operator }}
-            </p>
+            <p v-else><span>操作者</span>{{ adjustment.operator }}</p>
           </div>
         </article>
 

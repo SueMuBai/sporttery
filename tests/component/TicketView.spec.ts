@@ -31,7 +31,15 @@ function mountTicket() {
         AppHeader: true,
         MatchCard: true,
         BetMultiplierSheet: true,
-        PurchaseSheet: true,
+        PlanPreviewDialog: {
+          props: ['show'],
+          emits: ['update:show', 'confirm'],
+          template: '<div v-if="show" class="plan-preview-stub"><button @click="$emit(\'confirm\')">确认方案</button></div>',
+        },
+        PurchaseSheet: {
+          props: ['show'],
+          template: '<div v-if="show" class="purchase-stub" />',
+        },
         'van-field': { template: '<label class="van-field"><slot name="left-icon" /><input /></label>' },
       },
     },
@@ -80,5 +88,30 @@ describe('TicketView core states', () => {
 
     await wrapper.get('.bet-dock__summary').trigger('click')
     expect(wrapper.find('.bet-dock__expanded').exists()).toBe(false)
+  })
+
+  it('opens the inline plan preview and continues to purchase after confirmation', async () => {
+    const wrapper = mountTicket()
+    const store = useTicketStore()
+    store.toggleSelection({
+      key: '1|had|h',
+      matchId: 1,
+      market: 'had',
+      outcome: 'h',
+      odds: '1.80',
+    })
+    await wrapper.vm.$nextTick()
+
+    await wrapper.get('.bet-dock__summary').trigger('click')
+    const actions = wrapper.findAll('.bet-dock__actions button')
+    expect(actions).toHaveLength(3)
+    expect(actions[2]?.text()).toContain('查看方案')
+
+    await actions[2]!.trigger('click')
+    expect(wrapper.find('.plan-preview-stub').exists()).toBe(true)
+
+    await wrapper.get('.plan-preview-stub button').trigger('click')
+    expect(wrapper.find('.plan-preview-stub').exists()).toBe(false)
+    expect(wrapper.find('.purchase-stub').exists()).toBe(true)
   })
 })

@@ -14,6 +14,15 @@ import {
   assertValidMatchResult,
   assertValidMatchSnapshot,
 } from "@/features/matches/validation";
+import {
+  ledgerAdjustmentErrorMessage,
+  LOCAL_LEDGER_OPERATOR,
+  normalizeLedgerAdjustment,
+} from "@/features/ledger/adjustments";
+import {
+  normalizeBackupSnapshot,
+  type DatabaseBackupSnapshot,
+} from "@/services/database/backup";
 
 import type {
   DatabaseAdapter,
@@ -75,7 +84,7 @@ class CaiguoDexie extends Dexie {
 
   constructor(name: string) {
     super(name);
-    this.version(DATABASE_VERSION).stores({
+    const stores = {
       settings: "&key",
       tags: "++id,&name,sortOrder",
       plans: "&id,updatedAt,createdAt",
@@ -88,7 +97,18 @@ class CaiguoDexie extends Dexie {
       syncJobs: "++id,kind,status,startedAt",
       oddsHistory: "++id,matchId,[matchId+capturedAt],market,outcome",
       appEvents: "++id,type,createdAt",
-    });
+    };
+    this.version(1).stores(stores);
+    this.version(DATABASE_VERSION)
+      .stores(stores)
+      .upgrade(async (transaction) => {
+        await transaction
+          .table<LedgerAdjustment, number>("ledgerAdjustments")
+          .toCollection()
+          .modify((adjustment) => {
+            Object.assign(adjustment, normalizeLedgerAdjustment(adjustment));
+          });
+      });
   }
 }
 
@@ -509,15 +529,66 @@ export class IndexedDbAdapter implements DatabaseAdapter {
     expectedUpdatedAt?: string,
     previousReturnCents?: number,
   ): Promise<void> {
-    if (!Number.isSafeInteger(returnCents) || returnCents < 0) {
-      throw new TypeError("回款金额必须是非负整数分");
+    try {
+      if (!Number.isSafeInteger(returnCents) || returnCents < 0) {
+        throw new TypeError("回款金额必须是非负整数分");
+      }
+      if (
+        previousReturnCents !== undefined &&
+        (!Number.isSafeInteger(previousReturnCents) || previousReturnCents < 0)
+      ) {
+        throw new TypeError("原回款金额必须是非负整数分");
+      }
+      await this.db.transaction(
+        "rw",
+        this.db.ledgerOrders,
+        this.db.ledgerAdjustments,
+        async () => {
+          const existing = await this.db.ledgerOrders.get(id);
+          if (!existing) throw new Error("账单不存在");
+          if (expectedUpdatedAt && existing.updatedAt !== expectedUpdatedAt) {
+            throw new Error("账单已在其他页面更新，请刷新后重试");
+          }
+          const stamp = now();
+          await this.db.ledgerAdjustments.add({
+            orderId: id,
+            previousReturnCents: previousReturnCents ?? existing.returnCents,
+            nextReturnCents: returnCents,
+            occurredAt: stamp,
+            note: "",
+            status: "success",
+            source: "manual",
+            operator: LOCAL_LEDGER_OPERATOR,
+            failureReason: "",
+            attemptedValue: String(returnCents),
+          });
+          await this.db.ledgerOrders.update(id, {
+            returnCents,
+            returnManual: true,
+            updatedAt: stamp,
+          });
+        },
+      );
+    } catch (error) {
+      await this.auditFailedLedgerAdjustment(
+        id,
+        previousReturnCents,
+        String(returnCents),
+        error,
+      );
+      throw error;
     }
-    if (
-      previousReturnCents !== undefined &&
-      (!Number.isSafeInteger(previousReturnCents) || previousReturnCents < 0)
-    ) {
-      throw new TypeError("原回款金额必须是非负整数分");
-    }
+  }
+
+  async recordLedgerAdjustmentFailure(
+    id: string,
+    previousReturnCents: number | undefined,
+    attemptedValue: string,
+    failureReason: string,
+  ): Promise<void> {
+    const normalizedAttempt = attemptedValue.trim().slice(0, 80);
+    const normalizedReason = failureReason.trim().slice(0, 240);
+    if (!normalizedReason) throw new TypeError("失败原因不能为空");
     await this.db.transaction(
       "rw",
       this.db.ledgerOrders,
@@ -525,31 +596,35 @@ export class IndexedDbAdapter implements DatabaseAdapter {
       async () => {
         const existing = await this.db.ledgerOrders.get(id);
         if (!existing) throw new Error("账单不存在");
-        if (expectedUpdatedAt && existing.updatedAt !== expectedUpdatedAt) {
-          throw new Error("账单已在其他页面更新，请刷新后重试");
-        }
+        const previous =
+          previousReturnCents !== undefined &&
+          Number.isSafeInteger(previousReturnCents) &&
+          previousReturnCents >= 0
+            ? previousReturnCents
+            : existing.returnCents;
         await this.db.ledgerAdjustments.add({
           orderId: id,
-          previousReturnCents: previousReturnCents ?? existing.returnCents,
-          nextReturnCents: returnCents,
+          previousReturnCents: previous,
+          nextReturnCents: previous,
           occurredAt: now(),
-          note: "手工修改实际回款",
-        });
-        await this.db.ledgerOrders.update(id, {
-          returnCents,
-          returnManual: true,
-          updatedAt: now(),
+          note: "",
+          status: "failed",
+          source: "manual",
+          operator: LOCAL_LEDGER_OPERATOR,
+          failureReason: normalizedReason,
+          attemptedValue: normalizedAttempt,
         });
       },
     );
   }
 
   async listLedgerAdjustments(orderId: string): Promise<LedgerAdjustment[]> {
-    return this.db.ledgerAdjustments
+    const rows = await this.db.ledgerAdjustments
       .where("orderId")
       .equals(orderId)
       .reverse()
       .sortBy("occurredAt");
+    return rows.map(normalizeLedgerAdjustment);
   }
 
   async undoLatestLedgerAdjustment(
@@ -566,20 +641,48 @@ export class IndexedDbAdapter implements DatabaseAdapter {
         if (expectedUpdatedAt && existing.updatedAt !== expectedUpdatedAt) {
           throw new Error("账单已在其他页面更新，请刷新后重试");
         }
-        const adjustments = await this.db.ledgerAdjustments
-          .where("orderId")
-          .equals(id)
-          .sortBy("occurredAt");
-        const latest = adjustments.at(-1);
+        const adjustments = (
+          await this.db.ledgerAdjustments
+            .where("orderId")
+            .equals(id)
+            .sortBy("occurredAt")
+        ).map(normalizeLedgerAdjustment);
+        const successful = adjustments.filter(
+          (adjustment) => adjustment.status === "success",
+        );
+        const latest = successful.at(-1);
         if (!latest?.id) throw new Error("没有可以撤销的回款修改");
         await this.db.ledgerOrders.update(id, {
           returnCents: latest.previousReturnCents,
-          returnManual: adjustments.length > 1,
+          returnManual: successful.length > 1,
           updatedAt: now(),
         });
         await this.db.ledgerAdjustments.delete(latest.id);
       },
     );
+  }
+
+  private async auditFailedLedgerAdjustment(
+    id: string,
+    previousReturnCents: number | undefined,
+    attemptedValue: string,
+    error: unknown,
+  ): Promise<void> {
+    const reason = ledgerAdjustmentErrorMessage(error);
+    try {
+      await this.recordLedgerAdjustmentFailure(
+        id,
+        previousReturnCents,
+        attemptedValue,
+        reason,
+      );
+    } catch (auditError) {
+      if (ledgerAdjustmentErrorMessage(auditError) === "账单不存在") return;
+      throw new Error(
+        `${reason}；失败记录保存失败：${ledgerAdjustmentErrorMessage(auditError)}`,
+        { cause: error },
+      );
+    }
   }
 
   async saveSyncJob(job: SyncJob): Promise<number> {
@@ -603,6 +706,96 @@ export class IndexedDbAdapter implements DatabaseAdapter {
           .sortBy("createdAt")
       : await this.db.appEvents.orderBy("createdAt").reverse().toArray();
     return rows.slice(0, Math.max(0, limit)).map(cloneJson);
+  }
+
+  async createBackupSnapshot(): Promise<DatabaseBackupSnapshot> {
+    return this.db.transaction("r", this.db.tables as Table[], async () => {
+      const setting = await this.db.settings.get("app");
+      const planRows = await this.db.plans
+        .orderBy("updatedAt")
+        .reverse()
+        .toArray();
+      const snapshot: DatabaseBackupSnapshot = {
+        settings: cloneJson({
+          ...DEFAULT_SETTINGS,
+          ...(setting?.value ?? {}),
+        }),
+        tags: await this.db.tags.orderBy("sortOrder").toArray(),
+        plans: await Promise.all(
+          planRows.map((plan) => this.hydratePlan(plan)),
+        ),
+        ledgerOrders: await this.db.ledgerOrders
+          .orderBy("purchasedAt")
+          .reverse()
+          .toArray(),
+        ledgerAdjustments: (
+          await this.db.ledgerAdjustments.orderBy("occurredAt").toArray()
+        ).map(normalizeLedgerAdjustment),
+        matches: await this.db.matchSnapshots
+          .orderBy("matchDateTime")
+          .toArray(),
+        results: await this.db.matchResults.orderBy("id").toArray(),
+        syncJobs: await this.db.syncJobs.orderBy("id").toArray(),
+        oddsHistory: await this.db.oddsHistory.orderBy("id").toArray(),
+        appEvents: await this.db.appEvents.orderBy("id").toArray(),
+      };
+      return cloneJson(snapshot);
+    });
+  }
+
+  async restoreBackupSnapshot(
+    snapshot: DatabaseBackupSnapshot,
+  ): Promise<DatabaseCounts> {
+    const restored = normalizeBackupSnapshot(snapshot);
+    await this.db.transaction("rw", this.db.tables as Table[], async () => {
+      await Promise.all([
+        this.db.tags.clear(),
+        this.db.plans.clear(),
+        this.db.planSelections.clear(),
+        this.db.planTags.clear(),
+        this.db.matchSnapshots.clear(),
+        this.db.matchResults.clear(),
+        this.db.ledgerOrders.clear(),
+        this.db.ledgerAdjustments.clear(),
+        this.db.syncJobs.clear(),
+        this.db.oddsHistory.clear(),
+        this.db.appEvents.clear(),
+        this.db.settings.clear(),
+      ]);
+      await this.db.settings.put({
+        key: "app",
+        value: cloneJson(restored.settings),
+        updatedAt: now(),
+      });
+      if (restored.tags.length) {
+        await this.db.tags.bulkAdd(cloneJson(restored.tags));
+      }
+      for (const plan of restored.plans) await this.writePlan(plan);
+      if (restored.matches.length) {
+        await this.db.matchSnapshots.bulkAdd(cloneJson(restored.matches));
+      }
+      if (restored.results.length) {
+        await this.db.matchResults.bulkAdd(cloneJson(restored.results));
+      }
+      if (restored.ledgerOrders.length) {
+        await this.db.ledgerOrders.bulkAdd(cloneJson(restored.ledgerOrders));
+      }
+      if (restored.ledgerAdjustments.length) {
+        await this.db.ledgerAdjustments.bulkAdd(
+          cloneJson(restored.ledgerAdjustments),
+        );
+      }
+      if (restored.syncJobs.length) {
+        await this.db.syncJobs.bulkAdd(cloneJson(restored.syncJobs));
+      }
+      if (restored.oddsHistory.length) {
+        await this.db.oddsHistory.bulkAdd(cloneJson(restored.oddsHistory));
+      }
+      if (restored.appEvents.length) {
+        await this.db.appEvents.bulkAdd(cloneJson(restored.appEvents));
+      }
+    });
+    return this.getCounts();
   }
 
   async getCounts(): Promise<DatabaseCounts> {

@@ -1,5 +1,18 @@
-export const DATABASE_NAME = 'caiguo_app_v2'
-export const DATABASE_VERSION = 1
+export const DATABASE_NAME = "caiguo_app_v2";
+export const DATABASE_VERSION = 2;
+
+export const NATIVE_UPGRADES = [
+  {
+    toVersion: 2,
+    statements: [
+      "ALTER TABLE ledger_adjustments ADD COLUMN status TEXT NOT NULL DEFAULT 'success';",
+      "ALTER TABLE ledger_adjustments ADD COLUMN source TEXT NOT NULL DEFAULT 'manual';",
+      "ALTER TABLE ledger_adjustments ADD COLUMN operator TEXT NOT NULL DEFAULT '本机';",
+      "ALTER TABLE ledger_adjustments ADD COLUMN failure_reason TEXT NOT NULL DEFAULT '';",
+      "ALTER TABLE ledger_adjustments ADD COLUMN attempted_value TEXT NOT NULL DEFAULT '';",
+    ],
+  },
+];
 
 export const NATIVE_SCHEMA = `
 PRAGMA foreign_keys=ON;
@@ -90,7 +103,12 @@ CREATE TABLE IF NOT EXISTS ledger_adjustments(
   previous_return_cents INTEGER NOT NULL,
   next_return_cents INTEGER NOT NULL,
   occurred_at TEXT NOT NULL,
-  note TEXT NOT NULL
+  note TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'success',
+  source TEXT NOT NULL DEFAULT 'manual',
+  operator TEXT NOT NULL DEFAULT '本机',
+  failure_reason TEXT NOT NULL DEFAULT '',
+  attempted_value TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_ledger_adjustments_order ON ledger_adjustments(order_id, occurred_at DESC);
 CREATE TABLE IF NOT EXISTS sync_jobs(
@@ -120,4 +138,5 @@ CREATE TABLE IF NOT EXISTS app_events(
   payload TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
-`
+PRAGMA user_version=2;
+`;

@@ -11,6 +11,7 @@ import type {
   SavedPlan,
   SyncJob,
 } from "@/types/domain";
+import type { DatabaseBackupSnapshot } from "@/services/database/backup";
 
 export interface LedgerFilter {
   start?: string;
@@ -65,13 +66,26 @@ export interface DatabaseAdapter {
     notes: string,
     expectedUpdatedAt?: string,
   ): Promise<void>;
+  recordLedgerAdjustmentFailure(
+    id: string,
+    previousReturnCents: number | undefined,
+    attemptedValue: string,
+    failureReason: string,
+  ): Promise<void>;
   listLedgerAdjustments(orderId: string): Promise<LedgerAdjustment[]>;
-  undoLatestLedgerAdjustment(id: string, expectedUpdatedAt?: string): Promise<void>;
+  undoLatestLedgerAdjustment(
+    id: string,
+    expectedUpdatedAt?: string,
+  ): Promise<void>;
 
   saveSyncJob(job: SyncJob): Promise<number>;
   saveOddsHistory(entries: OddsHistoryEntry[]): Promise<void>;
   recordEvent(event: AppEvent): Promise<number>;
   listEvents(type?: string, limit?: number): Promise<AppEvent[]>;
+  createBackupSnapshot(): Promise<DatabaseBackupSnapshot>;
+  restoreBackupSnapshot(
+    snapshot: DatabaseBackupSnapshot,
+  ): Promise<DatabaseCounts>;
   getCounts(): Promise<DatabaseCounts>;
   clearLocalData(): Promise<DatabaseCounts>;
 }

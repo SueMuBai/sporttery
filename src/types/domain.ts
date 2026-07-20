@@ -66,6 +66,9 @@ export interface MatchResult {
 
 export type LedgerStatus = "pending" | "settled";
 
+export type LedgerAdjustmentStatus = "success" | "failed";
+export type LedgerAdjustmentSource = "manual" | "system";
+
 export interface LedgerOrder {
   id: string;
   planId?: string;
@@ -88,6 +91,11 @@ export interface LedgerAdjustment {
   nextReturnCents: number;
   occurredAt: string;
   note: string;
+  status: LedgerAdjustmentStatus;
+  source: LedgerAdjustmentSource;
+  operator: string;
+  failureReason: string;
+  attemptedValue: string;
 }
 
 export interface SyncJob {

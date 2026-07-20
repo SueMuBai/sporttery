@@ -10,10 +10,7 @@ import AppState from "@/components/base/AppState.vue";
 import LedgerHistorySheet from "@/components/ledger/LedgerHistorySheet.vue";
 import SubpageHeader from "@/components/base/SubpageHeader.vue";
 import { groupSelections } from "@/features/betting/calculator";
-import {
-  selectionSettled,
-  selectionWins,
-} from "@/features/betting/settlement";
+import { selectionSettled, selectionWins } from "@/features/betting/settlement";
 import { useLedgerStore } from "@/stores/ledger";
 import type { MatchResult, MarketCode, PlanSelection } from "@/types/domain";
 import { centsToYuan, yuanToCents } from "@/utils/money";
@@ -115,13 +112,16 @@ function formatDateTime(value: string): string {
 
 function formatMatchTime(value?: string): string {
   if (!value) return "时间待定";
-  const match = value.match(/(?:\d{4}[-/])?(\d{2})[-/](\d{2})[T\s]+(\d{2}:\d{2})/);
+  const match = value.match(
+    /(?:\d{4}[-/])?(\d{2})[-/](\d{2})[T\s]+(\d{2}:\d{2})/,
+  );
   return match ? `${match[1]}/${match[2]} ${match[3]}` : value;
 }
 
 function outcomeLabel(selection: PlanSelection): string {
   if (selection.market === "had" || selection.market === "hhad") {
-    const outcome = { h: "胜", d: "平", a: "负" }[selection.outcome] ?? selection.outcome;
+    const outcome =
+      { h: "胜", d: "平", a: "负" }[selection.outcome] ?? selection.outcome;
     return selection.market === "hhad" ? `让${outcome}` : outcome;
   }
   if (selection.market === "hafu") {
@@ -144,15 +144,29 @@ function resetReturn(): void {
 
 async function saveReturn(): Promise<void> {
   if (!item.value) return;
+  let cents: number;
   try {
     returnError.value = "";
-    const cents = yuanToCents(returnValue.value);
+    cents = yuanToCents(returnValue.value);
     if (cents < 0) {
       throw new RangeError("回款金额不能小于 0.00 元");
     }
     if (cents > 99_999_999) {
       throw new RangeError("回款金额不能超过 999999.99 元");
     }
+  } catch (reason) {
+    returnError.value =
+      reason instanceof Error ? reason.message : String(reason);
+    try {
+      await store.recordReturnFailure(item.value, returnValue.value, reason);
+    } catch (auditError) {
+      const auditMessage =
+        auditError instanceof Error ? auditError.message : String(auditError);
+      returnError.value = `${returnError.value}（失败记录未保存：${auditMessage}）`;
+    }
+    return;
+  }
+  try {
     if (cents === item.value.displayedReturnCents) {
       showSuccessToast("回款金额未变化");
       return;
@@ -161,7 +175,8 @@ async function saveReturn(): Promise<void> {
     await store.loadAdjustments(id.value);
     showSuccessToast("实际回款已保存");
   } catch (reason) {
-    returnError.value = reason instanceof Error ? reason.message : String(reason);
+    returnError.value =
+      reason instanceof Error ? reason.message : String(reason);
   }
 }
 </script>
@@ -170,13 +185,21 @@ async function saveReturn(): Promise<void> {
   <div class="ledger-detail-page">
     <SubpageHeader title="方案详情">
       <template #action>
-        <button type="button" class="history-action" @click="showHistory = true">
+        <button
+          type="button"
+          class="history-action"
+          @click="showHistory = true"
+        >
           修改历史
         </button>
       </template>
     </SubpageHeader>
 
-    <AppState v-if="store.loading && !item" type="loading" title="正在读取账单" />
+    <AppState
+      v-if="store.loading && !item"
+      type="loading"
+      title="正在读取账单"
+    />
     <AppState
       v-else-if="!item"
       type="error"
@@ -196,7 +219,9 @@ async function saveReturn(): Promise<void> {
             {{ item.status === "settled" ? "已完成" : "进行中" }}
           </span>
         </div>
-        <p>方案创建时间：{{ formatDateTime(item.order.planSnapshot.createdAt) }}</p>
+        <p>
+          方案创建时间：{{ formatDateTime(item.order.planSnapshot.createdAt) }}
+        </p>
         <p>统计周期：{{ periodLabel }}</p>
         <span class="detail-hero__calendar">
           <AppIcon name="calendar" :size="28" />
@@ -228,8 +253,16 @@ async function saveReturn(): Promise<void> {
               {{ returnError || "金额范围 0.00～999999.99" }}
             </small>
             <div>
-              <AppButton variant="ghost" size="small" @click="resetReturn">取消</AppButton>
-              <AppButton size="small" :loading="store.saving" @click="saveReturn">保存</AppButton>
+              <AppButton variant="ghost" size="small" @click="resetReturn">
+                取消
+              </AppButton>
+              <AppButton
+                size="small"
+                :loading="store.saving"
+                @click="saveReturn"
+              >
+                保存
+              </AppButton>
             </div>
           </div>
           <div class="return-card__profit">
@@ -240,7 +273,7 @@ async function saveReturn(): Promise<void> {
                 previewProfitCents >= 0 ? 'amount-positive' : 'amount-negative',
               ]"
             >
-              {{ previewProfitCents >= 0 ? '+' : '-' }}¥{{
+              {{ previewProfitCents >= 0 ? "+" : "-" }}¥{{
                 centsToYuan(Math.abs(previewProfitCents))
               }}
             </strong>
@@ -251,13 +284,25 @@ async function saveReturn(): Promise<void> {
           <header>
             <span>共{{ item.evaluation.totalMatches }}场比赛</span>
             <p>
-              正确 <strong class="amount-positive">{{ item.evaluation.correctMatches }}</strong> 场
+              正确
+              <strong class="amount-positive">{{
+                item.evaluation.correctMatches
+              }}</strong>
+              场
               <i />
-              错误 <strong class="amount-negative">{{ item.evaluation.wrongMatches }}</strong> 场
+              错误
+              <strong class="amount-negative">{{
+                item.evaluation.wrongMatches
+              }}</strong>
+              场
             </p>
           </header>
           <div class="result-list">
-            <article v-for="(row, index) in rows" :key="row.matchId" class="result-row">
+            <article
+              v-for="(row, index) in rows"
+              :key="row.matchId"
+              class="result-row"
+            >
               <span
                 :class="[
                   'result-row__state-icon',
@@ -276,12 +321,22 @@ async function saveReturn(): Promise<void> {
                 <b v-else>{{ index + 1 }}</b>
               </span>
               <div class="result-row__meta">
-                <p><strong>{{ index + 1 }}</strong><span>{{ store.matchById.get(row.matchId)?.payload.league || "联赛" }}</span></p>
-                <time>{{ formatMatchTime(store.matchById.get(row.matchId)?.matchDateTime) }}</time>
+                <p>
+                  <strong>{{ index + 1 }}</strong><span>{{
+                    store.matchById.get(row.matchId)?.payload.league || "联赛"
+                  }}</span>
+                </p>
+                <time>{{
+                  formatMatchTime(
+                    store.matchById.get(row.matchId)?.matchDateTime,
+                  )
+                }}</time>
               </div>
               <div class="result-row__match">
                 <h2>
-                  {{ store.matchById.get(row.matchId)?.homeTeam || row.matchId }}
+                  {{
+                    store.matchById.get(row.matchId)?.homeTeam || row.matchId
+                  }}
                   <span>vs</span>
                   {{ store.matchById.get(row.matchId)?.awayTeam || "未知球队" }}
                 </h2>
@@ -425,7 +480,10 @@ async function saveReturn(): Promise<void> {
 
 .return-card {
   display: grid;
-  grid-template-columns: minmax(74px, 0.85fr) minmax(144px, 1.65fr) minmax(82px, 0.95fr);
+  grid-template-columns: minmax(74px, 0.85fr) minmax(144px, 1.65fr) minmax(
+      82px,
+      0.95fr
+    );
   min-height: 140px;
   padding: 12px 10px;
 }
@@ -542,7 +600,10 @@ async function saveReturn(): Promise<void> {
 
 .result-row {
   display: grid;
-  grid-template-columns: 26px minmax(56px, 0.72fr) minmax(0, 1.7fr) minmax(42px, 0.55fr) 16px;
+  grid-template-columns: 26px minmax(56px, 0.72fr) minmax(0, 1.7fr) minmax(
+      42px,
+      0.55fr
+    ) 16px;
   align-items: center;
   min-height: 62px;
   gap: 7px;
@@ -688,7 +749,10 @@ async function saveReturn(): Promise<void> {
 
 @media (max-width: 359px) {
   .return-card {
-    grid-template-columns: minmax(64px, 0.8fr) minmax(132px, 1.7fr) minmax(72px, 0.9fr);
+    grid-template-columns: minmax(64px, 0.8fr) minmax(132px, 1.7fr) minmax(
+        72px,
+        0.9fr
+      );
     padding-inline: 6px;
   }
 
@@ -698,7 +762,10 @@ async function saveReturn(): Promise<void> {
   }
 
   .result-row {
-    grid-template-columns: 24px minmax(50px, 0.66fr) minmax(0, 1.6fr) minmax(38px, 0.5fr) 14px;
+    grid-template-columns: 24px minmax(50px, 0.66fr) minmax(0, 1.6fr) minmax(
+        38px,
+        0.5fr
+      ) 14px;
     gap: 4px;
     padding-inline: 5px;
   }
