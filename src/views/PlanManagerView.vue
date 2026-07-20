@@ -318,7 +318,10 @@ async function applyLoad(): Promise<void> {
         </van-field>
       </div>
 
-      <div class="plan-filter-row">
+      <div
+        class="plan-filter-row"
+        :class="{ 'plan-filter-row--without-tags': !store.tags.length }"
+      >
         <button type="button" class="toolbar-action" @click="openFilters">
           <AppIcon name="filter" :size="18" /><span>筛选</span>
           <b
@@ -344,7 +347,7 @@ async function applyLoad(): Promise<void> {
               ?.text.replace("更新", "")
           }}</span><AppIcon name="chevron-down" :size="12" />
         </button>
-        <div class="quick-tags" aria-label="标签筛选">
+        <div v-if="store.tags.length" class="quick-tags" aria-label="标签筛选">
           <button
             type="button"
             :class="{ active: store.tagFilter === 'all' }"
@@ -426,7 +429,13 @@ async function applyLoad(): Promise<void> {
         />
         <strong>还没有保存方案</strong>
         <p>在选票页完成选择后即可保存</p>
-        <AppButton @click="router.push('/ticket')">去选票页</AppButton>
+        <AppButton
+          class="plan-state__ticket-action"
+          size="small"
+          @click="router.push('/ticket')"
+        >
+          去选票页
+        </AppButton>
       </section>
 
       <section
@@ -792,9 +801,24 @@ async function applyLoad(): Promise<void> {
 .plan-filter-row {
   display: flex;
   align-items: center;
+  width: 100%;
   min-width: 0;
   min-height: 36px;
   gap: 4px;
+  overflow: hidden;
+}
+
+.plan-filter-row--without-tags {
+  gap: 0;
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  box-shadow: var(--outline-default);
+}
+
+.plan-filter-row--without-tags .toolbar-action {
+  flex: 1 1 50%;
+  justify-content: center;
+  height: 36px;
 }
 
 .plan-search {
@@ -856,7 +880,7 @@ async function applyLoad(): Promise<void> {
 .quick-tags button {
   min-width: 48px;
   height: 28px;
-  flex: 0 0 auto;
+  flex: 1 0 auto;
   padding: 0 10px;
   border: 0;
   border-radius: var(--radius-control);
@@ -934,6 +958,23 @@ async function applyLoad(): Promise<void> {
   width: min(100%, 280px);
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.plan-state__ticket-action {
+  min-width: 100px;
+  padding: 0 16px;
+}
+
+.plan-state__ticket-action :deep(.van-button__content),
+.plan-state__ticket-action :deep(.van-button__text),
+.plan-state__ticket-action :deep(.app-button__label) {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  text-align: center;
 }
 
 .search-suggestions {

@@ -34,5 +34,30 @@ describe('shared page structure', () => {
     expect(group.get('h2').text()).toBe('数据配置')
     expect(row.get('button').text()).toContain('系统设置')
     expect(row.get('button').text()).toContain('10 / 4')
+    expect(row.get('.app-form-row__trailing').find('.app-row-chevron').exists()).toBe(true)
+    expect(row.get('.app-form-row__trailing').find('svg').attributes('width')).toBe('18')
+  })
+
+  it('keeps the navigation chevron in the same trailing slot with or without a value', () => {
+    const withValue = mount(AppFormRow, {
+      props: { title: '系统设置', value: '10 / 4 / 15s', icon: 'system' },
+    })
+    const withoutValue = mount(AppFormRow, {
+      props: { title: '数据更新', icon: 'refresh' },
+    })
+
+    expect(withValue.get('.app-form-row__value').text()).toBe('10 / 4 / 15s')
+    expect(withValue.get('.app-form-row__trailing').find('.app-row-chevron').exists()).toBe(true)
+    expect(withoutValue.find('.app-form-row__value').exists()).toBe(false)
+    expect(withoutValue.get('.app-form-row__trailing').find('.app-row-chevron').exists()).toBe(true)
+  })
+
+  it('does not render a navigation chevron for a static form row', () => {
+    const row = mount(AppFormRow, {
+      props: { title: '本地状态', interactive: false, icon: 'info' },
+    })
+
+    expect(row.get('button').attributes('disabled')).toBeDefined()
+    expect(row.get('.app-form-row__trailing').find('.app-row-chevron').exists()).toBe(false)
   })
 })

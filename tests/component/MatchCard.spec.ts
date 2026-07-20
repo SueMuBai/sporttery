@@ -59,4 +59,43 @@ describe('MatchCard mixed accordion', () => {
     expect(wrapper.find('.odds-grid--score').exists()).toBe(false)
     expect(wrapper.emitted('changeMixedMarket')?.at(-1)).toEqual(['ttg'])
   })
+
+  it('renders long history team names in shrinkable cells with their full names available', () => {
+    const homeTeam = '这是一支名称特别长的历史主队俱乐部'
+    const awayTeam = '这是一支名称特别长的历史客队俱乐部'
+    const historyMatch: NormalizedMatch = {
+      ...match,
+      payload: {
+        ...match.payload,
+        history: [
+          {
+            date: '2026-07-01',
+            tournament: '国际友谊赛',
+            homeTeam,
+            awayTeam,
+            halfTimeScore: '1:0',
+            score: '2:1',
+            currentHomeTeamResult: 'win',
+            homeTeamRole: 'currentHome',
+            awayTeamRole: 'currentAway',
+          },
+        ],
+      },
+    }
+
+    const wrapper = mount(MatchCard, {
+      props: {
+        match: historyMatch,
+        activeMarket: 'had-hhad',
+        selectedKeys: [],
+        expanded: true,
+        mixedMarket: 'had',
+      },
+    })
+
+    const teams = wrapper.findAll('.history-row:not(.history-row--head) .history-team')
+    expect(teams).toHaveLength(2)
+    expect(teams.map((team) => team.attributes('title'))).toEqual([homeTeam, awayTeam])
+    expect(wrapper.findAll('.dual-market .odds-cell')).toHaveLength(6)
+  })
 })

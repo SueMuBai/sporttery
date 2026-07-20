@@ -82,10 +82,16 @@ function toggleMixedSection(section: (typeof mixedSections)[number]): void {
         </div>
         <div v-for="row in match.payload.history" :key="`${row.date}-${row.homeTeam}-${row.awayTeam}`" class="history-row">
           <span><b>{{ row.date }}</b><small>{{ row.tournament }}</small></span>
-          <span :class="row.homeTeamRole === 'currentHome' ? 'same-home' : row.homeTeamRole === 'currentAway' ? 'same-away' : ''">{{ row.homeTeam }}</span>
+          <span
+            :class="['history-team', row.homeTeamRole === 'currentHome' ? 'same-home' : row.homeTeamRole === 'currentAway' ? 'same-away' : '']"
+            :title="row.homeTeam"
+          >{{ row.homeTeam }}</span>
           <span class="numeric">{{ row.halfTimeScore || '-' }}</span>
           <strong class="numeric">{{ row.score || '-' }}</strong>
-          <span :class="row.awayTeamRole === 'currentHome' ? 'same-home' : row.awayTeamRole === 'currentAway' ? 'same-away' : ''">{{ row.awayTeam }}</span>
+          <span
+            :class="['history-team', row.awayTeamRole === 'currentHome' ? 'same-home' : row.awayTeamRole === 'currentAway' ? 'same-away' : '']"
+            :title="row.awayTeam"
+          >{{ row.awayTeam }}</span>
         </div>
       </div>
       <p v-else class="history-empty">暂无历史交锋记录</p>
@@ -158,7 +164,14 @@ function toggleMixedSection(section: (typeof mixedSections)[number]): void {
 <style scoped>
 .match-card {
   display: grid;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   gap: var(--space-2);
+}
+
+.match-card > * {
+  min-width: 0;
 }
 
 .match-card__header {
@@ -282,7 +295,9 @@ function toggleMixedSection(section: (typeof mixedSections)[number]): void {
 
 .dual-market {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+  min-width: 0;
   gap: var(--space-2);
 }
 
@@ -312,6 +327,9 @@ function toggleMixedSection(section: (typeof mixedSections)[number]): void {
 }
 
 .history-panel {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
   padding: var(--space-3);
   border-radius: var(--radius-control);
   background: var(--color-surface-soft);
@@ -320,25 +338,46 @@ function toggleMixedSection(section: (typeof mixedSections)[number]): void {
 
 .history-list {
   display: grid;
+  width: 100%;
+  min-width: 0;
   gap: 1px;
-  overflow-x: auto;
+  overflow: hidden;
 }
 
 .history-row {
   display: grid;
-  grid-template-columns: 88px minmax(68px, 1fr) 40px 40px minmax(68px, 1fr);
+  grid-template-columns: 66px minmax(0, 1fr) 32px 32px minmax(0, 1fr);
   align-items: center;
-  min-width: 350px;
+  width: 100%;
+  min-width: 0;
   min-height: 38px;
-  gap: 5px;
+  gap: 3px;
   color: var(--color-text-secondary);
   font-size: 10px;
   text-align: center;
 }
 
+.history-row > * {
+  min-width: 0;
+}
+
 .history-row > span:first-child {
   display: grid;
+  overflow: hidden;
   text-align: left;
+}
+
+.history-row > span:first-child > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-team {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .history-row small {
@@ -370,7 +409,9 @@ function toggleMixedSection(section: (typeof mixedSections)[number]): void {
 .mixed-result {
   position: relative;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+  min-width: 0;
   gap: 6px;
   padding: 6px;
   border-radius: var(--radius-xs);

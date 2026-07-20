@@ -9,6 +9,7 @@ import AppBottomSheet from "@/components/base/AppBottomSheet.vue";
 import AppCard from "@/components/base/AppCard.vue";
 import AppHeader from "@/components/base/AppHeader.vue";
 import AppIcon from "@/components/base/AppIcon.vue";
+import AppRowChevron from "@/components/base/AppRowChevron.vue";
 import AppState from "@/components/base/AppState.vue";
 import LedgerDetailSheet from "@/components/ledger/LedgerDetailSheet.vue";
 import DateRangePicker from "@/components/base/DateRangePicker.vue";
@@ -155,7 +156,7 @@ function continueEditing(plan: SavedPlan): void {
           <span>统计周期</span>
           <strong class="numeric">{{ dateLabel }}</strong>
         </div>
-        <AppIcon name="chevron-right" :size="18" />
+        <AppRowChevron />
       </AppCard>
 
       <AppCard class="ledger-summary" :padded="false">

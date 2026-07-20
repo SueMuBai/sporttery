@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppIcon, { type AppIconName } from '@/components/base/AppIcon.vue'
 import AppAssetIcon from '@/components/base/AppAssetIcon.vue'
+import AppRowChevron from '@/components/base/AppRowChevron.vue'
 
 withDefaults(
   defineProps<{
@@ -47,14 +48,16 @@ const emit = defineEmits<{ click: [] }>()
       <small v-if="description">{{ description }}</small>
     </span>
     <span v-if="value" class="app-form-row__value numeric">{{ value }}</span>
-    <slot name="trailing"><AppIcon v-if="interactive" name="chevron-right" :size="18" /></slot>
+    <span class="app-form-row__trailing">
+      <slot name="trailing"><AppRowChevron v-if="interactive" /></slot>
+    </span>
   </button>
 </template>
 
 <style scoped>
 .app-form-row {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) auto 18px;
+  grid-template-columns: 40px minmax(0, 1fr) auto 20px;
   align-items: center;
   width: 100%;
   min-height: 72px;
@@ -112,19 +115,32 @@ const emit = defineEmits<{ click: [] }>()
   max-width: 92px;
 }
 
+.app-form-row__trailing {
+  display: grid;
+  width: 20px;
+  min-width: 20px;
+  align-self: center;
+  justify-self: end;
+  place-items: center;
+}
+
 .app-form-row--static {
-  grid-template-columns: 40px minmax(0, 1fr) auto;
+  grid-template-columns: 40px minmax(0, 1fr) auto 20px;
 }
 
 @media (max-width: 359px) {
   .app-form-row {
-    grid-template-columns: 40px minmax(0, 1fr) 18px;
+    grid-template-columns: 40px minmax(0, 1fr) 20px;
     gap: 10px;
     padding-inline: 14px;
   }
 
   .app-form-row__value {
     display: none;
+  }
+
+  .app-form-row__trailing {
+    grid-column: 3;
   }
 }
 </style>

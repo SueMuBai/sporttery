@@ -173,6 +173,9 @@ function selected(option: Option): boolean {
 <style scoped>
 .odds-grid {
   display: grid;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   gap: 6px;
 }
 

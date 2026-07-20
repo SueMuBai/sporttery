@@ -6,11 +6,11 @@ on:
       version_name:
         description: Version name
         required: true
-        default: "2.0.14"
+        default: "2.0.15"
       version_code:
         description: Android version code
         required: true
-        default: "16"
+        default: "17"
 
 jobs:
   build:
