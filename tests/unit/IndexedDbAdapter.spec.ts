@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { IndexedDbAdapter } from "@/services/database/indexeddb/IndexedDbAdapter";
-import type {
-  LedgerOrder,
-  MatchResult,
-  MatchSnapshot,
-  SavedPlan,
+import {
+  DEFAULT_SETTINGS,
+  type LedgerOrder,
+  type MatchResult,
+  type MatchSnapshot,
+  type SavedPlan,
 } from "@/types/domain";
 
 const timestamp = "2026-07-18T15:00:00+08:00";
@@ -43,6 +44,113 @@ async function saveAiTag(adapter: IndexedDbAdapter): Promise<void> {
 }
 
 describe("IndexedDbAdapter", () => {
+  it("clears all local records atomically and restores default settings", async () => {
+    const name = `caiguo-clear-${crypto.randomUUID()}`;
+    const adapter = new IndexedDbAdapter(name);
+    await adapter.initialize();
+    await adapter.saveSettings({
+      historyLimits: 20,
+      workers: 6,
+      timeoutSeconds: 30,
+      retries: 3,
+      defaultMultiplier: 2,
+    });
+    await saveAiTag(adapter);
+    const plan = samplePlan();
+    await adapter.savePlan(plan);
+    await adapter.saveMatches([
+      {
+        matchId: 2040532,
+        matchNum: "周五201",
+        matchDateTime: "2026-07-18 01:00:00",
+        homeTeam: "哥德堡",
+        awayTeam: "布鲁马波",
+        payload: { league: "瑞超" },
+        updatedAt: timestamp,
+      },
+    ]);
+    await adapter.saveResults([
+      {
+        matchId: 2040532,
+        matchNum: "周五201",
+        homeTeam: "哥德堡",
+        awayTeam: "布鲁马波",
+        halfTimeScore: "1:0",
+        fullTimeScore: "2:0",
+        goalLine: -1,
+        officialResults: { had: "h", hhad: "d" },
+        fetchedAt: timestamp,
+      },
+    ]);
+    const order: LedgerOrder = {
+      id: "clear-ledger",
+      planId: plan.id,
+      planName: plan.name,
+      planSnapshot: plan,
+      purchasedAt: timestamp,
+      stakeCents: 200,
+      returnCents: 0,
+      returnManual: false,
+      status: "settled",
+      notes: "待清空",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+    await adapter.saveLedgerOrder(order);
+    await adapter.updateLedgerReturn(order.id, 360, order.updatedAt);
+    await adapter.saveSyncJob({
+      kind: "full",
+      status: "success",
+      addedCount: 1,
+      updatedCount: 0,
+      failedCount: 0,
+      errorMessage: "",
+      startedAt: timestamp,
+      finishedAt: timestamp,
+    });
+    await adapter.saveOddsHistory([
+      {
+        matchId: 2040532,
+        market: "had",
+        outcome: "h",
+        odds: "1.78",
+        capturedAt: timestamp,
+      },
+    ]);
+    await adapter.recordEvent({
+      type: "sync.completed",
+      payload: { source: "test" },
+      createdAt: timestamp,
+    });
+
+    const counts = await adapter.clearLocalData();
+
+    expect(counts).toEqual({
+      settings: 1,
+      tags: 0,
+      plans: 0,
+      planSelections: 0,
+      matches: 0,
+      results: 0,
+      ledgerOrders: 0,
+    });
+    expect(await adapter.getSettings()).toEqual(DEFAULT_SETTINGS);
+    expect(await adapter.listTags()).toEqual([]);
+    expect(await adapter.listPlans()).toEqual([]);
+    expect(await adapter.listMatches()).toEqual([]);
+    expect(await adapter.listLatestResults()).toEqual([]);
+    expect(await adapter.listLedger()).toEqual([]);
+    expect(await adapter.listLedgerAdjustments(order.id)).toEqual([]);
+    expect(await adapter.listEvents()).toEqual([]);
+
+    await adapter.close();
+    const reopened = new IndexedDbAdapter(name);
+    await reopened.initialize();
+    expect(await reopened.getSettings()).toEqual(DEFAULT_SETTINGS);
+    expect(await reopened.getCounts()).toEqual(counts);
+    await reopened.deleteDatabaseForTests();
+  });
+
   it("initializes idempotently and persists normalized core records", async () => {
     const name = `caiguo-test-${crypto.randomUUID()}`;
     const adapter = new IndexedDbAdapter(name);

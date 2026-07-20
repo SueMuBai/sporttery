@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" fill="none">
+  <defs>
+    <linearGradient id="cloud-fill" x1="49" y1="30" x2="111" y2="91" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF8F8"/>
+      <stop offset="1" stop-color="#FFF0F2"/>
+    </linearGradient>
+    <linearGradient id="cloud-line" x1="47" y1="35" x2="111" y2="88" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF7070"/>
+      <stop offset="1" stop-color="#FF4545"/>
+    </linearGradient>
+  </defs>
+
+  <ellipse cx="80" cy="98" rx="37" ry="7" fill="#FFF0F2" opacity=".85"/>
+  <path d="M55 87h-3.5C39.6 87 30 77.5 30 65.8c0-10.2 7.3-18.7 17.1-20.7C51.2 32.7 62.8 24 76.5 24c15.7 0 28.5 11.5 30.6 26.5 12.8.8 22.9 11.4 22.9 24.3C130 87 120.2 97 108 97H104" fill="url(#cloud-fill)"/>
+  <path d="M55 87h-3.5C39.6 87 30 77.5 30 65.8c0-10.2 7.3-18.7 17.1-20.7C51.2 32.7 62.8 24 76.5 24c15.7 0 28.5 11.5 30.6 26.5 12.8.8 22.9 11.4 22.9 24.3C130 87 120.2 97 108 97H104" stroke="url(#cloud-line)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M80 48v25" stroke="#FF5151" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="80" cy="84" r="4" fill="#FF5151"/>
+  <path d="m36 31 1.2 2.3 2.3 1.2-2.3 1.2-1.2 2.3-1.2-2.3-2.3-1.2 2.3-1.2L36 31Z" fill="#FFC4C8"/>
+  <circle cx="123" cy="34" r="2.5" fill="#FFD1D4"/>
+</svg>

@@ -595,6 +595,35 @@ export class IndexedDbAdapter implements DatabaseAdapter {
     };
   }
 
+  async clearLocalData(): Promise<DatabaseCounts> {
+    await this.db.transaction(
+      "rw",
+      this.db.tables as Table[],
+      async () => {
+        await Promise.all([
+          this.db.tags.clear(),
+          this.db.plans.clear(),
+          this.db.planSelections.clear(),
+          this.db.planTags.clear(),
+          this.db.matchSnapshots.clear(),
+          this.db.matchResults.clear(),
+          this.db.ledgerOrders.clear(),
+          this.db.ledgerAdjustments.clear(),
+          this.db.syncJobs.clear(),
+          this.db.oddsHistory.clear(),
+          this.db.appEvents.clear(),
+          this.db.settings.clear(),
+        ]);
+        await this.db.settings.put({
+          key: "app",
+          value: cloneJson(DEFAULT_SETTINGS),
+          updatedAt: now(),
+        });
+      },
+    );
+    return this.getCounts();
+  }
+
   async deleteDatabaseForTests(): Promise<void> {
     this.db.close();
     await Dexie.delete(this.db.name);

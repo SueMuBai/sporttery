@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { showFailToast, showLoadingToast, showSuccessToast } from "vant";
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 
 import exportJsonIcon from "@/assets/ui/settings/ic_export_json.svg?url";
 import exportMarkdownIcon from "@/assets/ui/settings/ic_export_markdown.svg?url";
 import AppAssetIcon from "@/components/base/AppAssetIcon.vue";
+import AppBottomSheet from "@/components/base/AppBottomSheet.vue";
 import AppButton from "@/components/base/AppButton.vue";
 import AppCard from "@/components/base/AppCard.vue";
 import AppIcon from "@/components/base/AppIcon.vue";
@@ -28,6 +29,17 @@ const importing = ref(false);
 const fileInput = ref<HTMLInputElement>();
 const counts = ref<DatabaseCounts>();
 const lastBackupAt = ref(localStorage.getItem("caiguo.lastBackupAt") || "");
+const clearSheetVisible = ref(false);
+const clearPhrase = ref("");
+const clearing = ref(false);
+const CLEAR_CONFIRMATION_PHRASE = "清空数据";
+const clearPhraseMatches = computed(
+  () => clearPhrase.value === CLEAR_CONFIRMATION_PHRASE,
+);
+const clearSummary = computed(() => {
+  if (!counts.value) return "本机保存的全部业务数据";
+  return `${counts.value.matches} 场比赛、${counts.value.plans} 个方案、${counts.value.ledgerOrders} 笔账单和 ${counts.value.tags} 个标签`;
+});
 
 onMounted(async () => {
   try {
@@ -105,6 +117,52 @@ async function importFile(event: Event): Promise<void> {
     showFailToast(reason instanceof Error ? reason.message : String(reason));
   } finally {
     importing.value = false;
+  }
+}
+
+async function requestClearLocalData(): Promise<void> {
+  try {
+    await confirmAction({
+      title: "清空本机数据？",
+      message: `将删除${clearSummary.value}，并把系统设置恢复为默认值。此操作不可撤销，建议先导出 JSON 备份。`,
+      confirmText: "继续",
+      cancelText: "取消",
+      danger: true,
+    });
+    clearPhrase.value = "";
+    clearSheetVisible.value = true;
+  } catch (reason) {
+    if (reason === "cancel" || reason === "close") return;
+    showFailToast(reason instanceof Error ? reason.message : String(reason));
+  }
+}
+
+function updateClearSheetVisibility(visible: boolean): void {
+  if (clearing.value) return;
+  clearSheetVisible.value = visible;
+  if (!visible) clearPhrase.value = "";
+}
+
+async function clearLocalData(): Promise<void> {
+  if (!clearPhraseMatches.value || clearing.value) return;
+  clearing.value = true;
+  try {
+    const database = getDatabase();
+    await database.initialize();
+    counts.value = await database.clearLocalData();
+    localStorage.removeItem("caiguo.lastBackupAt");
+    localStorage.removeItem("caiguo.ticket-draft.v1");
+    lastBackupAt.value = "";
+    clearSheetVisible.value = false;
+    showSuccessToast("本机数据已清空");
+    window.setTimeout(() => window.location.reload(), 650);
+  } catch (reason) {
+    showFailToast({
+      message: reason instanceof Error ? reason.message : String(reason),
+      duration: 3000,
+    });
+  } finally {
+    clearing.value = false;
   }
 }
 </script>
@@ -207,6 +265,19 @@ async function importFile(event: Event): Promise<void> {
         </AppButton>
       </AppCard>
     </section>
+    <section class="data-section data-section--danger">
+      <h2>危险操作</h2>
+      <AppCard class="danger-card" :padded="false">
+        <button type="button" aria-label="清空本机数据" @click="requestClearLocalData">
+          <span class="danger-card__icon"><AppIcon name="delete" :size="24" /></span>
+          <span class="danger-card__copy">
+            <strong>清空本机数据</strong>
+            <small>此操作无法撤销，请谨慎操作</small>
+          </span>
+          <AppIcon name="chevron-right" :size="18" />
+        </button>
+      </AppCard>
+    </section>
     <input
       ref="fileInput"
       class="file-input"
@@ -215,6 +286,72 @@ async function importFile(event: Event): Promise<void> {
       aria-label="选择彩果 JSON 备份"
       @change="importFile"
     />
+    <AppBottomSheet
+      :show="clearSheetVisible"
+      title="最终确认"
+      description="这是清空前的第二次确认"
+      :show-close="!clearing"
+      @update:show="updateClearSheetVisibility"
+    >
+      <div class="clear-confirm">
+        <div class="clear-confirm__warning" role="alert">
+          <span class="clear-confirm__warning-icon">
+            <AppIcon name="warning" :size="22" />
+          </span>
+          <div>
+            <strong>清空后无法恢复</strong>
+            <p>
+              {{ clearSummary }}将永久删除；仅能通过此前导出的备份手动恢复部分数据。
+            </p>
+          </div>
+        </div>
+        <label class="clear-confirm__field">
+          <span>
+            请输入“<strong>{{ CLEAR_CONFIRMATION_PHRASE }}</strong>”确认
+          </span>
+          <input
+            v-model="clearPhrase"
+            type="text"
+            inputmode="text"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            :disabled="clearing"
+            :placeholder="CLEAR_CONFIRMATION_PHRASE"
+            :aria-invalid="Boolean(clearPhrase) && !clearPhraseMatches"
+            @keyup.enter="clearLocalData"
+          />
+        </label>
+        <p
+          v-if="clearPhrase && !clearPhraseMatches"
+          class="clear-confirm__error"
+          role="status"
+        >
+          确认词不一致，请完整输入“{{ CLEAR_CONFIRMATION_PHRASE }}”
+        </p>
+      </div>
+      <template #footer>
+        <div class="clear-confirm__actions">
+          <AppButton
+            block
+            variant="ghost"
+            :disabled="clearing"
+            @click="updateClearSheetVisibility(false)"
+          >
+            取消
+          </AppButton>
+          <AppButton
+            block
+            variant="danger"
+            :loading="clearing"
+            :disabled="!clearPhraseMatches || clearing"
+            @click="clearLocalData"
+          >
+            永久清空
+          </AppButton>
+        </div>
+      </template>
+    </AppBottomSheet>
   </AppPage>
 </template>
 
@@ -340,5 +477,156 @@ async function importFile(event: Event): Promise<void> {
   display: grid;
   gap: 10px;
   padding: 14px;
+}
+
+.data-section--danger {
+  margin-top: 2px;
+}
+
+.data-section--danger h2 {
+  color: var(--color-danger);
+}
+
+.danger-card {
+  overflow: hidden;
+}
+
+.danger-card > button {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 18px;
+  align-items: center;
+  width: 100%;
+  min-height: 70px;
+  gap: 12px;
+  padding: 0 16px;
+  border: 0;
+  color: var(--color-text);
+  background: transparent;
+  text-align: left;
+}
+
+.danger-card__icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  color: var(--color-danger);
+}
+
+.danger-card__copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.danger-card__copy strong {
+  color: var(--color-danger);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.danger-card__copy small {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.clear-confirm {
+  display: grid;
+  gap: 14px;
+  padding: 16px var(--page-gutter) 18px;
+}
+
+.clear-confirm__warning {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--radius-control);
+  background: rgb(239 91 103 / 8%);
+  box-shadow: inset 0 0 0 1px rgb(239 91 103 / 22%);
+}
+
+.clear-confirm__warning-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  color: var(--color-danger);
+  background: rgb(239 91 103 / 12%);
+  place-items: center;
+}
+
+.clear-confirm__warning strong,
+.clear-confirm__warning p {
+  margin: 0;
+}
+
+.clear-confirm__warning strong {
+  color: var(--color-danger);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.clear-confirm__warning p {
+  margin-top: 3px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.clear-confirm__field {
+  display: grid;
+  gap: 7px;
+}
+
+.clear-confirm__field > span {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.clear-confirm__field > span strong {
+  color: var(--color-text);
+}
+
+.clear-confirm__field input {
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  border: 0;
+  outline: 0;
+  border-radius: var(--radius-control);
+  color: var(--color-text);
+  background: var(--color-surface);
+  box-shadow: var(--outline-default);
+  font-size: 14px;
+}
+
+.clear-confirm__field input:focus {
+  box-shadow: inset 0 0 0 1.5px var(--color-danger);
+}
+
+.clear-confirm__field input[aria-invalid="true"] {
+  box-shadow: inset 0 0 0 1px var(--color-danger);
+}
+
+.clear-confirm__field input:disabled {
+  color: var(--color-text-tertiary);
+  background: var(--color-surface-soft);
+}
+
+.clear-confirm__error {
+  margin: -8px 0 0;
+  color: var(--color-danger);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.clear-confirm__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 </style>

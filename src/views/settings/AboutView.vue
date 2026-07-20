@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 
-import brandIcon from "@/assets/icons/navigation/ic_nav_ticket_selected.svg?url";
+import brandIcon from "@/assets/ui/settings/ic_app_caiguo.svg?url";
 import AppBottomSheet from "@/components/base/AppBottomSheet.vue";
 import AppCard from "@/components/base/AppCard.vue";
 import AppIcon, { type AppIconName } from "@/components/base/AppIcon.vue";
@@ -132,8 +132,8 @@ const menuItems: Array<{
 }
 
 .about-brand img {
-  width: 52px;
-  height: 52px;
+  width: 64px;
+  height: 64px;
 }
 
 .about-hero h2,

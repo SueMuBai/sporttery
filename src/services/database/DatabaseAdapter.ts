@@ -73,4 +73,5 @@ export interface DatabaseAdapter {
   recordEvent(event: AppEvent): Promise<number>;
   listEvents(type?: string, limit?: number): Promise<AppEvent[]>;
   getCounts(): Promise<DatabaseCounts>;
+  clearLocalData(): Promise<DatabaseCounts>;
 }

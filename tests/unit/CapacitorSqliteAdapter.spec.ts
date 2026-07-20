@@ -19,6 +19,67 @@ function nativeConnection(activeStates: boolean[] = [false]) {
 }
 
 describe("CapacitorSqliteAdapter native transactions", () => {
+  it("clears every business table and restores defaults in one native transaction", async () => {
+    const connection = nativeConnection([false]);
+    const adapter = new CapacitorSqliteAdapter();
+    Object.assign(adapter, { connection });
+
+    await adapter.clearLocalData();
+
+    expect(connection.beginTransaction).toHaveBeenCalledOnce();
+    expect(connection.commitTransaction).toHaveBeenCalledOnce();
+    expect(connection.rollbackTransaction).not.toHaveBeenCalled();
+    const statements = connection.run.mock.calls.map(([statement]) =>
+      String(statement),
+    );
+    expect(statements.filter((statement) => statement.startsWith("DELETE FROM "))).toEqual([
+      "DELETE FROM ledger_adjustments",
+      "DELETE FROM ledger_orders",
+      "DELETE FROM plan_tags",
+      "DELETE FROM plan_selections",
+      "DELETE FROM plans",
+      "DELETE FROM tags",
+      "DELETE FROM match_results",
+      "DELETE FROM match_snapshots",
+      "DELETE FROM odds_history",
+      "DELETE FROM sync_jobs",
+      "DELETE FROM app_events",
+      "DELETE FROM settings",
+    ]);
+    expect(
+      statements.filter((statement) =>
+        statement.startsWith("INSERT OR IGNORE INTO settings"),
+      ),
+    ).toHaveLength(5);
+    expect(statements.join("\n")).not.toMatch(/DROP\s+TABLE|deleteDatabase/i);
+  });
+
+  it("rolls back the whole clear operation when any table write fails", async () => {
+    const connection = nativeConnection([false]);
+    connection.run.mockImplementation(async (statement: string) => {
+      if (statement === "DELETE FROM plans") {
+        throw new Error("simulated delete failure");
+      }
+      return { changes: { changes: 1 } };
+    });
+    const adapter = new CapacitorSqliteAdapter();
+    Object.assign(adapter, { connection });
+
+    await expect(adapter.clearLocalData()).rejects.toThrow(
+      "simulated delete failure",
+    );
+
+    expect(connection.beginTransaction).toHaveBeenCalledOnce();
+    expect(connection.commitTransaction).not.toHaveBeenCalled();
+    expect(connection.rollbackTransaction).toHaveBeenCalledOnce();
+    expect(connection.run).not.toHaveBeenCalledWith(
+      "DELETE FROM settings",
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
   it("serializes transactions across adapter instances sharing one native database", async () => {
     const connection = nativeConnection();
     let releaseFirst!: () => void;

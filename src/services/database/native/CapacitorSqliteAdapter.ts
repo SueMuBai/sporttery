@@ -873,6 +873,34 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
     };
   }
 
+  async clearLocalData(): Promise<DatabaseCounts> {
+    await this.transaction(async () => {
+      // Keep the schema intact and clear records in foreign-key-safe order.
+      // This is deliberately a fixed allow-list rather than accepting table
+      // names from the caller, and the whole reset either commits or rolls
+      // back as one native SQLite transaction.
+      const tables = [
+        "ledger_adjustments",
+        "ledger_orders",
+        "plan_tags",
+        "plan_selections",
+        "plans",
+        "tags",
+        "match_results",
+        "match_snapshots",
+        "odds_history",
+        "sync_jobs",
+        "app_events",
+        "settings",
+      ] as const;
+      for (const table of tables) {
+        await this.runInTransaction(`DELETE FROM ${table}`);
+      }
+      await this.seedSettingsInTransaction();
+    });
+    return this.getCounts();
+  }
+
   private get db(): SQLiteDBConnection {
     if (!this.connection) throw new Error("数据库尚未初始化");
     return this.connection;
@@ -983,6 +1011,10 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
   }
 
   private async seedSettings(): Promise<void> {
+    await this.transactions.run(() => this.seedSettingsInTransaction());
+  }
+
+  private async seedSettingsInTransaction(): Promise<void> {
     const entries: Array<[string, number]> = [
       ["history_limits", DEFAULT_SETTINGS.historyLimits],
       ["workers", DEFAULT_SETTINGS.workers],
@@ -991,7 +1023,7 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
       ["default_multiplier", DEFAULT_SETTINGS.defaultMultiplier],
     ];
     for (const [key, value] of entries) {
-      await this.run(
+      await this.runInTransaction(
         "INSERT OR IGNORE INTO settings(key,value,updated_at) VALUES(?,?,?)",
         [key, JSON.stringify(value), now()],
       );

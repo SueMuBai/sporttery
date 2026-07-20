@@ -24,16 +24,22 @@
     },
     "settings": {
       "status": "integrated",
-      "assets": ["ic_system_settings.svg", "ic_tag.svg", "ic_folder.svg", "ic_export_markdown.svg", "ic_export_json.svg", "ic_concurrency.svg", "ic_timeout.svg", "ic_retry.svg", "ic_multiplier.svg", "ic_add.svg", "ic_back.svg", "ic_delete.svg"],
-      "consumers": ["SettingsView", "SystemSettingsView", "DataManagementView"]
+      "assets": ["ic_system_settings.svg", "ic_tag.svg", "ic_folder.svg", "ic_export_markdown.svg", "ic_export_json.svg", "ic_concurrency.svg", "ic_timeout.svg", "ic_retry.svg", "ic_multiplier.svg", "ic_add.svg", "ic_back.svg", "ic_delete.svg", "ic_app_caiguo.svg"],
+      "consumers": ["SettingsView", "SystemSettingsView", "DataManagementView", "AboutView"]
     },
     "date": {
       "status": "integrated-before-supplement",
       "note": "Existing SVG set matches the supplemental year/month/day picker package"
     },
     "plans": {
-      "status": "integrated-before-supplement",
-      "note": "Compact V2 plan icons are already imported by plan management and detail views"
+      "status": "integrated",
+      "assets": [
+        "states/ill_plan_empty.svg",
+        "states/ill_plan_search_empty.svg",
+        "states/ill_plan_load_error.svg"
+      ],
+      "consumers": ["PlanManagerView"],
+      "note": "Compact V2 plan icons and the three plan-management exception-state illustrations are integrated"
     },
     "navigation": {
       "path": "src/assets/icons/navigation",
@@ -75,7 +81,7 @@
     {
       "effect": "07_设置_关于彩果.png",
       "status": "aligned-current-domain",
-      "note": "Existing ticket artwork, runtime version, tagline, privacy/source/responsible-play information, and copyright are rendered; update/help/license/feedback routes and final brand artwork are not supplied"
+      "note": "Dedicated multicolor soda-theme ticket artwork, runtime version, tagline, update/help/privacy/license/feedback information, and copyright are rendered"
     }
   ]
 }

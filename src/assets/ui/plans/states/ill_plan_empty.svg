@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" fill="none">
+  <defs>
+    <linearGradient id="paper" x1="60" y1="22" x2="105" y2="73" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#F2F7FF"/>
+    </linearGradient>
+    <linearGradient id="folder-back" x1="46" y1="43" x2="112" y2="85" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#BFD8FF"/>
+      <stop offset="1" stop-color="#87B5FA"/>
+    </linearGradient>
+    <linearGradient id="folder-front" x1="42" y1="55" x2="110" y2="101" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EAF4FF"/>
+    </linearGradient>
+    <linearGradient id="ticket" x1="89" y1="78" x2="131" y2="105" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#F0F6FF"/>
+    </linearGradient>
+  </defs>
+
+  <path d="M34 74h-2.5M32.75 72.75v2.5" stroke="#9EC2FB" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="31.5" cy="74" r="3.25" stroke="#B9D3FB" stroke-width="1.8"/>
+  <path d="M46 30v8M42 34h8" stroke="#A7C8FC" stroke-width="1.7" stroke-linecap="round"/>
+  <path d="m46 30 1.4 2.6L50 34l-2.6 1.4L46 38l-1.4-2.6L42 34l2.6-1.4L46 30Z" fill="#A7C8FC"/>
+  <circle cx="123" cy="29" r="2.4" stroke="#B9D3FB" stroke-width="1.7"/>
+  <path d="m130 67 1.2 2.3 2.3 1.2-2.3 1.2L130 74l-1.2-2.3-2.3-1.2 2.3-1.2L130 67Z" stroke="#A7C8FC" stroke-width="1.6" stroke-linejoin="round"/>
+
+  <path d="M55 45.5c0-3 2.5-5.5 5.5-5.5h39c3 0 5.5 2.5 5.5 5.5V78H55V45.5Z" fill="url(#paper)" stroke="#B8C8DE" stroke-width="2"/>
+  <path d="M67 52h26M67 60h31M67 68h25" stroke="#D7E3F3" stroke-width="2" stroke-linecap="round"/>
+  <path d="M50 49c0-2.8 2.2-5 5-5h12l6 7h31c3.3 0 6 2.7 6 6v25H50V49Z" fill="url(#folder-back)" opacity=".72"/>
+  <path d="M43.6 58h30.2c2.1 0 4.1.9 5.5 2.5l4.4 5h31.5c4.2 0 7.4 3.8 6.7 8l-4.4 25.1c-.6 3.3-3.4 5.7-6.7 5.7H50.6c-3.5 0-6.5-2.6-6.9-6.1l-5.3-32.5c-.7-4 1.8-7.7 5.2-7.7Z" fill="url(#folder-front)" stroke="#AEBFD8" stroke-width="2.2" stroke-linejoin="round"/>
+  <path d="M44.4 63.5 49 94.9c.4 2.8 2.8 4.9 5.7 4.9h56" stroke="#D9E5F4" stroke-width="1.4" stroke-linecap="round" opacity=".9"/>
+
+  <path d="M92 80h35.4c0 3.2 2.6 5.8 5.8 5.8v13.4c-3.2 0-5.8 2.6-5.8 5.8H92c0-3.2-2.6-5.8-5.8-5.8V85.8c3.2 0 5.8-2.6 5.8-5.8Z" fill="url(#ticket)" stroke="#72A5F6" stroke-width="2.2" stroke-linejoin="round"/>
+  <path d="M107 82.5v20" stroke="#8DB5F8" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="4 5"/>
+  <path d="M137 101.5v5M140.5 104h5" stroke="#48CEBC" stroke-width="2" stroke-linecap="round"/>
+</svg>

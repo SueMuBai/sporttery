@@ -7,6 +7,9 @@ import checkedIcon from "@/assets/ui/plans/ic_checkbox_checked.svg?url";
 import uncheckedIcon from "@/assets/ui/plans/ic_checkbox_unchecked.svg?url";
 import deleteIcon from "@/assets/ui/plans/ic_delete_danger.svg?url";
 import warningIcon from "@/assets/ui/plans/ic_warning.svg?url";
+import planEmptyIllustration from "@/assets/ui/plans/states/ill_plan_empty.svg?url";
+import planLoadErrorIllustration from "@/assets/ui/plans/states/ill_plan_load_error.svg?url";
+import planSearchEmptyIllustration from "@/assets/ui/plans/states/ill_plan_search_empty.svg?url";
 import AppButton from "@/components/base/AppButton.vue";
 import AppBottomSheet from "@/components/base/AppBottomSheet.vue";
 import AppChip from "@/components/base/AppChip.vue";
@@ -394,9 +397,11 @@ async function applyLoad(): Promise<void> {
         class="plan-state plan-state--error"
         role="alert"
       >
-        <span class="plan-state__icon plan-state__icon--error">
-          <AppIcon name="warning" :size="46" />
-        </span>
+        <img
+          class="plan-state__illustration"
+          :src="planLoadErrorIllustration"
+          alt=""
+        />
         <strong>方案加载失败</strong>
         <p>无法读取本机方案，请检查存储后重试</p>
         <code>{{ errorCode }}</code>
@@ -412,7 +417,11 @@ async function applyLoad(): Promise<void> {
         v-else-if="!store.plans.length"
         class="plan-state plan-state--empty"
       >
-        <span class="plan-state__icon"><AppIcon name="folder" :size="54" /></span>
+        <img
+          class="plan-state__illustration"
+          :src="planEmptyIllustration"
+          alt=""
+        />
         <strong>还没有保存方案</strong>
         <p>在选票页完成选择后即可保存</p>
         <AppButton @click="router.push('/ticket')">去选票页</AppButton>
@@ -422,7 +431,11 @@ async function applyLoad(): Promise<void> {
         v-else-if="!store.filteredPlans.length"
         class="plan-state plan-state--no-result"
       >
-        <span class="plan-state__icon"><AppIcon name="search" :size="48" /></span>
+        <img
+          class="plan-state__illustration"
+          :src="planSearchEmptyIllustration"
+          alt=""
+        />
         <strong>未找到相关方案</strong>
         <p>试试其他名称、标签或筛选条件</p>
         <AppButton variant="secondary" @click="clearAllFilters">
@@ -449,9 +462,11 @@ async function applyLoad(): Promise<void> {
           class="plan-state plan-state--error plan-state--error-cached"
           role="alert"
         >
-          <span class="plan-state__icon plan-state__icon--error">
-            <AppIcon name="warning" :size="46" />
-          </span>
+          <img
+            class="plan-state__illustration"
+            :src="planLoadErrorIllustration"
+            alt=""
+          />
           <strong>方案加载失败</strong>
           <p>无法读取本机方案，请检查存储后重试</p>
           <code>{{ errorCode }}</code>
@@ -884,11 +899,11 @@ async function applyLoad(): Promise<void> {
   text-align: left;
 }
 
-.plan-state--error-cached .plan-state__icon {
+.plan-state--error-cached .plan-state__illustration {
   grid-row: 1 / span 4;
   align-self: center;
   width: 80px;
-  height: 80px;
+  height: 60px;
 }
 
 .plan-state--error-cached strong {
@@ -927,19 +942,11 @@ async function applyLoad(): Promise<void> {
   font-size: 11px;
 }
 
-.plan-state__icon {
-  display: grid;
-  width: 108px;
-  height: 86px;
-  border-radius: 30px;
-  color: var(--color-primary);
-  background: linear-gradient(145deg, #f5f9ff, #eaf4ff);
-  place-items: center;
-}
-
-.plan-state__icon--error {
-  color: var(--color-danger);
-  background: var(--color-accent-soft);
+.plan-state__illustration {
+  display: block;
+  width: 160px;
+  height: 120px;
+  object-fit: contain;
 }
 
 .plan-state__actions {
