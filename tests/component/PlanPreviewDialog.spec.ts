@@ -106,6 +106,8 @@ describe('PlanPreviewDialog', () => {
     const wrapper = mountPreview()
 
     expect(wrapper.findAll('.plan-preview__match')).toHaveLength(8)
+    expect(wrapper.get('.plan-preview__matches').element.nextElementSibling)
+      .toBe(wrapper.get('.plan-preview__footer').element)
     expect(wrapper.get('.plan-preview__meta').text()).toContain('8场')
     expect(wrapper.get('.plan-preview__meta').text()).toContain('14个选项')
     expect(wrapper.get('.plan-preview__meta').text()).toContain('2关、3关、4关、5关、6关、7关、8关')

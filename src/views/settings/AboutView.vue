@@ -219,10 +219,12 @@ function activateMenuItem(item: (typeof menuItems)[number]): void {
 
 .about-copyright {
   margin: 8px 0 0;
-  color: var(--color-text-tertiary);
+  color: #758398;
   font-size: 11px;
+  font-weight: 400;
   line-height: 16px;
   text-align: center;
+  -webkit-text-fill-color: #758398;
 }
 
 .about-topic {

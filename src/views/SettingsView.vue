@@ -4,8 +4,8 @@ import { useRouter } from "vue-router";
 
 import { APP_VERSION } from "@/app/version";
 import infoIcon from "@/assets/ui/common/ic_info.svg?url";
-import refreshIcon from "@/assets/ui/common/ic_refresh.svg?url";
 import dataBackupIcon from "@/assets/ui/settings/ic_data_backup.svg?url";
+import dataUpdateIcon from "@/assets/ui/settings/ic_data_update.svg?url";
 import folderIcon from "@/assets/ui/settings/ic_folder.svg?url";
 import systemSettingsIcon from "@/assets/ui/settings/ic_system_settings.svg?url";
 import tagIcon from "@/assets/ui/settings/ic_tag.svg?url";
@@ -46,8 +46,8 @@ const groups = computed<Array<{ title: string; items: SettingsItem[] }>>(() => [
         title: "数据更新",
         description: "获取最新比赛与更新比赛结果",
         icon: "refresh",
-        iconSrc: refreshIcon,
-        color: "#61D6BF",
+        iconSrc: dataUpdateIcon,
+        color: "#5797F5",
         route: "/settings/update",
       },
     ],

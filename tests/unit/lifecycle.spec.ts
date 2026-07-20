@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   dismissTopOverlay,
   nativeBackFallback,
+  resolveNativeBackAction,
 } from "@/app/lifecycle";
 
 describe("native lifecycle overlay handling", () => {
@@ -84,5 +85,19 @@ describe("native lifecycle overlay handling", () => {
     expect(nativeBackFallback("/plans/plan-1")).toBe("/plans");
     expect(nativeBackFallback("/plans")).toBe("/ticket");
     expect(nativeBackFallback("/settings/system")).toBe("/settings");
+  });
+
+  it("always returns secondary settings routes to the settings root", () => {
+    expect(resolveNativeBackAction("/settings/update", true)).toEqual({
+      type: "replace",
+      path: "/settings",
+    });
+    expect(resolveNativeBackAction("/settings/data", true)).toEqual({
+      type: "replace",
+      path: "/settings",
+    });
+    expect(resolveNativeBackAction("/settings", false)).toEqual({
+      type: "exit",
+    });
   });
 });

@@ -4,6 +4,7 @@ import { computed, onActivated, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 import AppButton from "@/components/base/AppButton.vue";
+import AppAssetIcon from "@/components/base/AppAssetIcon.vue";
 import AppBottomSheet from "@/components/base/AppBottomSheet.vue";
 import AppCard from "@/components/base/AppCard.vue";
 import AppHeader from "@/components/base/AppHeader.vue";
@@ -11,8 +12,13 @@ import AppIcon from "@/components/base/AppIcon.vue";
 import AppState from "@/components/base/AppState.vue";
 import LedgerDetailSheet from "@/components/ledger/LedgerDetailSheet.vue";
 import DateRangePicker from "@/components/base/DateRangePicker.vue";
-import billSectionIcon from "@/assets/icons/navigation/ic_nav_bill_selected.svg?url";
+import calendarCheckIcon from "@/assets/ui/ledger/ic_calendar_check.svg?url";
+import receiptStarIcon from "@/assets/ui/ledger/ic_receipt_star.svg?url";
 import ledgerEmptyIllustration from "@/assets/ui/ledger/ill_ledger_empty.svg?url";
+import {
+  ledgerPlanSubtitle,
+  ledgerPlanTitle,
+} from "@/features/ledger/presentation";
 import {
   rangeForPreset,
   useLedgerStore,
@@ -143,7 +149,7 @@ function continueEditing(plan: SavedPlan): void {
         @keydown.space.prevent="showDateSheet = true"
       >
         <div class="period-card__icon">
-          <AppIcon name="calendar" />
+          <AppAssetIcon :src="calendarCheckIcon" :size="24" />
         </div>
         <div class="period-card__copy">
           <span>统计周期</span>
@@ -186,7 +192,11 @@ function continueEditing(plan: SavedPlan): void {
       <section class="content-section">
         <div class="section-heading">
           <h2 class="text-section-title section-heading__title">
-            <img :src="billSectionIcon" alt="" />
+            <AppAssetIcon
+              class="section-heading__asset"
+              :src="receiptStarIcon"
+              :size="24"
+            />
             账单明细
           </h2>
           <button
@@ -197,7 +207,7 @@ function continueEditing(plan: SavedPlan): void {
             按时间{{ store.sort === "desc" ? "倒序" : "正序" }}
             <AppIcon
               :name="store.sort === 'desc' ? 'chevron-down' : 'chevron-up'"
-              :size="14"
+              :size="18"
             />
           </button>
         </div>
@@ -248,22 +258,33 @@ function continueEditing(plan: SavedPlan): void {
             @keydown.enter.prevent="openDetail(item)"
             @keydown.space.prevent="openDetail(item)"
           >
-            <div class="ledger-item__meta">
-              <time class="numeric">{{
-                formatDateTime(item.order.purchasedAt)
-              }}</time>
+            <div class="ledger-item__title-row">
+              <div>
+                <h3>
+                  {{
+                    ledgerPlanTitle(
+                      item.order.planName,
+                      item.evaluation.totalMatches,
+                    )
+                  }}
+                </h3>
+                <p>
+                  {{
+                    ledgerPlanSubtitle(
+                      item.evaluation.totalMatches,
+                      item.order.planSnapshot.selections.length,
+                    )
+                  }}
+                </p>
+              </div>
               <span :class="['status-pill', `status-pill--${item.status}`]">
                 {{ item.status === "settled" ? "已完成" : "进行中" }}
               </span>
             </div>
-            <div class="ledger-item__title-row">
-              <div>
-                <h3>{{ item.order.planName }}</h3>
-                <p>
-                  {{ item.evaluation.totalMatches }}场 ·
-                  {{ item.order.planSnapshot.selections.length }}个选项
-                </p>
-              </div>
+            <div class="ledger-item__meta">
+              <time class="numeric">
+                购买于 {{ formatDateTime(item.order.purchasedAt) }}
+              </time>
             </div>
             <div class="ledger-item__finance">
               <div>
@@ -404,16 +425,8 @@ function continueEditing(plan: SavedPlan): void {
   display: grid;
   width: 28px;
   height: 28px;
-  border-radius: var(--radius-xs);
   place-items: center;
   color: var(--color-primary);
-  background: var(--color-primary-soft);
-}
-
-.period-card__icon img,
-.header-action-icon {
-  width: 24px;
-  height: 24px;
 }
 
 .period-card__copy {
@@ -443,8 +456,9 @@ function continueEditing(plan: SavedPlan): void {
 .ledger-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  min-height: 122px;
-  padding: 16px 0 10px;
+  grid-template-rows: 86px 36px;
+  height: 122px;
+  padding: 0;
 }
 
 .ledger-summary > div {
@@ -475,8 +489,10 @@ function continueEditing(plan: SavedPlan): void {
 
 .ledger-summary p {
   grid-column: 1 / -1;
-  margin: 12px 14px 0;
-  padding-top: 10px;
+  display: grid;
+  align-items: center;
+  margin: 0 14px;
+  padding: 0;
   border-top: 1px solid var(--color-divider);
   color: var(--color-text-secondary);
   font-size: 13px;
@@ -496,6 +512,10 @@ function continueEditing(plan: SavedPlan): void {
   color: var(--color-placeholder);
 }
 
+.content-section {
+  margin-top: -7px;
+}
+
 .section-heading__title {
   display: inline-flex;
   align-items: center;
@@ -503,19 +523,18 @@ function continueEditing(plan: SavedPlan): void {
   font-size: 16px;
 }
 
-.section-heading__title img {
-  width: 24px;
-  height: 24px;
+.section-heading__asset {
+  color: var(--color-primary);
 }
 
 .sort-button {
   display: inline-flex;
   align-items: center;
   min-height: var(--touch-target);
-  gap: 4px;
+  gap: 6px;
   padding: 0 2px 0 12px;
   border: 0;
-  color: var(--color-text-secondary);
+  color: #53627a;
   background: transparent;
   font-size: 13px;
   line-height: 1;
@@ -525,7 +544,7 @@ function continueEditing(plan: SavedPlan): void {
   display: grid;
   min-height: 164px;
   align-content: stretch;
-  gap: 10px;
+  gap: 8px;
   padding: 14px;
 }
 
@@ -539,7 +558,8 @@ function continueEditing(plan: SavedPlan): void {
 
 .ledger-item__meta time {
   color: var(--color-text-secondary);
-  font-size: 13px;
+  font-size: 11px;
+  line-height: 16px;
 }
 
 .status-pill {
@@ -567,6 +587,10 @@ function continueEditing(plan: SavedPlan): void {
 
 .ledger-item__title-row > div {
   min-width: 0;
+}
+
+.ledger-item__title-row {
+  align-items: flex-start;
 }
 
 .ledger-item__title-row h3 {

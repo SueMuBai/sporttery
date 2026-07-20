@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { showFailToast, showSuccessToast } from "vant";
-import { computed, onMounted, ref } from "vue";
+import { computed, nextTick, onMounted, ref } from "vue";
 import { onBeforeRouteLeave } from "vue-router";
 
 import AppButton from "@/components/base/AppButton.vue";
@@ -35,6 +35,7 @@ const draft = ref<AppSettings>({ ...DEFAULT_SETTINGS });
 const initial = ref<AppSettings>({ ...DEFAULT_SETTINGS });
 const saved = ref(false);
 const leaveSheetVisible = ref(false);
+const parameterGroup = ref<HTMLElement>();
 let resolveLeaveDecision: ((allow: boolean) => void) | undefined;
 
 const settingItems: SettingDefinition[] = [
@@ -84,6 +85,14 @@ onMounted(async () => {
   if (store.settings) {
     draft.value = { ...store.settings };
     initial.value = { ...store.settings };
+  }
+  await nextTick();
+  const activeElement = document.activeElement;
+  if (
+    activeElement instanceof HTMLInputElement &&
+    parameterGroup.value?.contains(activeElement)
+  ) {
+    activeElement.blur();
   }
 });
 
@@ -172,7 +181,7 @@ async function save(): Promise<void> {
       @action="store.load"
     />
     <template v-else>
-      <section class="setting-group">
+      <section ref="parameterGroup" class="setting-group">
         <h2>
           <AppAssetIcon :src="systemSettingsIcon" :size="22" />
           <span>系统参数</span>
@@ -191,6 +200,7 @@ async function save(): Promise<void> {
               :value="draft[item.key]"
               type="number"
               inputmode="numeric"
+              autocomplete="off"
               :min="item.min"
               :max="item.max"
               :aria-label="item.title"
@@ -246,6 +256,7 @@ async function save(): Promise<void> {
     <template #footer>
       <div v-if="store.settings && !store.error" class="system-footer">
         <AppButton
+          class="system-save-button"
           block
           :loading="store.saving"
           :disabled="!dirty"
@@ -303,7 +314,8 @@ async function save(): Promise<void> {
 }
 
 .header-save:disabled {
-  color: var(--color-text-tertiary);
+  color: var(--color-text-secondary);
+  opacity: 0.72;
 }
 
 .setting-group {
@@ -431,5 +443,12 @@ async function save(): Promise<void> {
   padding: 8px var(--page-gutter) calc(8px + env(safe-area-inset-bottom));
   background: rgb(255 255 255 / 96%);
   border-top: 1px solid var(--color-divider);
+}
+
+:deep(.system-save-button.van-button--disabled) {
+  color: var(--color-text-secondary);
+  background: #f5f8fc;
+  box-shadow: var(--outline-default);
+  opacity: 0.82;
 }
 </style>

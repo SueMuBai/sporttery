@@ -4,6 +4,10 @@ import type { Router } from "vue-router";
 
 const ROOT_ROUTES = new Set(["/ledger", "/ticket", "/settings"]);
 
+export type NativeBackAction =
+  | { type: "exit" }
+  | { type: "replace"; path: string };
+
 export function nativeBackFallback(path: string): string {
   if (path === "/ticket/current") return "/ticket";
   if (/^\/ledger\/[^/]+$/.test(path)) return "/ledger";
@@ -14,6 +18,16 @@ export function nativeBackFallback(path: string): string {
   if (path === "/plans") return "/ticket";
   if (/^\/settings\/[^/]+$/.test(path)) return "/settings";
   return "/ticket";
+}
+
+export function resolveNativeBackAction(
+  path: string,
+  hideNav: boolean,
+): NativeBackAction {
+  if (hideNav || !ROOT_ROUTES.has(path)) {
+    return { type: "replace", path: nativeBackFallback(path) };
+  }
+  return { type: "exit" };
 }
 
 function visible(element: HTMLElement): boolean {
@@ -77,15 +91,18 @@ export async function initializeNativeLifecycle(
 
   const backListener = await CapacitorApp.addListener(
     "backButton",
-    async ({ canGoBack }) => {
+    async () => {
       if (handlingBack) return;
       handlingBack = true;
       try {
         if (dismissTopOverlay()) return;
         const route = router.currentRoute.value;
-        if (route.meta.hideNav || !ROOT_ROUTES.has(route.path)) {
-          if (canGoBack) await router.back();
-          else await router.replace(nativeBackFallback(route.path));
+        const action = resolveNativeBackAction(
+          route.path,
+          Boolean(route.meta.hideNav),
+        );
+        if (action.type === "replace") {
+          await router.replace(action.path);
           return;
         }
         await CapacitorApp.exitApp();

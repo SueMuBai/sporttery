@@ -22,7 +22,9 @@ import { centsToYuan } from '@/utils/money'
 
 import clearIcon from '@/assets/ui/ticket/ic_clear.svg?url'
 import manageIcon from '@/assets/ui/ticket/ic_manage.svg?url'
+import saveIcon from '@/assets/ui/ticket/ic_save.svg?url'
 import searchIcon from '@/assets/ui/ticket/ic_search.svg?url'
+import ticketIcon from '@/assets/ui/ticket/ic_ticket.svg?url'
 import viewPlanIcon from '@/assets/ui/ticket/ic_view_plan.svg?url'
 import emptyMatchesIllustration from '@/assets/ui/ticket/ill_empty_matches.svg?url'
 
@@ -392,7 +394,7 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
         aria-label="搜索比赛"
       >
         <template #left-icon>
-          <AppAssetIcon class="match-search__icon" :src="searchIcon" :size="18" />
+          <AppAssetIcon class="match-search__icon" :src="searchIcon" :size="20" />
         </template>
       </van-field>
 
@@ -474,11 +476,11 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
         </div>
         <div class="bet-dock__actions">
           <AppButton variant="secondary" block :loading="saving" :disabled="!store.betCount || !store.canSavePlan" @click="savePlan">
-            <template #icon><AppIcon name="save" :size="18" /></template>
+            <template #icon><AppAssetIcon :src="saveIcon" :size="18" /></template>
             {{ store.editingPlanId ? '保存修改' : '保存方案' }}
           </AppButton>
           <AppButton block :disabled="!store.betCount" @click="showPurchase = true">
-            <template #icon><AppIcon name="check" :size="18" /></template>
+            <template #icon><AppAssetIcon :src="ticketIcon" :size="18" /></template>
             记录购买
           </AppButton>
           <AppButton variant="secondary" block :disabled="!store.betCount" @click="showPlanPreview = true">
@@ -600,6 +602,8 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
 }
 
 .match-search {
+  display: flex;
+  align-items: center;
   min-height: 40px;
   padding: 0 12px;
   border-radius: var(--radius-control);
@@ -612,7 +616,23 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
 }
 
 .match-search__icon {
+  display: block;
   color: #8f9bad;
+}
+
+.match-search :deep(.van-field__body) {
+  min-height: 40px;
+  align-items: center;
+}
+
+.match-search :deep(.van-field__left-icon) {
+  display: grid;
+  align-self: stretch;
+  min-width: 24px;
+  min-height: 40px;
+  margin-right: 8px;
+  place-items: center;
+  line-height: 0;
 }
 
 .match-search:focus-within .match-search__icon {
@@ -671,7 +691,7 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
   left: 0;
   display: grid;
   align-items: center;
-  min-height: 56px;
+  min-height: 44px;
   padding: 0 var(--page-gutter);
   border-radius: 12px 12px 0 0;
   background: rgb(255 255 255 / 97%);
@@ -688,7 +708,7 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
   grid-template-columns: minmax(0, 1fr) 24px;
   align-items: center;
   width: 100%;
-  min-height: 56px;
+  min-height: 44px;
   min-width: 0;
   gap: 8px;
   padding: 0;
@@ -736,14 +756,14 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
 
 .bet-dock__expanded {
   display: grid;
-  gap: 8px;
-  padding: 8px 8px 10px;
+  gap: 6px;
+  padding: 6px 8px 8px;
   border-top: 1px solid var(--color-divider);
 }
 
 .bet-dock__expanded section {
   display: grid;
-  grid-template-columns: 112px minmax(0, 1fr);
+  grid-template-columns: 56px minmax(0, 1fr);
   align-items: start;
   gap: 6px 8px;
 }
@@ -756,7 +776,7 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
 .bet-dock__expanded h2 {
   display: flex;
   align-items: center;
-  min-height: 32px;
+  min-height: 30px;
   grid-row: 1 / span 2;
   font-size: 13px;
   font-weight: 500;
@@ -773,7 +793,7 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
 .bet-pass-grid .app-chip {
   width: 100%;
   min-width: 0;
-  height: 32px;
+  height: 30px;
   border-radius: var(--radius-control);
 }
 
@@ -792,7 +812,7 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
 
 .bet-multiplier {
   display: grid;
-  grid-template-columns: 112px minmax(0, 1fr);
+  grid-template-columns: 56px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
   font-size: 13px;
@@ -801,13 +821,13 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
 .bet-multiplier > span:first-child {
   display: flex;
   align-items: center;
-  min-height: 32px;
+  min-height: 30px;
 }
 
 .bet-stepper {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr) 34px;
-  height: 32px;
+  height: 30px;
   border-radius: var(--radius-control);
   overflow: hidden;
   box-shadow: var(--outline-default);
@@ -816,7 +836,7 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
 .bet-stepper button,
 .bet-stepper input {
   min-width: 0;
-  height: 32px;
+  height: 30px;
   padding: 0;
   border: 0;
   outline: 0;
@@ -901,8 +921,9 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
     font-size: 12px;
   }
 
+  .bet-dock__expanded section,
   .bet-multiplier {
-    grid-template-columns: 88px minmax(0, 1fr);
+    grid-template-columns: 48px minmax(0, 1fr);
   }
 }
 </style>

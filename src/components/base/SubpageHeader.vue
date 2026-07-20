@@ -41,7 +41,7 @@ const router = useRouter();
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: center;
-  height: calc(44px + env(safe-area-inset-top));
+  height: calc(var(--subpage-header-height) + env(safe-area-inset-top));
   gap: var(--space-2);
   padding: env(safe-area-inset-top) var(--page-gutter) 0;
   background: var(--color-surface);
@@ -56,9 +56,9 @@ const router = useRouter();
 .subpage-header h1 {
   margin: 0;
   overflow: hidden;
-  font-size: 17px;
-  font-weight: 500;
-  line-height: 22px;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 24px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

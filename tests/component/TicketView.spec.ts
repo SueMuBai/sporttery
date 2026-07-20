@@ -105,6 +105,11 @@ describe('TicketView core states', () => {
     await wrapper.get('.bet-dock__summary').trigger('click')
     const actions = wrapper.findAll('.bet-dock__actions button')
     expect(actions).toHaveLength(3)
+    expect(actions.map((action) => action.text())).toEqual([
+      expect.stringContaining('保存方案'),
+      expect.stringContaining('记录购买'),
+      expect.stringContaining('查看方案'),
+    ])
     expect(actions[2]?.text()).toContain('查看方案')
 
     await actions[2]!.trigger('click')

@@ -4,6 +4,9 @@ import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 
 import refreshIcon from "@/assets/ui/common/ic_refresh.svg?url";
+import cloudLocalIcon from "@/assets/ui/settings/ic_cloud_local.svg?url";
+import dataUpdateIcon from "@/assets/ui/settings/ic_data_update.svg?url";
+import trophyIcon from "@/assets/ui/settings/ic_trophy.svg?url";
 import AppAssetIcon from "@/components/base/AppAssetIcon.vue";
 import AppButton from "@/components/base/AppButton.vue";
 import AppCard from "@/components/base/AppCard.vue";
@@ -322,7 +325,7 @@ function showTask(task: RecentTask): void {
           />
           <AppIcon v-else-if="failedCount" name="warning" :size="34" />
           <template v-else>
-            <AppAssetIcon :src="refreshIcon" :size="30" />
+            <AppAssetIcon :src="dataUpdateIcon" :size="36" />
             <AppIcon
               v-if="store.syncReport"
               class="sync-state-badge"
@@ -388,7 +391,9 @@ function showTask(task: RecentTask): void {
 
       <section v-else-if="store.syncReport" class="sync-metrics">
         <div>
-          <span class="metric-icon metric-icon--match"><AppIcon name="download" :size="20" /></span>
+          <span class="metric-icon metric-icon--match">
+            <AppAssetIcon :src="trophyIcon" :size="22" />
+          </span>
           <small>比赛</small><strong>{{ totalMatches }}</strong>
         </div>
         <div>
@@ -400,7 +405,9 @@ function showTask(task: RecentTask): void {
           <small>失败</small><strong>{{ failedCount }}</strong>
         </div>
         <div>
-          <span class="metric-icon metric-icon--local"><AppIcon name="save" :size="20" /></span>
+          <span class="metric-icon metric-icon--local">
+            <AppAssetIcon :src="cloudLocalIcon" :size="22" />
+          </span>
           <small>本地</small><strong>{{ store.syncReport.matches.unchanged }}</strong>
         </div>
       </section>
@@ -414,7 +421,9 @@ function showTask(task: RecentTask): void {
         :disabled="store.syncing"
         @click="synchronizeMatches"
       >
-        <template #icon><AppIcon name="download" :size="20" /></template>
+        <template #icon>
+          <AppAssetIcon :src="cloudLocalIcon" :size="20" />
+        </template>
         获取最新比赛
       </AppButton>
       <AppButton
@@ -550,10 +559,9 @@ function showTask(task: RecentTask): void {
   display: grid;
   width: 54px;
   height: 54px;
-  border-radius: 14px;
   place-items: center;
   color: var(--color-primary);
-  background: var(--color-primary-soft);
+  background: transparent;
 }
 
 .sync-state-icon--success {
@@ -562,7 +570,7 @@ function showTask(task: RecentTask): void {
 
 .sync-state-icon--failed {
   color: var(--color-danger);
-  background: var(--color-accent-soft);
+  background: transparent;
 }
 
 .sync-state-badge {

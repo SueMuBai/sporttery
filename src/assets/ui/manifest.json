@@ -21,7 +21,9 @@
         "ic_search.svg",
         "ic_filter.svg",
         "ic_manage.svg",
+        "ic_save.svg",
         "ic_status_success.svg",
+        "ic_ticket.svg",
         "ic_view_plan.svg",
         "ill_empty_matches.svg"
       ],
@@ -31,9 +33,11 @@
       "status": "integrated",
       "assets": [
         "ic_calendar.svg",
+        "ic_calendar_check.svg",
         "ic_calendar_filter.svg",
         "ic_edit.svg",
         "ic_close.svg",
+        "ic_receipt_star.svg",
         "ill_ledger_empty.svg"
       ],
       "consumers": ["LedgerView", "LedgerDetailView", "LedgerHistorySheet"]
@@ -45,6 +49,9 @@
         "ic_tag.svg",
         "ic_folder.svg",
         "ic_data_backup.svg",
+        "ic_data_update.svg",
+        "ic_trophy.svg",
+        "ic_cloud_local.svg",
         "ic_export_markdown.svg",
         "ic_export_json.svg",
         "ic_concurrency.svg",
@@ -99,12 +106,12 @@
     {
       "effect": "02_设置_系统设置二级页.png",
       "status": "partial",
-      "note": "44dp header, settings persistence, unsaved-leave guard, and exact parameter icons exist; auto-sync and expand-detail switches are not represented in the current domain model"
+      "note": "68dp shared secondary header, settings persistence, unsaved-leave guard, numeric focus reset, and display behavior switches are integrated"
     },
     {
       "effect": "03_设置_数据更新默认态.png",
       "status": "aligned-current-domain",
-      "note": "Latest snapshot, real processed/add/result/failure metrics, sync action, and latest report are rendered; separate fetch-match/update-result commands and task history do not exist"
+      "note": "Latest snapshot, semantic sync/trophy/cloud icons, real processed/failure metrics, separate fetch-match/update-result commands, and task history are rendered"
     },
     {
       "effect": "04_设置_数据更新同步中.png",

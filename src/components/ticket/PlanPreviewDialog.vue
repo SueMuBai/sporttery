@@ -105,7 +105,7 @@ function confirm(): void {
       <header class="plan-preview__header">
         <h2>投注方案</h2>
         <button type="button" data-overlay-close aria-label="关闭投注方案" @click="close">
-          <AppIcon name="close" :size="22" />
+          <AppIcon name="close" :size="18" />
         </button>
       </header>
 
@@ -149,7 +149,7 @@ function confirm(): void {
 
 <style scoped>
 .plan-preview-popup {
-  width: min(calc(100vw - 56px), 336px);
+  width: min(calc(100vw - 56px), 324px);
   max-height: calc(100dvh - 72px);
   overflow: hidden;
   border-radius: 14px;
@@ -176,7 +176,7 @@ function confirm(): void {
 
 .plan-preview__header h2 {
   margin: 0;
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 500;
   line-height: 22px;
 }
@@ -184,7 +184,7 @@ function confirm(): void {
 .plan-preview__header button {
   position: absolute;
   top: 0;
-  right: 4px;
+  right: 2px;
   display: grid;
   width: 44px;
   height: 44px;
@@ -198,7 +198,7 @@ function confirm(): void {
 .plan-preview__meta {
   display: grid;
   gap: 4px;
-  padding: 9px 12px;
+  padding: 8px 14px;
   border-bottom: 1px solid var(--color-divider);
 }
 
@@ -207,7 +207,7 @@ function confirm(): void {
   display: flex;
   align-items: center;
   min-width: 0;
-  gap: 7px;
+  gap: 6px;
   margin: 0;
   font-size: 12px;
   line-height: 18px;
@@ -233,15 +233,22 @@ function confirm(): void {
 .plan-preview__matches {
   display: grid;
   min-height: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.plan-preview__matches::-webkit-scrollbar {
+  display: none;
 }
 
 .plan-preview__match {
   display: grid;
   min-height: 0;
   align-content: center;
-  gap: 4px;
-  padding: 7px 12px;
+  gap: 3px;
+  padding: 7px 14px;
   border-bottom: 1px solid var(--color-divider);
 }
 
@@ -250,7 +257,7 @@ function confirm(): void {
   min-width: 0;
   grid-template-columns: auto minmax(0, 1fr) 20px minmax(0, 1fr);
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   font-size: 12px;
   line-height: 18px;
 }
@@ -304,8 +311,8 @@ function confirm(): void {
 
 .plan-preview__footer {
   display: grid;
-  gap: 8px;
-  padding: 9px 12px 12px;
+  gap: 7px;
+  padding: 8px 14px 12px;
 }
 
 .plan-preview__finance {
