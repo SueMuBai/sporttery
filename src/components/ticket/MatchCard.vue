@@ -59,10 +59,10 @@ function toggleMixedSection(section: (typeof mixedSections)[number]): void {
       <span class="match-card__teams">
         <span class="team-line">
           <span class="team-badge team-badge--home">主</span>
-          <strong class="team-name team-name--home">{{ match.homeTeam }}</strong>
+          <strong class="team-name team-name--home" :title="match.homeTeam">{{ match.homeTeam }}</strong>
           <span class="versus">VS</span>
           <span class="team-badge team-badge--away">客</span>
-          <strong class="team-name team-name--away">{{ match.awayTeam }}</strong>
+          <strong class="team-name team-name--away" :title="match.awayTeam">{{ match.awayTeam }}</strong>
         </span>
         <span class="match-meta">{{ match.matchNum }} · {{ match.payload.league }} · {{ match.matchDateTime }}</span>
       </span>
@@ -210,6 +210,8 @@ function toggleMixedSection(section: (typeof mixedSections)[number]): void {
 }
 
 .team-name {
+  flex: 1 1 0;
+  min-width: 0;
   overflow: hidden;
   font-size: 14px;
   line-height: 1.3;
@@ -240,6 +242,7 @@ function toggleMixedSection(section: (typeof mixedSections)[number]): void {
 }
 
 .history-summary {
+  width: 100px;
   justify-items: end;
   gap: 4px;
   text-align: right;
@@ -266,7 +269,7 @@ function toggleMixedSection(section: (typeof mixedSections)[number]): void {
 }
 
 .history-summary small {
-  max-width: 126px;
+  max-width: 100px;
   color: var(--color-text-secondary);
   font-size: 10px;
   line-height: 1.35;
@@ -440,15 +443,11 @@ function toggleMixedSection(section: (typeof mixedSections)[number]): void {
 
 @media (max-width: 374px) {
   .match-card__header {
-    grid-template-columns: minmax(0, 1fr) 18px;
+    grid-template-columns: minmax(0, 1fr) 88px 18px;
   }
 
   .history-summary {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    grid-template-columns: auto 1fr;
-    justify-items: start;
-    text-align: left;
+    width: 88px;
   }
 
   .dual-market {

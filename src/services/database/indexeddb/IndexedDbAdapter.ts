@@ -127,7 +127,10 @@ export class IndexedDbAdapter implements DatabaseAdapter {
 
   async getSettings(): Promise<AppSettings> {
     const row = await this.db.settings.get("app");
-    return cloneJson(row?.value ?? DEFAULT_SETTINGS);
+    return cloneJson({
+      ...DEFAULT_SETTINGS,
+      ...(row?.value ?? {}),
+    });
   }
 
   async saveSettings(settings: AppSettings): Promise<void> {
@@ -176,7 +179,8 @@ export class IndexedDbAdapter implements DatabaseAdapter {
         if (!existing?.id) throw new Error("原标签不存在，请刷新后重试");
         const duplicate = (await this.db.tags.toArray()).find(
           (item) =>
-            normalizedTagIdentity(item.name) === normalizedTagIdentity(tag.name),
+            normalizedTagIdentity(item.name) ===
+            normalizedTagIdentity(tag.name),
         );
         if (duplicate && duplicate.id !== existing.id) {
           throw new Error("已存在同名标签");
@@ -248,7 +252,12 @@ export class IndexedDbAdapter implements DatabaseAdapter {
     plans: SavedPlan[],
     matches: MatchSnapshot[] = [],
     results: MatchResult[] = [],
-  ): Promise<{ tags: number; plans: number; matches: number; results: number }> {
+  ): Promise<{
+    tags: number;
+    plans: number;
+    matches: number;
+    results: number;
+  }> {
     let importedMatchCount = 0;
     let importedResultCount = 0;
     tags.forEach(assertValidPlanTag);
@@ -278,7 +287,10 @@ export class IndexedDbAdapter implements DatabaseAdapter {
                 normalizedTagIdentity(tag.name) && item.name !== tag.name,
           );
           if (caseDuplicate) throw new Error("已存在同名标签");
-          const existing = await this.db.tags.where("name").equals(tag.name).first();
+          const existing = await this.db.tags
+            .where("name")
+            .equals(tag.name)
+            .first();
           await this.db.tags.put({
             ...cloneJson(tag),
             id: existing?.id,
@@ -296,7 +308,10 @@ export class IndexedDbAdapter implements DatabaseAdapter {
         const newerMatches: MatchSnapshot[] = [];
         for (const match of matches) {
           const existing = await this.db.matchSnapshots.get(match.matchId);
-          if (!existing || isNewerTimestamp(match.updatedAt, existing.updatedAt)) {
+          if (
+            !existing ||
+            isNewerTimestamp(match.updatedAt, existing.updatedAt)
+          ) {
             newerMatches.push(match);
           }
         }
@@ -503,48 +518,68 @@ export class IndexedDbAdapter implements DatabaseAdapter {
     ) {
       throw new TypeError("原回款金额必须是非负整数分");
     }
-    await this.db.transaction("rw", this.db.ledgerOrders, this.db.ledgerAdjustments, async () => {
-      const existing = await this.db.ledgerOrders.get(id);
-      if (!existing) throw new Error("账单不存在");
-      if (expectedUpdatedAt && existing.updatedAt !== expectedUpdatedAt) {
-        throw new Error("账单已在其他页面更新，请刷新后重试");
-      }
-      await this.db.ledgerAdjustments.add({
-        orderId: id,
-        previousReturnCents: previousReturnCents ?? existing.returnCents,
-        nextReturnCents: returnCents,
-        occurredAt: now(),
-        note: "手工修改实际回款",
-      });
-      await this.db.ledgerOrders.update(id, {
-        returnCents,
-        returnManual: true,
-        updatedAt: now(),
-      });
-    });
+    await this.db.transaction(
+      "rw",
+      this.db.ledgerOrders,
+      this.db.ledgerAdjustments,
+      async () => {
+        const existing = await this.db.ledgerOrders.get(id);
+        if (!existing) throw new Error("账单不存在");
+        if (expectedUpdatedAt && existing.updatedAt !== expectedUpdatedAt) {
+          throw new Error("账单已在其他页面更新，请刷新后重试");
+        }
+        await this.db.ledgerAdjustments.add({
+          orderId: id,
+          previousReturnCents: previousReturnCents ?? existing.returnCents,
+          nextReturnCents: returnCents,
+          occurredAt: now(),
+          note: "手工修改实际回款",
+        });
+        await this.db.ledgerOrders.update(id, {
+          returnCents,
+          returnManual: true,
+          updatedAt: now(),
+        });
+      },
+    );
   }
 
   async listLedgerAdjustments(orderId: string): Promise<LedgerAdjustment[]> {
-    return this.db.ledgerAdjustments.where("orderId").equals(orderId).reverse().sortBy("occurredAt");
+    return this.db.ledgerAdjustments
+      .where("orderId")
+      .equals(orderId)
+      .reverse()
+      .sortBy("occurredAt");
   }
 
-  async undoLatestLedgerAdjustment(id: string, expectedUpdatedAt?: string): Promise<void> {
-    await this.db.transaction("rw", this.db.ledgerOrders, this.db.ledgerAdjustments, async () => {
-      const existing = await this.db.ledgerOrders.get(id);
-      if (!existing) throw new Error("账单不存在");
-      if (expectedUpdatedAt && existing.updatedAt !== expectedUpdatedAt) {
-        throw new Error("账单已在其他页面更新，请刷新后重试");
-      }
-      const adjustments = await this.db.ledgerAdjustments.where("orderId").equals(id).sortBy("occurredAt");
-      const latest = adjustments.at(-1);
-      if (!latest?.id) throw new Error("没有可以撤销的回款修改");
-      await this.db.ledgerOrders.update(id, {
-        returnCents: latest.previousReturnCents,
-        returnManual: adjustments.length > 1,
-        updatedAt: now(),
-      });
-      await this.db.ledgerAdjustments.delete(latest.id);
-    });
+  async undoLatestLedgerAdjustment(
+    id: string,
+    expectedUpdatedAt?: string,
+  ): Promise<void> {
+    await this.db.transaction(
+      "rw",
+      this.db.ledgerOrders,
+      this.db.ledgerAdjustments,
+      async () => {
+        const existing = await this.db.ledgerOrders.get(id);
+        if (!existing) throw new Error("账单不存在");
+        if (expectedUpdatedAt && existing.updatedAt !== expectedUpdatedAt) {
+          throw new Error("账单已在其他页面更新，请刷新后重试");
+        }
+        const adjustments = await this.db.ledgerAdjustments
+          .where("orderId")
+          .equals(id)
+          .sortBy("occurredAt");
+        const latest = adjustments.at(-1);
+        if (!latest?.id) throw new Error("没有可以撤销的回款修改");
+        await this.db.ledgerOrders.update(id, {
+          returnCents: latest.previousReturnCents,
+          returnManual: adjustments.length > 1,
+          updatedAt: now(),
+        });
+        await this.db.ledgerAdjustments.delete(latest.id);
+      },
+    );
   }
 
   async saveSyncJob(job: SyncJob): Promise<number> {
@@ -561,7 +596,11 @@ export class IndexedDbAdapter implements DatabaseAdapter {
 
   async listEvents(type?: string, limit = 20): Promise<AppEvent[]> {
     const rows = type
-      ? await this.db.appEvents.where("type").equals(type).reverse().sortBy("createdAt")
+      ? await this.db.appEvents
+          .where("type")
+          .equals(type)
+          .reverse()
+          .sortBy("createdAt")
       : await this.db.appEvents.orderBy("createdAt").reverse().toArray();
     return rows.slice(0, Math.max(0, limit)).map(cloneJson);
   }
@@ -596,31 +635,27 @@ export class IndexedDbAdapter implements DatabaseAdapter {
   }
 
   async clearLocalData(): Promise<DatabaseCounts> {
-    await this.db.transaction(
-      "rw",
-      this.db.tables as Table[],
-      async () => {
-        await Promise.all([
-          this.db.tags.clear(),
-          this.db.plans.clear(),
-          this.db.planSelections.clear(),
-          this.db.planTags.clear(),
-          this.db.matchSnapshots.clear(),
-          this.db.matchResults.clear(),
-          this.db.ledgerOrders.clear(),
-          this.db.ledgerAdjustments.clear(),
-          this.db.syncJobs.clear(),
-          this.db.oddsHistory.clear(),
-          this.db.appEvents.clear(),
-          this.db.settings.clear(),
-        ]);
-        await this.db.settings.put({
-          key: "app",
-          value: cloneJson(DEFAULT_SETTINGS),
-          updatedAt: now(),
-        });
-      },
-    );
+    await this.db.transaction("rw", this.db.tables as Table[], async () => {
+      await Promise.all([
+        this.db.tags.clear(),
+        this.db.plans.clear(),
+        this.db.planSelections.clear(),
+        this.db.planTags.clear(),
+        this.db.matchSnapshots.clear(),
+        this.db.matchResults.clear(),
+        this.db.ledgerOrders.clear(),
+        this.db.ledgerAdjustments.clear(),
+        this.db.syncJobs.clear(),
+        this.db.oddsHistory.clear(),
+        this.db.appEvents.clear(),
+        this.db.settings.clear(),
+      ]);
+      await this.db.settings.put({
+        key: "app",
+        value: cloneJson(DEFAULT_SETTINGS),
+        updatedAt: now(),
+      });
+    });
     return this.getCounts();
   }
 

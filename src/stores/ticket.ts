@@ -13,6 +13,7 @@ import {
   normalizePlanName,
 } from '@/features/plans/planName'
 import type { NormalizedMatch } from '@/features/matches/types'
+import type { SyncSnapshot } from '@/features/sync/SyncService'
 import { getSyncService } from '@/features/sync/getSyncService'
 import { getDatabase } from '@/services/database/createDatabase'
 import type { LedgerOrder, MarketCode, PlanSelection, SavedPlan } from '@/types/domain'
@@ -55,6 +56,8 @@ export const useTicketStore = defineStore('ticket', () => {
   const error = ref('')
   const statusMessage = ref('')
   const syncProgress = ref({ completed: 0, total: 0, failed: 0 })
+  const lastSyncAt = ref('')
+  const lastSyncSnapshot = ref<SyncSnapshot>()
   const matches = ref<NormalizedMatch[]>([])
   const activeMarket = ref<TicketMarket>('had-hhad')
   const search = ref('')
@@ -113,7 +116,7 @@ export const useTicketStore = defineStore('ticket', () => {
     error.value = ''
     try {
       await database.initialize()
-      await reloadLocalData()
+      await Promise.all([reloadLocalData(), restoreLastSyncAt()])
       restoreDraft()
       await restoreEditingBaseline()
       initialized.value = true
@@ -132,13 +135,19 @@ export const useTicketStore = defineStore('ticket', () => {
     matches.value = storedMatches as NormalizedMatch[]
   }
 
+  async function restoreLastSyncAt(): Promise<void> {
+    const snapshot = await syncService.latestSnapshot()
+    lastSyncSnapshot.value = snapshot
+    lastSyncAt.value = snapshot?.completedAt ?? ''
+  }
+
   async function activate(): Promise<void> {
     if (!initialized.value) {
       await initialize()
       return
     }
     try {
-      await reloadLocalData()
+      await Promise.all([reloadLocalData(), restoreLastSyncAt()])
       statusMessage.value = matches.value.length
         ? `已从本地读取 ${matches.value.length} 场比赛`
         : '本地暂无比赛，点击右上角刷新获取最新数据'
@@ -147,18 +156,32 @@ export const useTicketStore = defineStore('ticket', () => {
     }
   }
 
-  async function refresh(): Promise<void> {
+  async function refresh(retryFailures = false): Promise<void> {
     if (refreshing.value) return
     refreshing.value = true
     error.value = ''
     syncProgress.value = { completed: 0, total: 0, failed: 0 }
     statusMessage.value = '正在同步比赛与历史交锋…'
     try {
-      const report = await syncService.fullSync((progress) => {
-        syncProgress.value = progress
-        statusMessage.value = `正在同步历史交锋 ${progress.completed}/${progress.total}`
-      })
+      const report = await (
+        retryFailures && lastSyncSnapshot.value
+          ? syncService.retryFailed(lastSyncSnapshot.value, (progress) => {
+              syncProgress.value = progress
+              statusMessage.value = `正在重试历史交锋 ${progress.completed}/${progress.total}`
+            })
+          : syncService.fullSync((progress) => {
+              syncProgress.value = progress
+              statusMessage.value = `正在同步历史交锋 ${progress.completed}/${progress.total}`
+            })
+      )
+      lastSyncSnapshot.value = report
+      lastSyncAt.value = report.completedAt
       await reloadLocalData()
+      syncProgress.value = {
+        completed: syncProgress.value.completed || matches.value.length,
+        total: syncProgress.value.total || matches.value.length,
+        failed: report.matches.failed + report.results.failed,
+      }
       statusMessage.value = `比赛新增 ${report.matches.added}、更新 ${report.matches.updated}；赛果新增 ${report.results.added}、更新 ${report.results.updated}`
     } catch (reason) {
       error.value = reason instanceof Error ? reason.message : String(reason)
@@ -517,6 +540,7 @@ export const useTicketStore = defineStore('ticket', () => {
     error,
     statusMessage,
     syncProgress,
+    lastSyncAt,
     matches,
     activeMarket,
     search,

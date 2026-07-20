@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { showFailToast, showSuccessToast, showToast } from "vant";
 import { computed, onMounted, ref } from "vue";
+import { useRouter } from "vue-router";
 
 import refreshIcon from "@/assets/ui/common/ic_refresh.svg?url";
 import AppAssetIcon from "@/components/base/AppAssetIcon.vue";
@@ -34,6 +35,7 @@ interface SyncLog {
 }
 
 const store = useSettingsStore();
+const router = useRouter();
 const activeSync = ref<SyncAction>("");
 const syncStartedAt = ref("");
 const historySnapshots = ref<SyncSnapshot[]>([]);
@@ -279,11 +281,12 @@ async function retryFailed(): Promise<void> {
   }
 }
 
-function requestCancelSync(): void {
+function continueInBackground(): void {
   showToast({
-    message: "为保证已写入数据完整，当前批次会安全完成，请稍候",
-    duration: 2600,
+    message: "同步将在后台继续",
+    duration: 1800,
   });
+  void router.back();
 }
 
 function showTask(task: RecentTask): void {
@@ -459,9 +462,9 @@ function showTask(task: RecentTask): void {
         block
         size="large"
         variant="secondary"
-        @click="requestCancelSync"
+        @click="continueInBackground"
       >
-        取消同步
+        后台继续
       </AppButton>
     </section>
 

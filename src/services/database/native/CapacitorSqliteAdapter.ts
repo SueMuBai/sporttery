@@ -218,7 +218,9 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
       await this.db.close();
     } catch (error) {
       const message = nativeErrorMessage(error);
-      if (!/not\s+open|already\s+closed|database\s+not\s+opened/i.test(message)) {
+      if (
+        !/not\s+open|already\s+closed|database\s+not\s+opened/i.test(message)
+      ) {
         throw error;
       }
     }
@@ -281,17 +283,26 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
       defaultMultiplier: Number(
         values.get("default_multiplier") ?? DEFAULT_SETTINGS.defaultMultiplier,
       ),
+      autoSyncMatches: Boolean(
+        values.get("auto_sync_matches") ?? DEFAULT_SETTINGS.autoSyncMatches,
+      ),
+      expandMatchDetails: Boolean(
+        values.get("expand_match_details") ??
+        DEFAULT_SETTINGS.expandMatchDetails,
+      ),
     };
   }
 
   async saveSettings(settings: AppSettings): Promise<void> {
     validateSettings(settings);
-    const entries: Array<[string, number]> = [
+    const entries: Array<[string, number | boolean]> = [
       ["history_limits", settings.historyLimits],
       ["workers", settings.workers],
       ["timeout", settings.timeoutSeconds],
       ["retries", settings.retries],
       ["default_multiplier", settings.defaultMultiplier],
+      ["auto_sync_matches", settings.autoSyncMatches],
+      ["expand_match_details", settings.expandMatchDetails],
     ];
     await this.transaction(async () => {
       for (const [key, value] of entries) {
@@ -397,10 +408,10 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
   async reorderTags(names: string[]): Promise<void> {
     await this.transaction(async () => {
       for (const [index, name] of names.entries()) {
-        await this.runInTransaction("UPDATE tags SET sort_order=? WHERE name=?", [
-          index + 1,
-          name,
-        ]);
+        await this.runInTransaction(
+          "UPDATE tags SET sort_order=? WHERE name=?",
+          [index + 1, name],
+        );
       }
     });
   }
@@ -428,7 +439,12 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
     plans: SavedPlan[],
     matches: MatchSnapshot[] = [],
     results: MatchResult[] = [],
-  ): Promise<{ tags: number; plans: number; matches: number; results: number }> {
+  ): Promise<{
+    tags: number;
+    plans: number;
+    matches: number;
+    results: number;
+  }> {
     let importedMatchCount = 0;
     let importedResultCount = 0;
     tags.forEach(assertValidPlanTag);
@@ -634,18 +650,16 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
   }
 
   async saveLedgerOrder(order: LedgerOrder): Promise<void> {
-    await this.run(
-      ...this.ledgerOrderStatement(order),
-    );
+    await this.run(...this.ledgerOrderStatement(order));
   }
 
-  private async writeLedgerOrderInTransaction(order: LedgerOrder): Promise<void> {
+  private async writeLedgerOrderInTransaction(
+    order: LedgerOrder,
+  ): Promise<void> {
     await this.runInTransaction(...this.ledgerOrderStatement(order));
   }
 
-  private ledgerOrderStatement(
-    order: LedgerOrder,
-  ): [string, unknown[]] {
+  private ledgerOrderStatement(order: LedgerOrder): [string, unknown[]] {
     assertPersistableLedgerOrder(order);
     return [
       `INSERT INTO ledger_orders(
@@ -714,10 +728,16 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
       throw new TypeError("原回款金额必须是非负整数分");
     }
     await this.transaction(async () => {
-      const rows = await this.query("SELECT return_cents,updated_at FROM ledger_orders WHERE id=?", [id]);
+      const rows = await this.query(
+        "SELECT return_cents,updated_at FROM ledger_orders WHERE id=?",
+        [id],
+      );
       const existing = rows[0];
       if (!existing) throw new Error("账单不存在");
-      if (expectedUpdatedAt && String(existing.updated_at) !== expectedUpdatedAt) {
+      if (
+        expectedUpdatedAt &&
+        String(existing.updated_at) !== expectedUpdatedAt
+      ) {
         throw new Error("账单已在其他页面更新，请刷新后重试");
       }
       const stamp = now();
@@ -753,9 +773,15 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
     }));
   }
 
-  async undoLatestLedgerAdjustment(id: string, expectedUpdatedAt?: string): Promise<void> {
+  async undoLatestLedgerAdjustment(
+    id: string,
+    expectedUpdatedAt?: string,
+  ): Promise<void> {
     await this.transaction(async () => {
-      const orders = await this.query("SELECT updated_at FROM ledger_orders WHERE id=?", [id]);
+      const orders = await this.query(
+        "SELECT updated_at FROM ledger_orders WHERE id=?",
+        [id],
+      );
       const order = orders[0];
       if (!order) throw new Error("账单不存在");
       if (expectedUpdatedAt && String(order.updated_at) !== expectedUpdatedAt) {
@@ -773,9 +799,16 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
       );
       await this.runInTransaction(
         "UPDATE ledger_orders SET return_cents=?,return_manual=?,updated_at=? WHERE id=?",
-        [Number(latest.previous_return_cents), Number(remaining[0]?.count ?? 0) > 0 ? 1 : 0, now(), id],
+        [
+          Number(latest.previous_return_cents),
+          Number(remaining[0]?.count ?? 0) > 0 ? 1 : 0,
+          now(),
+          id,
+        ],
       );
-      await this.runInTransaction("DELETE FROM ledger_adjustments WHERE id=?", [latest.id]);
+      await this.runInTransaction("DELETE FROM ledger_adjustments WHERE id=?", [
+        latest.id,
+      ]);
     });
   }
 
@@ -954,10 +987,9 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
         plan.updatedAt,
       ],
     );
-    await this.runInTransaction(
-      "DELETE FROM plan_selections WHERE plan_id=?",
-      [plan.id],
-    );
+    await this.runInTransaction("DELETE FROM plan_selections WHERE plan_id=?", [
+      plan.id,
+    ]);
     await this.runInTransaction("DELETE FROM plan_tags WHERE plan_id=?", [
       plan.id,
     ]);
@@ -1015,12 +1047,14 @@ export class CapacitorSqliteAdapter implements DatabaseAdapter {
   }
 
   private async seedSettingsInTransaction(): Promise<void> {
-    const entries: Array<[string, number]> = [
+    const entries: Array<[string, number | boolean]> = [
       ["history_limits", DEFAULT_SETTINGS.historyLimits],
       ["workers", DEFAULT_SETTINGS.workers],
       ["timeout", DEFAULT_SETTINGS.timeoutSeconds],
       ["retries", DEFAULT_SETTINGS.retries],
       ["default_multiplier", DEFAULT_SETTINGS.defaultMultiplier],
+      ["auto_sync_matches", DEFAULT_SETTINGS.autoSyncMatches],
+      ["expand_match_details", DEFAULT_SETTINGS.expandMatchDetails],
     ];
     for (const [key, value] of entries) {
       await this.runInTransaction(

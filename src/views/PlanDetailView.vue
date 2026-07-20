@@ -17,6 +17,7 @@ import SubpageHeader from "@/components/base/SubpageHeader.vue";
 import PurchaseSheet from "@/components/ticket/PurchaseSheet.vue";
 import { groupSelections } from "@/features/betting/calculator";
 import { selectionSettled, selectionWins } from "@/features/betting/settlement";
+import { detailChoiceTone } from "@/features/plans/detailPresentation";
 import { PLAN_NAME_MAX_LENGTH } from "@/features/plans/planName";
 import { usePlanStore } from "@/stores/plans";
 import { useTicketStore } from "@/stores/ticket";
@@ -102,15 +103,6 @@ function plainOutcomeLabel(selection: PlanSelection): string {
 
 function selectionSummary(selections: readonly PlanSelection[]): string {
   return selections.map(plainOutcomeLabel).join(" / ");
-}
-
-function selectionTone(selections: readonly PlanSelection[]): string {
-  const outcome = selections[0]?.outcome ?? "";
-  const last = outcome.split("-").at(-1);
-  if (last === "h") return "win";
-  if (last === "d") return "draw";
-  if (last === "a") return "loss";
-  return "default";
 }
 
 function matchTime(matchId: number): string {
@@ -383,7 +375,13 @@ async function deletePlan(): Promise<void> {
             </div>
             <div class="match-choice">
               <span>选择</span>
-              <strong :class="`choice--${selectionTone(row.selections)}`">
+              <strong
+                :class="`choice--${detailChoiceTone(row.selections, {
+                  anySettled: hasSettledResult,
+                  settled: row.settled,
+                  correct: row.correct,
+                })}`"
+              >
                 {{ selectionSummary(row.selections) }}
               </strong>
             </div>
@@ -708,10 +706,9 @@ async function deletePlan(): Promise<void> {
 
 .match-result-row {
   display: grid;
-  grid-template-columns: 30px minmax(0, 1.6fr) minmax(48px, 0.62fr) minmax(
-      44px,
-      0.56fr
-    ) minmax(68px, 0.8fr);
+  grid-template-columns:
+    30px minmax(0, 1.6fr) minmax(48px, 0.62fr) minmax(44px, 0.56fr)
+    minmax(68px, 0.8fr);
   align-items: center;
   min-height: 78px;
   gap: 8px;
@@ -805,6 +802,7 @@ async function deletePlan(): Promise<void> {
 }
 
 .choice--win,
+.choice--correct,
 .score--correct {
   color: var(--color-success);
 }
@@ -814,10 +812,12 @@ async function deletePlan(): Promise<void> {
 }
 
 .choice--loss,
+.choice--wrong,
 .score--wrong {
   color: var(--color-danger);
 }
 
+.choice--pending,
 .choice--default {
   color: var(--color-primary);
 }
@@ -891,10 +891,9 @@ async function deletePlan(): Promise<void> {
 
 @media (max-width: 374px) {
   .match-result-row {
-    grid-template-columns: 26px minmax(0, 1.45fr) minmax(44px, 0.6fr) minmax(
-        40px,
-        0.52fr
-      ) minmax(62px, 0.72fr);
+    grid-template-columns:
+      26px minmax(0, 1.45fr) minmax(44px, 0.6fr) minmax(40px, 0.52fr)
+      minmax(62px, 0.72fr);
     gap: 5px;
     padding-inline: 8px;
   }

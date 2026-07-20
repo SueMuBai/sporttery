@@ -34,6 +34,18 @@ describe("settings and exports", () => {
     expect(() =>
       validateSettings({ ...DEFAULT_SETTINGS, defaultMultiplier: 1.5 }),
     ).toThrow("默认倍数");
+    expect(() =>
+      validateSettings({
+        ...DEFAULT_SETTINGS,
+        autoSyncMatches: "yes" as unknown as boolean,
+      }),
+    ).toThrow("自动同步比赛");
+    expect(() =>
+      validateSettings({
+        ...DEFAULT_SETTINGS,
+        expandMatchDetails: 1 as unknown as boolean,
+      }),
+    ).toThrow("展开比赛明细");
   });
 
   it("round-trips a JSON export and rejects unknown formats", () => {

@@ -5,6 +5,7 @@ import { onBeforeRouteLeave } from "vue-router";
 
 import AppButton from "@/components/base/AppButton.vue";
 import AppBottomSheet from "@/components/base/AppBottomSheet.vue";
+import AppIcon from "@/components/base/AppIcon.vue";
 import AppState from "@/components/base/AppState.vue";
 import AppAssetIcon from "@/components/base/AppAssetIcon.vue";
 import AppPage from "@/components/base/AppPage.vue";
@@ -14,12 +15,20 @@ import { useSettingsStore } from "@/stores/settings";
 import { DEFAULT_SETTINGS, type AppSettings } from "@/types/domain";
 
 interface SettingDefinition {
-  key: keyof AppSettings;
+  key: NumericSettingKey;
   title: string;
   description: string;
   min: number;
   max: number;
 }
+
+type NumericSettingKey =
+  | "historyLimits"
+  | "workers"
+  | "timeoutSeconds"
+  | "retries"
+  | "defaultMultiplier";
+type BooleanSettingKey = "autoSyncMatches" | "expandMatchDetails";
 
 const store = useSettingsStore();
 const draft = ref<AppSettings>({ ...DEFAULT_SETTINGS });
@@ -110,8 +119,13 @@ async function saveAndLeave(): Promise<void> {
   }
 }
 
-function update(key: keyof AppSettings, value: number): void {
+function updateNumeric(key: NumericSettingKey, value: number): void {
   if (!Number.isFinite(value)) return;
+  draft.value = { ...draft.value, [key]: value };
+  saved.value = false;
+}
+
+function updateBoolean(key: BooleanSettingKey, value: boolean): void {
   draft.value = { ...draft.value, [key]: value };
   saved.value = false;
 }
@@ -181,11 +195,45 @@ async function save(): Promise<void> {
               :max="item.max"
               :aria-label="item.title"
               @input="
-                update(
+                updateNumeric(
                   item.key,
                   Number(($event.target as HTMLInputElement).value),
                 )
               "
+            />
+          </label>
+        </div>
+      </section>
+      <section class="setting-group setting-group--behavior">
+        <h2>
+          <span class="behavior-heading-icon">
+            <AppIcon name="system" :size="22" />
+          </span>
+          <span>显示与行为</span>
+        </h2>
+        <div class="setting-list setting-list--toggles">
+          <label class="setting-row setting-toggle-row">
+            <span class="setting-row__copy">
+              <strong>自动同步比赛</strong>
+              <small>启动应用时自动同步最新比赛数据</small>
+            </span>
+            <van-switch
+              :model-value="draft.autoSyncMatches"
+              size="26px"
+              aria-label="自动同步比赛"
+              @update:model-value="updateBoolean('autoSyncMatches', $event)"
+            />
+          </label>
+          <label class="setting-row setting-toggle-row">
+            <span class="setting-row__copy">
+              <strong>展开比赛明细</strong>
+              <small>进入方案详情时默认展开比赛明细</small>
+            </span>
+            <van-switch
+              :model-value="draft.expandMatchDetails"
+              size="26px"
+              aria-label="展开比赛明细"
+              @update:model-value="updateBoolean('expandMatchDetails', $event)"
             />
           </label>
         </div>
@@ -279,6 +327,14 @@ async function save(): Promise<void> {
   color: var(--color-primary);
 }
 
+.behavior-heading-icon {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  color: var(--color-violet);
+  place-items: center;
+}
+
 .setting-list {
   display: grid;
   overflow: hidden;
@@ -335,6 +391,17 @@ async function save(): Promise<void> {
 
 .setting-row input:focus {
   box-shadow: var(--outline-primary);
+}
+
+.setting-toggle-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 68px;
+}
+
+.setting-toggle-row :deep(.van-switch) {
+  flex: 0 0 auto;
+  --van-switch-on-background: linear-gradient(135deg, #68b8ff, #5797f5);
+  --van-switch-background: #dce4f1;
 }
 
 .save-state {

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { CapacitorSqliteAdapter } from "@/services/database/native/CapacitorSqliteAdapter";
+import { DEFAULT_SETTINGS } from "@/types/domain";
 
 function nativeConnection(activeStates: boolean[] = [false]) {
   const isTransactionActive = vi.fn(async () => ({
@@ -32,7 +33,9 @@ describe("CapacitorSqliteAdapter native transactions", () => {
     const statements = connection.run.mock.calls.map(([statement]) =>
       String(statement),
     );
-    expect(statements.filter((statement) => statement.startsWith("DELETE FROM "))).toEqual([
+    expect(
+      statements.filter((statement) => statement.startsWith("DELETE FROM ")),
+    ).toEqual([
       "DELETE FROM ledger_adjustments",
       "DELETE FROM ledger_orders",
       "DELETE FROM plan_tags",
@@ -50,7 +53,7 @@ describe("CapacitorSqliteAdapter native transactions", () => {
       statements.filter((statement) =>
         statement.startsWith("INSERT OR IGNORE INTO settings"),
       ),
-    ).toHaveLength(5);
+    ).toHaveLength(7);
     expect(statements.join("\n")).not.toMatch(/DROP\s+TABLE|deleteDatabase/i);
   });
 
@@ -112,9 +115,9 @@ describe("CapacitorSqliteAdapter native transactions", () => {
 
     expect(connection.beginTransaction).toHaveBeenCalledTimes(2);
     expect(connection.commitTransaction).toHaveBeenCalledTimes(2);
-    expect(connection.commitTransaction.mock.invocationCallOrder[0]).toBeLessThan(
-      connection.beginTransaction.mock.invocationCallOrder[1]!,
-    );
+    expect(
+      connection.commitTransaction.mock.invocationCallOrder[0],
+    ).toBeLessThan(connection.beginTransaction.mock.invocationCallOrder[1]!);
   });
 
   it("rejects invalid settings before opening a native transaction", async () => {
@@ -124,6 +127,7 @@ describe("CapacitorSqliteAdapter native transactions", () => {
 
     await expect(
       adapter.saveSettings({
+        ...DEFAULT_SETTINGS,
         historyLimits: 10,
         workers: 0,
         timeoutSeconds: 15,
@@ -135,6 +139,25 @@ describe("CapacitorSqliteAdapter native transactions", () => {
     expect(connection.run).not.toHaveBeenCalled();
   });
 
+  it("uses boolean defaults when an existing native database has no new setting keys", async () => {
+    const connection = nativeConnection();
+    connection.query.mockResolvedValue({
+      values: [
+        { key: "history_limits", value: "20" },
+        { key: "workers", value: "6" },
+      ],
+    });
+    const adapter = new CapacitorSqliteAdapter();
+    Object.assign(adapter, { connection });
+
+    await expect(adapter.getSettings()).resolves.toMatchObject({
+      historyLimits: 20,
+      workers: 6,
+      autoSyncMatches: true,
+      expandMatchDetails: false,
+    });
+  });
+
   it("selects the latest native result by real timestamp instead of row id", async () => {
     const connection = nativeConnection();
     connection.query.mockResolvedValue({ values: [] });
@@ -144,7 +167,9 @@ describe("CapacitorSqliteAdapter native transactions", () => {
     await adapter.listLatestResults();
 
     expect(connection.query).toHaveBeenCalledWith(
-      expect.stringContaining("ORDER BY julianday(latest.fetched_at) DESC,latest.id DESC"),
+      expect.stringContaining(
+        "ORDER BY julianday(latest.fetched_at) DESC,latest.id DESC",
+      ),
       [],
     );
   });
@@ -182,15 +207,17 @@ describe("CapacitorSqliteAdapter native transactions", () => {
     Object.assign(adapter, { connection });
 
     await expect(
-      adapter.saveMatches([{
-        matchId: 1,
-        matchNum: "周一001",
-        matchDateTime: "错误时间",
-        homeTeam: "主队",
-        awayTeam: "客队",
-        payload: {},
-        updatedAt: "2026-07-19T12:00:00.000Z",
-      }]),
+      adapter.saveMatches([
+        {
+          matchId: 1,
+          matchNum: "周一001",
+          matchDateTime: "错误时间",
+          homeTeam: "主队",
+          awayTeam: "客队",
+          payload: {},
+          updatedAt: "2026-07-19T12:00:00.000Z",
+        },
+      ]),
     ).rejects.toThrow("开赛时间格式无效");
     expect(connection.beginTransaction).not.toHaveBeenCalled();
     expect(connection.run).not.toHaveBeenCalled();
@@ -208,13 +235,15 @@ describe("CapacitorSqliteAdapter native transactions", () => {
         revision: 1,
         status: "saved",
         name: "无效选项",
-        selections: [{
-          key: "1|had|home",
-          matchId: 1,
-          market: "had",
-          outcome: "home",
-          odds: "1.80",
-        }],
+        selections: [
+          {
+            key: "1|had|home",
+            matchId: 1,
+            market: "had",
+            outcome: "home",
+            odds: "1.80",
+          },
+        ],
         passCounts: [1],
         multiplier: 1,
         tags: [],
@@ -235,9 +264,9 @@ describe("CapacitorSqliteAdapter native transactions", () => {
     await adapter.saveMatches([]);
 
     expect(connection.rollbackTransaction).toHaveBeenCalledTimes(1);
-    expect(connection.rollbackTransaction.mock.invocationCallOrder[0]).toBeLessThan(
-      connection.beginTransaction.mock.invocationCallOrder[0]!,
-    );
+    expect(
+      connection.rollbackTransaction.mock.invocationCallOrder[0],
+    ).toBeLessThan(connection.beginTransaction.mock.invocationCallOrder[0]!);
   });
 
   it("recovers when Android reports a stale transaction only during begin", async () => {
@@ -257,9 +286,9 @@ describe("CapacitorSqliteAdapter native transactions", () => {
     expect(connection.beginTransaction).toHaveBeenCalledTimes(2);
     expect(connection.rollbackTransaction).toHaveBeenCalledTimes(1);
     expect(connection.commitTransaction).toHaveBeenCalledTimes(1);
-    expect(connection.rollbackTransaction.mock.invocationCallOrder[0]).toBeLessThan(
-      connection.beginTransaction.mock.invocationCallOrder[1]!,
-    );
+    expect(
+      connection.rollbackTransaction.mock.invocationCallOrder[0],
+    ).toBeLessThan(connection.beginTransaction.mock.invocationCallOrder[1]!);
   });
 
   it("recovers when Capacitor returns a plain-object native error", async () => {
@@ -357,10 +386,7 @@ describe("CapacitorSqliteAdapter native transactions", () => {
     expect(recreated.beginTransaction).toHaveBeenCalledOnce();
     expect(recreated.run).toHaveBeenCalledOnce();
     expect(recreated.commitTransaction).toHaveBeenCalledOnce();
-    expect(sqlite.closeConnection).toHaveBeenCalledWith(
-      "caiguo_app_v2",
-      false,
-    );
+    expect(sqlite.closeConnection).toHaveBeenCalledWith("caiguo_app_v2", false);
   });
 
   it("restores native transactions after reopening a stuck Android connection", async () => {
@@ -579,26 +605,30 @@ describe("CapacitorSqliteAdapter native transactions", () => {
           updatedAt: stamp,
         },
       ],
-      [{
-        matchId: 1,
-        matchNum: "周一001",
-        matchDateTime: "2026-07-20 18:00:00",
-        homeTeam: "主队",
-        awayTeam: "客队",
-        payload: {},
-        updatedAt: stamp,
-      }],
-      [{
-        matchId: 1,
-        matchNum: "周一001",
-        homeTeam: "主队",
-        awayTeam: "客队",
-        halfTimeScore: "0:0",
-        fullTimeScore: "1:0",
-        goalLine: 0,
-        officialResults: { had: "h" },
-        fetchedAt: stamp,
-      }],
+      [
+        {
+          matchId: 1,
+          matchNum: "周一001",
+          matchDateTime: "2026-07-20 18:00:00",
+          homeTeam: "主队",
+          awayTeam: "客队",
+          payload: {},
+          updatedAt: stamp,
+        },
+      ],
+      [
+        {
+          matchId: 1,
+          matchNum: "周一001",
+          homeTeam: "主队",
+          awayTeam: "客队",
+          halfTimeScore: "0:0",
+          fullTimeScore: "1:0",
+          goalLine: 0,
+          officialResults: { had: "h" },
+          fetchedAt: stamp,
+        },
+      ],
     );
 
     expect(result).toEqual({ tags: 1, plans: 1, matches: 1, results: 1 });
@@ -645,26 +675,30 @@ describe("CapacitorSqliteAdapter native transactions", () => {
     const result = await adapter.importPlans(
       [],
       [],
-      [{
-        matchId: 9,
-        matchNum: "旧场次",
-        matchDateTime: "2026-07-19 18:00:00",
-        homeTeam: "旧主队",
-        awayTeam: "旧客队",
-        payload: {},
-        updatedAt: "2026-07-19T12:00:00.000Z",
-      }],
-      [{
-        matchId: 9,
-        matchNum: "旧场次",
-        homeTeam: "旧主队",
-        awayTeam: "旧客队",
-        halfTimeScore: "0:0",
-        fullTimeScore: "0:1",
-        goalLine: 0,
-        officialResults: { had: "a" },
-        fetchedAt: "2026-07-19T13:00:00.000Z",
-      }],
+      [
+        {
+          matchId: 9,
+          matchNum: "旧场次",
+          matchDateTime: "2026-07-19 18:00:00",
+          homeTeam: "旧主队",
+          awayTeam: "旧客队",
+          payload: {},
+          updatedAt: "2026-07-19T12:00:00.000Z",
+        },
+      ],
+      [
+        {
+          matchId: 9,
+          matchNum: "旧场次",
+          homeTeam: "旧主队",
+          awayTeam: "旧客队",
+          halfTimeScore: "0:0",
+          fullTimeScore: "0:1",
+          goalLine: 0,
+          officialResults: { had: "a" },
+          fetchedAt: "2026-07-19T13:00:00.000Z",
+        },
+      ],
     );
 
     expect(result).toEqual({ tags: 0, plans: 0, matches: 0, results: 0 });
@@ -688,13 +722,15 @@ describe("CapacitorSqliteAdapter native transactions", () => {
       revision: 1,
       status: "saved" as const,
       name: "回滚购买方案",
-      selections: [{
-        key: "1|had|h",
-        matchId: 1,
-        market: "had" as const,
-        outcome: "h",
-        odds: "1.80",
-      }],
+      selections: [
+        {
+          key: "1|had|h",
+          matchId: 1,
+          market: "had" as const,
+          outcome: "h",
+          odds: "1.80",
+        },
+      ],
       passCounts: [1],
       multiplier: 1,
       tags: [],
@@ -735,13 +771,15 @@ describe("CapacitorSqliteAdapter native transactions", () => {
         revision: 1,
         status: "saved",
         name: "失效标签方案",
-        selections: [{
-          key: "1|had|h",
-          matchId: 1,
-          market: "had",
-          outcome: "h",
-          odds: "1.80",
-        }],
+        selections: [
+          {
+            key: "1|had|h",
+            matchId: 1,
+            market: "had",
+            outcome: "h",
+            odds: "1.80",
+          },
+        ],
         passCounts: [1],
         multiplier: 1,
         tags: ["已删除标签"],

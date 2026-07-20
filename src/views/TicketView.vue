@@ -10,6 +10,7 @@ import AppHeader from '@/components/base/AppHeader.vue'
 import AppIcon from '@/components/base/AppIcon.vue'
 import AppState from '@/components/base/AppState.vue'
 import AppSyncIndicator from '@/components/base/AppSyncIndicator.vue'
+import type { SyncIndicatorStatus } from '@/components/base/AppSyncIndicator.vue'
 import { confirmAction } from '@/components/base/confirmAction'
 import BetMultiplierSheet from '@/components/ticket/BetMultiplierSheet.vue'
 import MatchCard from '@/components/ticket/MatchCard.vue'
@@ -72,11 +73,9 @@ const totalOdds = computed(() => {
 })
 
 const lastSyncLabel = computed(() => {
-  const timestamps = store.matches
-    .map((match) => Date.parse(match.updatedAt))
-    .filter(Number.isFinite)
-  if (!timestamps.length) return '尚未同步'
-  const date = new Date(Math.max(...timestamps))
+  if (!store.lastSyncAt) return '尚未同步'
+  const date = new Date(store.lastSyncAt)
+  if (Number.isNaN(date.valueOf())) return '尚未同步'
   return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`
 })
 
@@ -113,6 +112,83 @@ const syncActionText = computed(() => {
   return '手动更新'
 })
 
+const syncStatuses = computed<SyncIndicatorStatus[]>(() => {
+  const rows: SyncIndicatorStatus[] = []
+  const completed = Math.max(0, store.syncProgress.completed - store.syncProgress.failed)
+
+  if (store.refreshing) {
+    rows.push({
+      id: 'loading',
+      title: '正在同步比赛数据…',
+      detail: `已完成 ${store.syncProgress.completed}/${store.syncProgress.total || store.matches.length}`,
+      state: 'loading',
+      actionDisabled: true,
+    })
+    if (completed > 0) {
+      rows.push({
+        id: 'completed',
+        title: '同步完成',
+        detail: `${completed}场比赛已更新`,
+        state: 'success',
+      })
+    }
+    if (store.syncProgress.failed > 0) {
+      rows.push({
+        id: 'failed',
+        title: '部分比赛更新失败',
+        detail: `${store.syncProgress.failed}场比赛未更新`,
+        state: 'warning',
+        actionText: `重试 ${store.syncProgress.failed}场`,
+        actionDisabled: true,
+      })
+    }
+    return rows
+  }
+
+  if (syncFeedback.value === 'success') {
+    return [{
+      id: 'completed',
+      title: '同步完成',
+      detail: `${store.matches.length}场比赛已更新`,
+      state: 'success',
+    }]
+  }
+  if (syncFeedback.value === 'warning') {
+    if (completed > 0) {
+      rows.push({
+        id: 'completed',
+        title: '同步完成',
+        detail: `${completed}场比赛已更新`,
+        state: 'success',
+      })
+    }
+    rows.push({
+      id: 'failed',
+      title: '部分比赛更新失败',
+      detail: `${store.syncProgress.failed}场比赛未更新`,
+      state: 'warning',
+      actionText: `重试 ${store.syncProgress.failed}场`,
+    })
+    return rows
+  }
+  if (store.error) {
+    return [{
+      id: 'error',
+      title: '同步失败',
+      detail: store.statusMessage || store.error,
+      state: 'error',
+      actionText: '重新同步',
+    }]
+  }
+  return [{
+    id: 'idle',
+    title: '数据已同步',
+    detail: lastSyncLabel.value,
+    state: 'idle',
+    actionText: '手动更新',
+  }]
+})
+
 const syncStats = computed(() => [
   { label: '赛事', value: store.matches.length },
   { label: '可选场次', value: selectableMatchCount.value },
@@ -144,9 +220,9 @@ onBeforeUnmount(() => {
   if (syncFeedbackTimer) clearTimeout(syncFeedbackTimer)
 })
 
-async function refresh(): Promise<void> {
+async function runRefresh(retryFailures: boolean): Promise<void> {
   if (store.refreshing || Date.now() < refreshBlockedUntil) return
-  await store.refresh()
+  await store.refresh(retryFailures)
   refreshBlockedUntil = Date.now() + 600
   if (syncFeedbackTimer) clearTimeout(syncFeedbackTimer)
   if (store.error || store.syncProgress.failed > 0) {
@@ -159,6 +235,14 @@ async function refresh(): Promise<void> {
   syncFeedbackTimer = setTimeout(() => {
     syncFeedback.value = 'idle'
   }, 2000)
+}
+
+function refresh(): Promise<void> {
+  return runRefresh(false)
+}
+
+function handleSyncAction(): void {
+  void runRefresh(syncFeedback.value === 'warning' && store.syncProgress.failed > 0)
 }
 
 function setMultiplier(value: string | number): void {
@@ -288,7 +372,8 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
         :action-text="syncActionText"
         :action-disabled="store.refreshing"
         :stats="syncStats"
-        @action="refresh"
+        :statuses="syncStatuses"
+        @action="handleSyncAction"
       />
 
       <van-field

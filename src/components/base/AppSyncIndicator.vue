@@ -9,6 +9,15 @@ export interface SyncIndicatorStat {
 
 type SyncIndicatorState = 'idle' | 'loading' | 'success' | 'warning' | 'error'
 
+export interface SyncIndicatorStatus {
+  id: string
+  title: string
+  detail?: string
+  state: SyncIndicatorState
+  actionText?: string
+  actionDisabled?: boolean
+}
+
 withDefaults(
   defineProps<{
     title: string
@@ -17,6 +26,7 @@ withDefaults(
     actionText?: string
     actionDisabled?: boolean
     stats?: SyncIndicatorStat[]
+    statuses?: SyncIndicatorStatus[]
   }>(),
   {
     detail: '',
@@ -24,6 +34,7 @@ withDefaults(
     actionText: '',
     actionDisabled: false,
     stats: () => [],
+    statuses: () => [],
   },
 )
 
@@ -34,28 +45,32 @@ const emit = defineEmits<{
 
 <template>
   <section class="app-sync-indicator" role="status" aria-live="polite">
-    <div :class="['app-sync-indicator__status', `app-sync-indicator__status--${state}`]">
+    <div
+      v-for="statusItem in statuses.length ? statuses : [{ id: 'default', title, detail, state, actionText, actionDisabled }]"
+      :key="statusItem.id"
+      :class="['app-sync-indicator__status', `app-sync-indicator__status--${statusItem.state}`]"
+    >
       <span class="app-sync-indicator__icon" aria-hidden="true">
-        <van-loading v-if="state === 'loading'" size="22" color="var(--color-primary)" />
+        <van-loading v-if="statusItem.state === 'loading'" size="22" color="var(--color-primary)" />
         <AppIcon
           v-else
-          :name="state === 'success' ? 'success' : state === 'warning' || state === 'error' ? 'warning' : 'refresh'"
+          :name="statusItem.state === 'success' ? 'success' : statusItem.state === 'warning' || statusItem.state === 'error' ? 'warning' : 'refresh'"
           :size="24"
         />
       </span>
       <span class="app-sync-indicator__copy">
-        <strong>{{ title }}</strong>
-        <small v-if="detail">{{ detail }}</small>
+        <strong>{{ statusItem.title }}</strong>
+        <small v-if="statusItem.detail">{{ statusItem.detail }}</small>
       </span>
       <button
-        v-if="actionText"
+        v-if="statusItem.actionText"
         type="button"
         class="app-sync-indicator__action"
-        :disabled="actionDisabled"
+        :disabled="statusItem.actionDisabled"
         @click="emit('action')"
       >
-        {{ actionText }}
-        <AppIcon v-if="state === 'warning' || state === 'error'" name="chevron-right" :size="16" />
+        {{ statusItem.actionText }}
+        <AppIcon v-if="statusItem.state === 'warning' || statusItem.state === 'error'" name="chevron-right" :size="16" />
       </button>
     </div>
 

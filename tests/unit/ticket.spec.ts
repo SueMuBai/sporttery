@@ -17,6 +17,8 @@ const mocks = vi.hoisted(() => ({
   },
   syncService: {
     fullSync: vi.fn(),
+    latestSnapshot: vi.fn(),
+    retryFailed: vi.fn(),
   },
 }));
 
@@ -64,6 +66,8 @@ describe("ticket draft and saved-plan state", () => {
     mocks.database.savePlanWithLedgerOrder.mockResolvedValue(undefined);
     mocks.database.saveLedgerOrder.mockResolvedValue(undefined);
     mocks.syncService.fullSync.mockReset();
+    mocks.syncService.retryFailed.mockReset();
+    mocks.syncService.latestSnapshot.mockResolvedValue(undefined);
   });
 
   it("saves a tag-free plan without creating a purchase ledger", async () => {
@@ -384,6 +388,21 @@ describe("ticket draft and saved-plan state", () => {
     expect(store.matches).toEqual([localMatch]);
     expect(store.error).toBe("网络不可用");
     expect(store.statusMessage).toBe("同步失败，本地数据仍可继续使用");
+  });
+
+  it("restores the persisted last sync timestamp even when there are no matches", async () => {
+    mocks.syncService.latestSnapshot.mockResolvedValueOnce({
+      matches: { added: 0, updated: 0, oddsChanged: 0, unchanged: 0, failed: 0, affectedPlans: 0, durationMs: 1, errors: [] },
+      results: { added: 0, updated: 0, oddsChanged: 0, unchanged: 0, failed: 0, affectedPlans: 0, durationMs: 1, errors: [] },
+      completedAt: "2026-07-21T01:41:23.000Z",
+      mode: "full",
+    });
+    const store = useTicketStore();
+
+    await store.initialize();
+
+    expect(store.matches).toEqual([]);
+    expect(store.lastSyncAt).toBe("2026-07-21T01:41:23.000Z");
   });
 
   it("reloads local matches when the cached ticket page becomes active again", async () => {

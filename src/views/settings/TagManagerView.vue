@@ -29,6 +29,7 @@ const editError = ref("");
 const addInput = ref<HTMLInputElement>();
 const addSection = ref<HTMLElement>();
 const addExpanded = ref(true);
+const fullEditMode = ref(false);
 const dragging = ref<string>();
 const reordering = ref(false);
 const deleteTarget = ref<PlanTag>();
@@ -98,6 +99,15 @@ async function focusAdd(): Promise<void> {
   await nextTick();
   addSection.value?.scrollIntoView({ behavior: "smooth", block: "center" });
   addInput.value?.focus();
+}
+
+function handleHeaderAction(): void {
+  if (tagLimitReached.value) {
+    fullEditMode.value = !fullEditMode.value;
+    if (!fullEditMode.value) cancelEdit();
+    return;
+  }
+  void focusAdd();
 }
 
 function beginReorder(event: PointerEvent, name: string): void {
@@ -198,6 +208,7 @@ async function confirmRemove(): Promise<void> {
   try {
     await store.deleteTag(target.name);
     deleteSheetVisible.value = false;
+    fullEditMode.value = false;
     if (editing.value?.name === target.name) cancelEdit();
     showTagToast("标签已删除");
   } catch (reason) {
@@ -215,22 +226,59 @@ async function confirmRemove(): Promise<void> {
       <SubpageHeader title="标签管理">
         <template #action>
           <button
+            v-if="!editing"
             type="button"
             class="header-add"
-            :disabled="tagLimitReached"
-            @click="focusAdd"
+            @click="handleHeaderAction"
           >
-            {{ tagLimitReached ? "已满" : "新增" }}
+            {{ tagLimitReached ? (fullEditMode ? "完成" : "编辑") : "新增" }}
           </button>
         </template>
       </SubpageHeader>
     </template>
-    <p class="tag-tip">
+    <p v-if="!editing" class="tag-tip">
       最多{{ MAX_PLAN_TAGS }}个标签 · 已使用{{ store.tags.length }}/{{
         MAX_PLAN_TAGS
       }}
     </p>
-    <template v-if="tagLimitReached">
+    <AppCard v-if="editing" class="tag-editor-card">
+      <div class="tag-edit-main">
+        <label
+          :class="[
+            'tag-edit-input',
+            { 'tag-edit-input--error': editError || editDuplicateError },
+          ]"
+        >
+          <input
+            v-model="name"
+            :maxlength="MAX_PLAN_TAG_NAME_LENGTH"
+            aria-label="标签名称"
+            @input="editError = ''"
+            @keydown.enter.prevent="saveEdit"
+            @keydown.esc.prevent="cancelEdit"
+          />
+          <span>{{ name.length }}/{{ MAX_PLAN_TAG_NAME_LENGTH }}</span>
+        </label>
+        <button type="button" class="tag-edit-cancel" @click="cancelEdit">
+          取消
+        </button>
+        <AppButton
+          :loading="store.saving"
+          :disabled="!name.trim() || Boolean(editDuplicateError)"
+          @click="saveEdit"
+        >
+          保存
+        </AppButton>
+      </div>
+      <p v-if="editError || editDuplicateError" class="tag-error" role="alert">
+        <AppIcon name="warning" :size="17" />
+        <span>{{ editError || editDuplicateError }}</span>
+      </p>
+    </AppCard>
+    <p v-if="editing" class="tag-editor-help">
+      1-{{ MAX_PLAN_TAG_NAME_LENGTH }}个字符，不支持重复名称
+    </p>
+    <template v-if="tagLimitReached && !fullEditMode">
       <AppCard class="tag-limit-overview">
         <div class="tag-limit-grid">
           <button
@@ -269,7 +317,7 @@ async function confirmRemove(): Promise<void> {
             <AppIcon name="chevron-right" :size="17" />
           </button>
         </AppCard>
-        <AppCard v-if="editing" class="tag-limit-editor">
+        <AppCard v-if="false" class="tag-limit-editor">
           <div class="tag-edit-main">
             <label
               :class="[
@@ -284,7 +332,7 @@ async function confirmRemove(): Promise<void> {
                 @input="editError = ''"
                 @keydown.enter.prevent="saveEdit"
                 @keydown.esc.prevent="cancelEdit"
-              >
+              />
               <span>{{ name.length }}/{{ MAX_PLAN_TAG_NAME_LENGTH }}</span>
             </label>
             <button type="button" class="tag-edit-cancel" @click="cancelEdit">
@@ -314,7 +362,11 @@ async function confirmRemove(): Promise<void> {
               :style="{ color, backgroundColor: `${color}18` }"
             >{{ name.trim() || editing.name }}</span>
           </div>
-          <p v-if="editError || editDuplicateError" class="tag-error" role="alert">
+          <p
+            v-if="editError || editDuplicateError"
+            class="tag-error"
+            role="alert"
+          >
             <AppIcon name="warning" :size="17" />
             <span>{{ editError || editDuplicateError }}</span>
           </p>
@@ -356,9 +408,9 @@ async function confirmRemove(): Promise<void> {
           type="button"
           class="tag-action"
           :aria-label="`收起标签编辑 ${tag.name}`"
-          @click="cancelEdit"
+          @click="openEditor(tag)"
         >
-          <AppIcon name="chevron-up" :size="18" />
+          <AppIcon name="edit" :size="18" />
         </button>
         <button
           v-else
@@ -378,7 +430,7 @@ async function confirmRemove(): Promise<void> {
         >
           <AppIcon name="delete" :size="18" />
         </button>
-        <div v-if="editing?.name === tag.name" class="tag-inline-editor">
+        <div v-if="false" class="tag-inline-editor">
           <div class="tag-edit-main">
             <label
               :class="[
@@ -608,6 +660,18 @@ async function confirmRemove(): Promise<void> {
 
 .tag-tip :deep(.app-icon) {
   color: var(--color-primary);
+}
+
+.tag-editor-card {
+  display: grid;
+  gap: 10px;
+}
+
+.tag-editor-help {
+  margin: -4px 10px 2px;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  line-height: 16px;
 }
 
 .tag-add-section {
@@ -910,6 +974,7 @@ async function confirmRemove(): Promise<void> {
 
 .tag-row--editing {
   align-items: center;
+  background: rgb(255 125 125 / 8%);
 }
 
 .tag-grip {

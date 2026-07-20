@@ -461,7 +461,7 @@ async function applyLoad(): Promise<void> {
       <template v-else>
         <section
           v-if="store.error"
-          class="plan-state plan-state--error plan-state--error-cached"
+          class="plan-state plan-state--error"
           role="alert"
         >
           <img
@@ -482,7 +482,9 @@ async function applyLoad(): Promise<void> {
         <div v-if="store.error" class="offline-notice" role="status">
           <AppIcon name="warning" :size="18" />
           <span>当前为离线模式，已显示本地缓存数据，部分信息可能过期</span>
-          <button type="button" @click="store.load">重试</button>
+          <button type="button" @click="router.push('/settings/data')">
+            查看详情<AppIcon name="chevron-right" :size="14" />
+          </button>
         </div>
         <div class="plan-list">
           <PlanCard
@@ -901,39 +903,6 @@ async function applyLoad(): Promise<void> {
   min-height: 228px;
 }
 
-.plan-state--error-cached {
-  grid-template-columns: 88px minmax(0, 1fr);
-  align-content: center;
-  justify-items: start;
-  column-gap: 14px;
-  padding: 20px 18px;
-  text-align: left;
-}
-
-.plan-state--error-cached .plan-state__illustration {
-  grid-row: 1 / span 4;
-  align-self: center;
-  width: 80px;
-  height: 60px;
-}
-
-.plan-state--error-cached strong {
-  align-self: end;
-}
-
-.plan-state--error-cached p {
-  margin: 0;
-}
-
-.plan-state--error-cached code {
-  margin: 0;
-}
-
-.plan-state--error-cached .plan-state__actions {
-  width: 100%;
-  margin-top: 4px;
-}
-
 .plan-state strong {
   color: var(--color-text);
   font-size: 18px;
@@ -1018,6 +987,9 @@ async function applyLoad(): Promise<void> {
 }
 
 .offline-notice button {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
   padding: 6px;
   border: 0;
   color: var(--color-primary);

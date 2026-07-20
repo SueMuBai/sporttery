@@ -44,16 +44,54 @@ async function saveAiTag(adapter: IndexedDbAdapter): Promise<void> {
 }
 
 describe("IndexedDbAdapter", () => {
+  it("fills new boolean defaults when reading settings saved by an older web build", async () => {
+    const name = `caiguo-settings-legacy-${crypto.randomUUID()}`;
+    const adapter = new IndexedDbAdapter(name);
+    await adapter.initialize();
+    const internals = adapter as unknown as {
+      db: {
+        settings: {
+          put: (value: unknown) => Promise<unknown>;
+        };
+      };
+    };
+    await internals.db.settings.put({
+      key: "app",
+      value: {
+        historyLimits: 12,
+        workers: 5,
+        timeoutSeconds: 20,
+        retries: 1,
+        defaultMultiplier: 3,
+      },
+      updatedAt: timestamp,
+    });
+
+    await expect(adapter.getSettings()).resolves.toEqual({
+      historyLimits: 12,
+      workers: 5,
+      timeoutSeconds: 20,
+      retries: 1,
+      defaultMultiplier: 3,
+      autoSyncMatches: true,
+      expandMatchDetails: false,
+    });
+    await adapter.deleteDatabaseForTests();
+  });
+
   it("clears all local records atomically and restores default settings", async () => {
     const name = `caiguo-clear-${crypto.randomUUID()}`;
     const adapter = new IndexedDbAdapter(name);
     await adapter.initialize();
     await adapter.saveSettings({
+      ...DEFAULT_SETTINGS,
       historyLimits: 20,
       workers: 6,
       timeoutSeconds: 30,
       retries: 3,
       defaultMultiplier: 2,
+      autoSyncMatches: false,
+      expandMatchDetails: true,
     });
     await saveAiTag(adapter);
     const plan = samplePlan();
@@ -157,14 +195,18 @@ describe("IndexedDbAdapter", () => {
     await adapter.initialize();
     await adapter.initialize();
     await adapter.saveSettings({
+      ...DEFAULT_SETTINGS,
       historyLimits: 20,
       workers: 6,
       timeoutSeconds: 30,
       retries: 3,
       defaultMultiplier: 2,
+      autoSyncMatches: false,
+      expandMatchDetails: true,
     });
     await expect(
       adapter.saveSettings({
+        ...DEFAULT_SETTINGS,
         historyLimits: 10,
         workers: 0,
         timeoutSeconds: 15,
@@ -232,7 +274,11 @@ describe("IndexedDbAdapter", () => {
 
     expect(await adapter.getPlan(plan.id)).toEqual(plan);
     expect(await adapter.listLatestResults()).toMatchObject([
-      { ...result, fullTimeScore: "3:0", fetchedAt: "2026-07-18T08:00:00.000Z" },
+      {
+        ...result,
+        fullTimeScore: "3:0",
+        fetchedAt: "2026-07-18T08:00:00.000Z",
+      },
     ]);
     expect(await adapter.getCounts()).toEqual({
       settings: 1,
@@ -254,6 +300,8 @@ describe("IndexedDbAdapter", () => {
       timeoutSeconds: 30,
       retries: 3,
       defaultMultiplier: 2,
+      autoSyncMatches: false,
+      expandMatchDetails: true,
     });
     await reopened.deleteDatabaseForTests();
   });
@@ -274,9 +322,9 @@ describe("IndexedDbAdapter", () => {
       }),
     ).rejects.toThrow("rollback");
     expect(await adapter.listTags()).toEqual([]);
-    await expect(
-      adapter.updateLedgerReturn("missing", 1.5),
-    ).rejects.toThrow("整数分");
+    await expect(adapter.updateLedgerReturn("missing", 1.5)).rejects.toThrow(
+      "整数分",
+    );
 
     await adapter.deleteDatabaseForTests();
   });
@@ -323,7 +371,9 @@ describe("IndexedDbAdapter", () => {
   });
 
   it("imports tags and plans atomically without changing ledger records", async () => {
-    const adapter = new IndexedDbAdapter(`caiguo-import-${crypto.randomUUID()}`);
+    const adapter = new IndexedDbAdapter(
+      `caiguo-import-${crypto.randomUUID()}`,
+    );
     await adapter.initialize();
     const original = samplePlan();
     await saveAiTag(adapter);
@@ -383,26 +433,30 @@ describe("IndexedDbAdapter", () => {
         },
       ],
       [imported],
-      [{
-        matchId: 1,
-        matchNum: "周一001",
-        matchDateTime: "2026-07-20 18:00:00",
-        homeTeam: "主队",
-        awayTeam: "客队",
-        payload: {},
-        updatedAt: timestamp,
-      }],
-      [{
-        matchId: 1,
-        matchNum: "周一001",
-        homeTeam: "主队",
-        awayTeam: "客队",
-        halfTimeScore: "0:0",
-        fullTimeScore: "1:0",
-        goalLine: 0,
-        officialResults: { had: "h" },
-        fetchedAt: timestamp,
-      }],
+      [
+        {
+          matchId: 1,
+          matchNum: "周一001",
+          matchDateTime: "2026-07-20 18:00:00",
+          homeTeam: "主队",
+          awayTeam: "客队",
+          payload: {},
+          updatedAt: timestamp,
+        },
+      ],
+      [
+        {
+          matchId: 1,
+          matchNum: "周一001",
+          homeTeam: "主队",
+          awayTeam: "客队",
+          halfTimeScore: "0:0",
+          fullTimeScore: "1:0",
+          goalLine: 0,
+          officialResults: { had: "h" },
+          fetchedAt: timestamp,
+        },
+      ],
     );
     expect(result).toEqual({ tags: 1, plans: 1, matches: 1, results: 1 });
     expect((await adapter.listMatches())[0]?.matchId).toBe(1);
@@ -421,26 +475,30 @@ describe("IndexedDbAdapter", () => {
     const staleDataResult = await adapter.importPlans(
       [],
       [imported],
-      [{
-        matchId: 1,
-        matchNum: "旧场次",
-        matchDateTime: "2026-07-20 18:00:00",
-        homeTeam: "旧主队",
-        awayTeam: "旧客队",
-        payload: {},
-        updatedAt: "2026-07-17T15:00:00+08:00",
-      }],
-      [{
-        matchId: 1,
-        matchNum: "旧场次",
-        homeTeam: "旧主队",
-        awayTeam: "旧客队",
-        halfTimeScore: "0:0",
-        fullTimeScore: "0:1",
-        goalLine: 0,
-        officialResults: { had: "a" },
-        fetchedAt: "2026-07-17T15:00:00+08:00",
-      }],
+      [
+        {
+          matchId: 1,
+          matchNum: "旧场次",
+          matchDateTime: "2026-07-20 18:00:00",
+          homeTeam: "旧主队",
+          awayTeam: "旧客队",
+          payload: {},
+          updatedAt: "2026-07-17T15:00:00+08:00",
+        },
+      ],
+      [
+        {
+          matchId: 1,
+          matchNum: "旧场次",
+          homeTeam: "旧主队",
+          awayTeam: "旧客队",
+          halfTimeScore: "0:0",
+          fullTimeScore: "0:1",
+          goalLine: 0,
+          officialResults: { had: "a" },
+          fetchedAt: "2026-07-17T15:00:00+08:00",
+        },
+      ],
     );
     expect(staleDataResult).toEqual({
       tags: 0,
@@ -455,7 +513,9 @@ describe("IndexedDbAdapter", () => {
   });
 
   it("rejects an atomic overwrite when the expected plan revision is stale", async () => {
-    const adapter = new IndexedDbAdapter(`caiguo-revision-${crypto.randomUUID()}`);
+    const adapter = new IndexedDbAdapter(
+      `caiguo-revision-${crypto.randomUUID()}`,
+    );
     await adapter.initialize();
     const plan = samplePlan();
     await saveAiTag(adapter);
@@ -463,7 +523,12 @@ describe("IndexedDbAdapter", () => {
 
     await expect(
       adapter.savePlan(
-        { ...plan, name: "过期修改", revision: 2, updatedAt: new Date().toISOString() },
+        {
+          ...plan,
+          name: "过期修改",
+          revision: 2,
+          updatedAt: new Date().toISOString(),
+        },
         0,
       ),
     ).rejects.toThrow("其他页面更新");
@@ -473,7 +538,9 @@ describe("IndexedDbAdapter", () => {
   });
 
   it("rejects invalid market outcomes at the database boundary", async () => {
-    const adapter = new IndexedDbAdapter(`caiguo-outcome-${crypto.randomUUID()}`);
+    const adapter = new IndexedDbAdapter(
+      `caiguo-outcome-${crypto.randomUUID()}`,
+    );
     await adapter.initialize();
     const plan = samplePlan();
     await saveAiTag(adapter);
@@ -490,7 +557,9 @@ describe("IndexedDbAdapter", () => {
   });
 
   it("enforces the global tag limit and case-insensitive uniqueness", async () => {
-    const adapter = new IndexedDbAdapter(`caiguo-tag-limit-${crypto.randomUUID()}`);
+    const adapter = new IndexedDbAdapter(
+      `caiguo-tag-limit-${crypto.randomUUID()}`,
+    );
     await adapter.initialize();
     for (let index = 0; index < 8; index += 1) {
       await adapter.saveTag({
@@ -581,13 +650,17 @@ describe("IndexedDbAdapter", () => {
       returnCents: 250,
       returnManual: false,
     });
-    expect(await adapter.listLedgerAdjustments("ledger-concurrent")).toEqual([]);
+    expect(await adapter.listLedgerAdjustments("ledger-concurrent")).toEqual(
+      [],
+    );
 
     await adapter.deleteDatabaseForTests();
   });
 
   it("rolls back a newly saved plan when its purchase record cannot be written", async () => {
-    const adapter = new IndexedDbAdapter(`caiguo-atomic-${crypto.randomUUID()}`);
+    const adapter = new IndexedDbAdapter(
+      `caiguo-atomic-${crypto.randomUUID()}`,
+    );
     await adapter.initialize();
     const plan = { ...samplePlan(), id: "atomic-new-plan" };
     await saveAiTag(adapter);
@@ -641,10 +714,18 @@ describe("IndexedDbAdapter", () => {
     const current = (await adapter.getPlan(plan.id))!;
     expect(current.tags).toEqual([]);
     expect((await adapter.listLedger())[0]?.planSnapshot.tags).toEqual(["AI"]);
-    expect(await adapter.getCounts()).toMatchObject({ plans: 1, ledgerOrders: 1 });
+    expect(await adapter.getCounts()).toMatchObject({
+      plans: 1,
+      ledgerOrders: 1,
+    });
     await expect(
       adapter.savePlan(
-        { ...current, revision: 2, tags: ["AI"], updatedAt: new Date().toISOString() },
+        {
+          ...current,
+          revision: 2,
+          tags: ["AI"],
+          updatedAt: new Date().toISOString(),
+        },
         1,
       ),
     ).rejects.toThrow("已删除的标签");
@@ -654,7 +735,9 @@ describe("IndexedDbAdapter", () => {
   });
 
   it("renames a global tag and all live associations without changing frozen snapshots", async () => {
-    const adapter = new IndexedDbAdapter(`caiguo-tag-rename-${crypto.randomUUID()}`);
+    const adapter = new IndexedDbAdapter(
+      `caiguo-tag-rename-${crypto.randomUUID()}`,
+    );
     await adapter.initialize();
     await saveAiTag(adapter);
     const plan = samplePlan();
