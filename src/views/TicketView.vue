@@ -58,7 +58,7 @@ function poolHasOdds(pool: Record<string, unknown>): boolean {
   )
 }
 
-const selectableMatchCount = computed(() => store.matches.filter((match) => {
+const selectableMatchCount = computed(() => store.upcomingMatches.filter((match) => {
   const odds = match.payload.odds
   if (store.activeMarket === 'had-hhad') return poolHasOdds(odds.had) || poolHasOdds(odds.hhad)
   if (store.activeMarket === 'mixed') {
@@ -104,7 +104,7 @@ const syncDetail = computed(() => {
   if (syncState.value === 'loading') {
     return `已完成 ${store.syncProgress.completed}/${store.syncProgress.total || store.matches.length}`
   }
-  if (syncState.value === 'success') return `${store.matches.length}场比赛已更新`
+  if (syncState.value === 'success') return `${store.upcomingMatches.length}场可选比赛`
   if (syncState.value === 'warning') return `${store.syncProgress.failed}场比赛未更新`
   if (syncState.value === 'error') return store.statusMessage || store.error
   return lastSyncLabel.value
@@ -154,7 +154,7 @@ const syncStatuses = computed<SyncIndicatorStatus[]>(() => {
     return [{
       id: 'completed',
       title: '同步完成',
-      detail: `${store.matches.length}场比赛已更新`,
+      detail: `${store.upcomingMatches.length}场可选比赛`,
       state: 'success',
     }]
   }
@@ -195,7 +195,7 @@ const syncStatuses = computed<SyncIndicatorStatus[]>(() => {
 })
 
 const syncStats = computed(() => [
-  { label: '赛事', value: store.matches.length },
+  { label: '赛事', value: store.upcomingMatches.length },
   { label: '可选场次', value: selectableMatchCount.value },
   { label: '已进场次', value: store.selectedMatchCount },
   { label: '总赔率', value: totalOdds.value, accent: true },
@@ -415,7 +415,9 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
       <section v-else-if="!visibleMatches.length" class="ticket-empty-card" role="status">
         <img class="ticket-empty-card__illustration" :src="emptyMatchesIllustration" alt="" aria-hidden="true">
         <strong>暂无可选比赛</strong>
-        <p>当前筛选条件下没有比赛</p>
+        <p v-if="store.search.trim()">当前搜索条件下没有今日及之后的比赛</p>
+        <p v-else-if="store.matches.length">本地有历史场次，但今日及之后暂无可选票，请刷新获取最新数据</p>
+        <p v-else>本地暂无比赛，点击刷新获取最新数据</p>
         <AppButton size="small" @click="refresh">立即刷新</AppButton>
       </section>
       <div v-else class="match-list">

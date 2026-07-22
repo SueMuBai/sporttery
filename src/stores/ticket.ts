@@ -13,6 +13,7 @@ import {
   normalizePlanName,
 } from '@/features/plans/planName'
 import type { NormalizedMatch } from '@/features/matches/types'
+import { isMatchOnOrAfterToday } from '@/features/matches/visibility'
 import type { SyncSnapshot } from '@/features/sync/SyncService'
 import { getSyncService } from '@/features/sync/getSyncService'
 import { getDatabase } from '@/services/database/createDatabase'
@@ -99,16 +100,33 @@ export const useTicketStore = defineStore('ticket', () => {
   const availablePasses = computed(() =>
     Array.from({ length: Math.min(8, selectedMatchCount.value) }, (_, index) => index + 1),
   )
+  /** Ticket list only shows local today and future calendar days; past fixtures stay in DB for plans/settlement. */
+  const upcomingMatches = computed(() =>
+    matches.value.filter((match) => isMatchOnOrAfterToday(match.matchDateTime)),
+  )
   const filteredMatches = computed(() => {
     const keyword = search.value.trim().toLowerCase()
-    if (!keyword) return matches.value
-    return matches.value.filter((match) =>
+    if (!keyword) return upcomingMatches.value
+    return upcomingMatches.value.filter((match) =>
       [match.matchNum, match.homeTeam, match.awayTeam, match.payload.league]
         .join(' ')
         .toLowerCase()
         .includes(keyword),
     )
   })
+
+  function localLoadStatusMessage(): string {
+    if (!matches.value.length) {
+      return '本地暂无比赛，点击右上角刷新获取最新数据'
+    }
+    if (!upcomingMatches.value.length) {
+      return `本地共 ${matches.value.length} 场，今日及之后暂无可选票，请刷新获取最新数据`
+    }
+    if (upcomingMatches.value.length === matches.value.length) {
+      return `已从本地读取 ${upcomingMatches.value.length} 场比赛`
+    }
+    return `已从本地读取 ${upcomingMatches.value.length} 场可选票（另有 ${matches.value.length - upcomingMatches.value.length} 场历史已隐藏）`
+  }
 
   async function initialize(): Promise<void> {
     if (initialized.value) return
@@ -120,9 +138,7 @@ export const useTicketStore = defineStore('ticket', () => {
       restoreDraft()
       await restoreEditingBaseline()
       initialized.value = true
-      statusMessage.value = matches.value.length
-        ? `已从本地读取 ${matches.value.length} 场比赛`
-        : '本地暂无比赛，点击右上角刷新获取最新数据'
+      statusMessage.value = localLoadStatusMessage()
     } catch (reason) {
       error.value = reason instanceof Error ? reason.message : String(reason)
     } finally {
@@ -148,9 +164,7 @@ export const useTicketStore = defineStore('ticket', () => {
     }
     try {
       await Promise.all([reloadLocalData(), restoreLastSyncAt()])
-      statusMessage.value = matches.value.length
-        ? `已从本地读取 ${matches.value.length} 场比赛`
-        : '本地暂无比赛，点击右上角刷新获取最新数据'
+      statusMessage.value = localLoadStatusMessage()
     } catch (reason) {
       error.value = reason instanceof Error ? reason.message : String(reason)
     }
@@ -542,6 +556,7 @@ export const useTicketStore = defineStore('ticket', () => {
     syncProgress,
     lastSyncAt,
     matches,
+    upcomingMatches,
     activeMarket,
     search,
     expandedHistory,

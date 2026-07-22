@@ -7,6 +7,7 @@ import AppButton from "@/components/base/AppButton.vue";
 import AppCard from "@/components/base/AppCard.vue";
 import AppIcon from "@/components/base/AppIcon.vue";
 import AppPage from "@/components/base/AppPage.vue";
+import AppRowChevron from "@/components/base/AppRowChevron.vue";
 import AppState from "@/components/base/AppState.vue";
 import SubpageHeader from "@/components/base/SubpageHeader.vue";
 import {
@@ -314,7 +315,7 @@ async function confirmRemove(): Promise<void> {
             <span :style="{ backgroundColor: tag.color }" />
             <strong>{{ tag.name }}</strong>
             <small>{{ store.tagUsage[tag.name] || 0 }}个方案</small>
-            <AppIcon name="chevron-right" :size="17" />
+            <AppRowChevron />
           </button>
         </AppCard>
         <AppCard v-if="false" class="tag-limit-editor">
@@ -911,7 +912,7 @@ async function confirmRemove(): Promise<void> {
 
 .tag-usage-list button {
   display: grid;
-  grid-template-columns: 14px minmax(0, 1fr) auto 18px;
+  grid-template-columns: 14px minmax(0, 1fr) auto 20px;
   align-items: center;
   min-height: 46px;
   gap: 8px;

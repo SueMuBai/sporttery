@@ -11,6 +11,7 @@ import AppButton from "@/components/base/AppButton.vue";
 import AppCard from "@/components/base/AppCard.vue";
 import AppIcon from "@/components/base/AppIcon.vue";
 import AppPage from "@/components/base/AppPage.vue";
+import AppRowChevron from "@/components/base/AppRowChevron.vue";
 import SubpageHeader from "@/components/base/SubpageHeader.vue";
 import { confirmAction } from "@/components/base/confirmAction";
 import { getDatabase } from "@/services/database/createDatabase";
@@ -314,7 +315,7 @@ async function clearLocalData(): Promise<void> {
           </span>
           <span class="data-row__copy"><strong>比赛与方案</strong></span>
           <span class="data-row__value">{{ localDataSizes.matchesAndPlans }}</span>
-          <AppIcon name="chevron-right" :size="18" />
+          <AppRowChevron />
         </button>
         <button
           type="button"
@@ -327,7 +328,7 @@ async function clearLocalData(): Promise<void> {
           </span>
           <span class="data-row__copy"><strong>账单与标签</strong></span>
           <span class="data-row__value">{{ localDataSizes.ledgerAndTags }}</span>
-          <AppIcon name="chevron-right" :size="18" />
+          <AppRowChevron />
         </button>
         <button
           type="button"
@@ -342,7 +343,7 @@ async function clearLocalData(): Promise<void> {
           <span class="data-row__value">{{
             formatBackupTime(lastBackupAt)
           }}</span>
-          <AppIcon name="chevron-right" :size="18" />
+          <AppRowChevron />
         </button>
       </AppCard>
     </section>
@@ -363,7 +364,7 @@ async function clearLocalData(): Promise<void> {
             <small>比赛、方案与账单摘要</small>
           </span>
           <van-loading v-if="exporting === 'markdown'" size="18" />
-          <AppIcon v-else name="chevron-right" :size="18" />
+          <AppRowChevron v-else />
         </button>
         <button
           type="button"
@@ -379,7 +380,7 @@ async function clearLocalData(): Promise<void> {
             <small>完整结构化数据</small>
           </span>
           <van-loading v-if="exporting === 'json'" size="18" />
-          <AppIcon v-else name="chevron-right" :size="18" />
+          <AppRowChevron v-else />
         </button>
       </AppCard>
     </section>
@@ -418,7 +419,7 @@ async function clearLocalData(): Promise<void> {
             <strong>清空本机数据</strong>
             <small>此操作无法撤销，请谨慎操作</small>
           </span>
-          <AppIcon name="chevron-right" :size="18" />
+          <AppRowChevron />
         </button>
       </AppCard>
     </section>
@@ -649,7 +650,7 @@ async function clearLocalData(): Promise<void> {
 }
 
 .data-row--summary {
-  grid-template-columns: 36px minmax(0, 1fr) auto 18px;
+  grid-template-columns: 36px minmax(0, 1fr) auto 20px;
   min-height: 58px;
 }
 
@@ -842,7 +843,7 @@ async function clearLocalData(): Promise<void> {
 
 .danger-card > button {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 18px;
+  grid-template-columns: 40px minmax(0, 1fr) 20px;
   align-items: center;
   width: 100%;
   min-height: 70px;

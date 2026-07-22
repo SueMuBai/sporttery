@@ -15,6 +15,7 @@ import AppBottomSheet from "@/components/base/AppBottomSheet.vue";
 import AppChip from "@/components/base/AppChip.vue";
 import AppIcon from "@/components/base/AppIcon.vue";
 import AppIconButton from "@/components/base/AppIconButton.vue";
+import AppRowChevron from "@/components/base/AppRowChevron.vue";
 import SubpageHeader from "@/components/base/SubpageHeader.vue";
 import PlanCard from "@/components/plans/PlanCard.vue";
 import {
@@ -492,7 +493,7 @@ async function applyLoad(): Promise<void> {
           <AppIcon name="warning" :size="18" />
           <span>当前为离线模式，已显示本地缓存数据，部分信息可能过期</span>
           <button type="button" @click="router.push('/settings/data')">
-            查看详情<AppIcon name="chevron-right" :size="14" />
+            查看详情<AppRowChevron :size="14" />
           </button>
         </div>
         <div class="plan-list">
@@ -822,10 +823,37 @@ async function applyLoad(): Promise<void> {
 }
 
 .plan-search {
+  display: flex;
+  align-items: center;
   min-width: 0;
   min-height: 40px;
   padding: 0 10px;
   background: transparent;
+}
+
+.plan-search :deep(.van-field__body) {
+  min-height: 40px;
+  align-items: center;
+}
+
+.plan-search :deep(.van-field__left-icon) {
+  display: grid;
+  align-self: stretch;
+  min-width: 24px;
+  min-height: 40px;
+  margin-right: 8px;
+  place-items: center;
+  line-height: 0;
+}
+
+.plan-search :deep(.van-field__control) {
+  height: 40px;
+  line-height: 40px;
+}
+
+.plan-search :deep(.app-icon) {
+  display: block;
+  color: var(--color-text-tertiary);
 }
 
 .toolbar-action {

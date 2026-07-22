@@ -7,6 +7,7 @@ import AppBottomSheet from "@/components/base/AppBottomSheet.vue";
 import AppCard from "@/components/base/AppCard.vue";
 import AppIcon, { type AppIconName } from "@/components/base/AppIcon.vue";
 import AppPage from "@/components/base/AppPage.vue";
+import AppRowChevron from "@/components/base/AppRowChevron.vue";
 import SubpageHeader from "@/components/base/SubpageHeader.vue";
 import { APP_VERSION } from "@/app/version";
 
@@ -106,7 +107,7 @@ function activateMenuItem(item: (typeof menuItems)[number]): void {
         </span>
         <strong>{{ item.label }}</strong>
         <small v-if="item.value">{{ item.value }}</small>
-        <AppIcon name="chevron-right" :size="17" />
+        <AppRowChevron />
       </button>
     </AppCard>
 
@@ -188,7 +189,7 @@ function activateMenuItem(item: (typeof menuItems)[number]): void {
 
 .about-menu button {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) auto 18px;
+  grid-template-columns: 40px minmax(0, 1fr) auto 20px;
   align-items: center;
   min-height: 66px;
   gap: 10px;

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppAssetIcon from '@/components/base/AppAssetIcon.vue'
 import AppIcon from '@/components/base/AppIcon.vue'
+import AppRowChevron from '@/components/base/AppRowChevron.vue'
 
 import refreshIcon from '@/assets/ui/ticket/ic_refresh.svg?url'
 import statusSuccessIcon from '@/assets/ui/ticket/ic_status_success.svg?url'
@@ -84,7 +85,7 @@ const emit = defineEmits<{
         @click="emit('action')"
       >
         {{ statusItem.actionText }}
-        <AppIcon v-if="statusItem.state === 'warning' || statusItem.state === 'error'" name="chevron-right" :size="16" />
+        <AppRowChevron v-if="statusItem.state === 'warning' || statusItem.state === 'error'" :size="16" />
       </button>
     </div>
 

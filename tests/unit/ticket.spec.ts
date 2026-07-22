@@ -372,7 +372,7 @@ describe("ticket draft and saved-plan state", () => {
     const localMatch = {
       matchId: 9,
       matchNum: "周日009",
-      matchDateTime: "2026-07-19 20:00:00",
+      matchDateTime: "2099-07-19 20:00:00",
       homeTeam: "本地主队",
       awayTeam: "本地客队",
       payload: { league: "测试联赛", odds: {}, history: [] },
@@ -386,8 +386,39 @@ describe("ticket draft and saved-plan state", () => {
     await store.refresh();
 
     expect(store.matches).toEqual([localMatch]);
+    expect(store.upcomingMatches).toEqual([localMatch]);
     expect(store.error).toBe("网络不可用");
     expect(store.statusMessage).toBe("同步失败，本地数据仍可继续使用");
+  });
+
+  it("hides past-calendar fixtures from the ticket list while keeping them in local storage", async () => {
+    const past = {
+      matchId: 1,
+      matchNum: "周一001",
+      matchDateTime: "2020-01-01 18:00:00",
+      homeTeam: "旧主队",
+      awayTeam: "旧客队",
+      payload: { league: "测试", odds: {}, history: [] },
+      updatedAt: "2020-01-01T10:00:00.000Z",
+    };
+    const future = {
+      matchId: 2,
+      matchNum: "周日002",
+      matchDateTime: "2099-12-31 20:00:00",
+      homeTeam: "新主队",
+      awayTeam: "新客队",
+      payload: { league: "测试", odds: {}, history: [] },
+      updatedAt: "2026-07-22T10:00:00.000Z",
+    };
+    mocks.database.listMatches.mockResolvedValue([past, future]);
+    const store = useTicketStore();
+    await store.initialize();
+
+    expect(store.matches).toHaveLength(2);
+    expect(store.upcomingMatches.map((match) => match.matchId)).toEqual([2]);
+    expect(store.filteredMatches.map((match) => match.matchId)).toEqual([2]);
+    expect(store.statusMessage).toContain("1 场可选票");
+    expect(store.statusMessage).toContain("1 场历史已隐藏");
   });
 
   it("restores the persisted last sync timestamp even when there are no matches", async () => {
@@ -409,7 +440,7 @@ describe("ticket draft and saved-plan state", () => {
     const first = {
       matchId: 1,
       matchNum: "周日001",
-      matchDateTime: "2026-07-19 18:00:00",
+      matchDateTime: "2099-07-19 18:00:00",
       homeTeam: "主队一",
       awayTeam: "客队一",
       payload: { league: "测试", odds: {}, history: [] },

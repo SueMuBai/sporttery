@@ -12,6 +12,7 @@ import AppButton from "@/components/base/AppButton.vue";
 import AppCard from "@/components/base/AppCard.vue";
 import AppIcon from "@/components/base/AppIcon.vue";
 import AppPage from "@/components/base/AppPage.vue";
+import AppRowChevron from "@/components/base/AppRowChevron.vue";
 import SubpageHeader from "@/components/base/SubpageHeader.vue";
 import type { SyncSnapshot } from "@/features/sync/SyncService";
 import { getDatabase } from "@/services/database/createDatabase";
@@ -374,7 +375,7 @@ function showTask(task: RecentTask): void {
             error.matchId ? "比赛 " + error.matchId : "同步任务"
           }}</strong>
           <small>{{ error.message }}</small>
-          <AppIcon name="chevron-right" :size="17" />
+          <AppRowChevron />
         </div>
         <div class="failure-actions">
           <AppButton
@@ -500,7 +501,7 @@ function showTask(task: RecentTask): void {
           <span :class="['task-pill', `task-pill--${task.status}`]">
             {{ task.statusText }}
           </span>
-          <AppIcon name="chevron-right" :size="17" />
+          <AppRowChevron />
         </button>
       </AppCard>
     </section>
@@ -709,7 +710,7 @@ function showTask(task: RecentTask): void {
 
 .failure-row {
   display: grid;
-  grid-template-columns: 8px 92px minmax(0, 1fr) 18px;
+  grid-template-columns: 8px 92px minmax(0, 1fr) 20px;
   align-items: center;
   min-height: 48px;
   gap: 8px;
@@ -872,7 +873,7 @@ function showTask(task: RecentTask): void {
 }
 
 .recent-task-row {
-  grid-template-columns: 42px minmax(0, 1fr) auto 18px;
+  grid-template-columns: 42px minmax(0, 1fr) auto 20px;
   width: 100%;
   border: 0;
   color: var(--color-text);
@@ -913,11 +914,11 @@ function showTask(task: RecentTask): void {
 
 @media (max-width: 359px) {
   .failure-row {
-    grid-template-columns: 8px 78px minmax(0, 1fr) 16px;
+    grid-template-columns: 8px 78px minmax(0, 1fr) 20px;
   }
 
   .recent-task-row {
-    grid-template-columns: 38px minmax(0, 1fr) auto 16px;
+    grid-template-columns: 38px minmax(0, 1fr) auto 20px;
     gap: 8px;
     padding-inline: 10px;
   }

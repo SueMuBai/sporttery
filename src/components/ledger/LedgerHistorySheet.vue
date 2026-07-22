@@ -5,6 +5,7 @@ import billIcon from "@/assets/icons/navigation/ic_nav_bill_selected.svg?url";
 import headerBackground from "@/assets/ui/common/bg_header.svg?url";
 import AppBottomSheet from "@/components/base/AppBottomSheet.vue";
 import AppIcon from "@/components/base/AppIcon.vue";
+import AppRowChevron from "@/components/base/AppRowChevron.vue";
 import { hasMeaningfulAdjustmentNote } from "@/features/ledger/adjustments";
 import { useLedgerStore, type EvaluatedLedgerOrder } from "@/stores/ledger";
 import type { LedgerAdjustment } from "@/types/domain";
@@ -91,7 +92,7 @@ function formatDateTime(value: string): string {
             </header>
             <div class="history-entry__amounts">
               <div><span>旧回款</span><b>¥0.00</b></div>
-              <AppIcon name="chevron-right" :size="18" />
+              <AppRowChevron />
               <div>
                 <span>新回款</span><b class="amount-positive">¥{{ centsToYuan(item.automaticReturnCents) }}</b>
               </div>
@@ -128,7 +129,7 @@ function formatDateTime(value: string): string {
               <div>
                 <span>旧回款</span><b>¥{{ centsToYuan(adjustment.previousReturnCents) }}</b>
               </div>
-              <AppIcon name="chevron-right" :size="18" />
+              <AppRowChevron />
               <div>
                 <span>新回款</span>
                 <b
