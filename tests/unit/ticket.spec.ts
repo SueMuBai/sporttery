@@ -415,10 +415,64 @@ describe("ticket draft and saved-plan state", () => {
     await store.initialize();
 
     expect(store.matches).toHaveLength(2);
+    expect(store.todayKey).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(store.upcomingMatches.map((match) => match.matchId)).toEqual([2]);
     expect(store.filteredMatches.map((match) => match.matchId)).toEqual([2]);
-    expect(store.statusMessage).toContain("1 场可选票");
-    expect(store.statusMessage).toContain("1 场历史已隐藏");
+    expect(store.statusMessage).toContain("已显示 1 场");
+    expect(store.statusMessage).toContain("隐藏 1 场历史");
+  });
+
+  it("re-filters the ticket list when the device calendar day advances", async () => {
+    const yesterdayLabel = (() => {
+      const d = new Date();
+      d.setDate(d.getDate() - 1);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    })();
+    const tomorrowLabel = (() => {
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    })();
+    const yesterdayMatch = {
+      matchId: 1,
+      matchNum: "周三001",
+      matchDateTime: `${yesterdayLabel} 20:00:00`,
+      homeTeam: "昨主",
+      awayTeam: "昨客",
+      payload: { league: "测试", odds: {}, history: [] },
+      updatedAt: "2026-07-22T10:00:00.000Z",
+    };
+    const tomorrowMatch = {
+      matchId: 2,
+      matchNum: "周五002",
+      matchDateTime: `${tomorrowLabel} 20:00:00`,
+      homeTeam: "明主",
+      awayTeam: "明客",
+      payload: { league: "测试", odds: {}, history: [] },
+      updatedAt: "2026-07-22T10:00:00.000Z",
+    };
+    mocks.database.listMatches.mockResolvedValue([
+      yesterdayMatch,
+      tomorrowMatch,
+    ]);
+    const store = useTicketStore();
+    await store.initialize();
+
+    expect(store.upcomingMatches.map((m) => m.matchId)).toEqual([2]);
+
+    // Simulate staying open past midnight: force todayKey to a day after tomorrowMatch's date
+    store.todayKey = "2099-01-01";
+    expect(store.upcomingMatches).toEqual([]);
+
+    store.onAppBecameActive();
+    expect(store.todayKey).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(store.upcomingMatches.map((m) => m.matchId)).toEqual([2]);
   });
 
   it("restores the persisted last sync timestamp even when there are no matches", async () => {

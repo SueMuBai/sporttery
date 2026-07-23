@@ -13,7 +13,10 @@ import {
   normalizePlanName,
 } from '@/features/plans/planName'
 import type { NormalizedMatch } from '@/features/matches/types'
-import { isMatchOnOrAfterToday } from '@/features/matches/visibility'
+import {
+  isMatchOnOrAfterDay,
+  localCalendarDate,
+} from '@/features/matches/visibility'
 import type { SyncSnapshot } from '@/features/sync/SyncService'
 import { getSyncService } from '@/features/sync/getSyncService'
 import { getDatabase } from '@/services/database/createDatabase'
@@ -75,6 +78,42 @@ export const useTicketStore = defineStore('ticket', () => {
   const editingPlanRevision = ref(0)
   const editingPlanSourceId = ref<string>()
   const editingPlanBaseline = ref('')
+  /**
+   * Device-local "today" as YYYY-MM-DD. Stored in a ref so Vue recomputes
+   * upcomingMatches when the calendar day rolls over (not a frozen closure date).
+   */
+  const todayKey = ref(localCalendarDate())
+  let dayRollTimer: ReturnType<typeof setTimeout> | undefined
+
+  function refreshTodayKey(now: Date = new Date()): string {
+    const next = localCalendarDate(now)
+    if (todayKey.value !== next) todayKey.value = next
+    return todayKey.value
+  }
+
+  function scheduleDayRoll(): void {
+    if (typeof globalThis.setTimeout !== 'function') return
+    if (dayRollTimer !== undefined) {
+      globalThis.clearTimeout(dayRollTimer)
+      dayRollTimer = undefined
+    }
+    const now = new Date()
+    const nextMidnight = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1,
+      0,
+      0,
+      1,
+      0,
+    )
+    const delay = Math.max(1_000, nextMidnight.getTime() - now.getTime())
+    dayRollTimer = globalThis.setTimeout(() => {
+      refreshTodayKey()
+      statusMessage.value = localLoadStatusMessage()
+      scheduleDayRoll()
+    }, delay)
+  }
 
   const selectedSelections = computed(() => Object.values(selections.value))
   const selectedMatchCount = computed(() => groupSelections(selectedSelections.value).size)
@@ -100,10 +139,15 @@ export const useTicketStore = defineStore('ticket', () => {
   const availablePasses = computed(() =>
     Array.from({ length: Math.min(8, selectedMatchCount.value) }, (_, index) => index + 1),
   )
-  /** Ticket list only shows local today and future calendar days; past fixtures stay in DB for plans/settlement. */
-  const upcomingMatches = computed(() =>
-    matches.value.filter((match) => isMatchOnOrAfterToday(match.matchDateTime)),
-  )
+  /**
+   * Ticket list only shows local today and future calendar days.
+   * Depends on reactive todayKey so midnight / resume re-filters without a hard-coded date.
+   * Past fixtures remain in matches[] for plans and settlement.
+   */
+  const upcomingMatches = computed(() => {
+    const day = todayKey.value
+    return matches.value.filter((match) => isMatchOnOrAfterDay(match.matchDateTime, day))
+  })
   const filteredMatches = computed(() => {
     const keyword = search.value.trim().toLowerCase()
     if (!keyword) return upcomingMatches.value
@@ -120,12 +164,12 @@ export const useTicketStore = defineStore('ticket', () => {
       return '本地暂无比赛，点击右上角刷新获取最新数据'
     }
     if (!upcomingMatches.value.length) {
-      return `本地共 ${matches.value.length} 场，今日及之后暂无可选票，请刷新获取最新数据`
+      return `本地共 ${matches.value.length} 场，${todayKey.value} 及之后暂无可选票，请刷新`
     }
     if (upcomingMatches.value.length === matches.value.length) {
-      return `已从本地读取 ${upcomingMatches.value.length} 场比赛`
+      return `已从本地读取 ${upcomingMatches.value.length} 场比赛（${todayKey.value} 起）`
     }
-    return `已从本地读取 ${upcomingMatches.value.length} 场可选票（另有 ${matches.value.length - upcomingMatches.value.length} 场历史已隐藏）`
+    return `已显示 ${upcomingMatches.value.length} 场（${todayKey.value} 起），隐藏 ${matches.value.length - upcomingMatches.value.length} 场历史`
   }
 
   async function initialize(): Promise<void> {
@@ -133,6 +177,8 @@ export const useTicketStore = defineStore('ticket', () => {
     loading.value = true
     error.value = ''
     try {
+      refreshTodayKey()
+      scheduleDayRoll()
       await database.initialize()
       await Promise.all([reloadLocalData(), restoreLastSyncAt()])
       restoreDraft()
@@ -163,10 +209,22 @@ export const useTicketStore = defineStore('ticket', () => {
       return
     }
     try {
+      refreshTodayKey()
+      scheduleDayRoll()
       await Promise.all([reloadLocalData(), restoreLastSyncAt()])
       statusMessage.value = localLoadStatusMessage()
     } catch (reason) {
       error.value = reason instanceof Error ? reason.message : String(reason)
+    }
+  }
+
+  /** Called when the native app returns to foreground so day filter stays correct. */
+  function onAppBecameActive(): void {
+    const previous = todayKey.value
+    refreshTodayKey()
+    scheduleDayRoll()
+    if (initialized.value && previous !== todayKey.value) {
+      statusMessage.value = localLoadStatusMessage()
     }
   }
 
@@ -177,6 +235,7 @@ export const useTicketStore = defineStore('ticket', () => {
     syncProgress.value = { completed: 0, total: 0, failed: 0 }
     statusMessage.value = '正在同步比赛与历史交锋…'
     try {
+      refreshTodayKey()
       const report = await (
         retryFailures && lastSyncSnapshot.value
           ? syncService.retryFailed(lastSyncSnapshot.value, (progress) => {
@@ -191,12 +250,16 @@ export const useTicketStore = defineStore('ticket', () => {
       lastSyncSnapshot.value = report
       lastSyncAt.value = report.completedAt
       await reloadLocalData()
+      refreshTodayKey()
       syncProgress.value = {
         completed: syncProgress.value.completed || matches.value.length,
         total: syncProgress.value.total || matches.value.length,
         failed: report.matches.failed + report.results.failed,
       }
-      statusMessage.value = `比赛新增 ${report.matches.added}、更新 ${report.matches.updated}；赛果新增 ${report.results.added}、更新 ${report.results.updated}`
+      const hidden = matches.value.length - upcomingMatches.value.length
+      statusMessage.value =
+        `比赛新增 ${report.matches.added}、更新 ${report.matches.updated}；赛果新增 ${report.results.added}、更新 ${report.results.updated}` +
+        (hidden > 0 ? `；已隐藏 ${hidden} 场 ${todayKey.value} 之前的历史场次` : '')
     } catch (reason) {
       error.value = reason instanceof Error ? reason.message : String(reason)
       statusMessage.value = '同步失败，本地数据仍可继续使用'
@@ -556,6 +619,7 @@ export const useTicketStore = defineStore('ticket', () => {
     syncProgress,
     lastSyncAt,
     matches,
+    todayKey,
     upcomingMatches,
     activeMarket,
     search,
@@ -577,6 +641,7 @@ export const useTicketStore = defineStore('ticket', () => {
     filteredMatches,
     activate,
     initialize,
+    onAppBecameActive,
     refresh,
     selectionFor,
     toggleSelection,

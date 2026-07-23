@@ -119,6 +119,12 @@ export async function initializeNativeLifecycle(
         "app-is-backgrounded",
         !isActive,
       );
+      if (isActive) {
+        // Lazy import avoids pulling Pinia store into pure unit tests of lifecycle helpers.
+        void import("@/stores/ticket").then(({ useTicketStore }) => {
+          useTicketStore().onAppBecameActive();
+        });
+      }
     },
   );
 
