@@ -391,7 +391,7 @@ describe("ticket draft and saved-plan state", () => {
     expect(store.statusMessage).toBe("同步失败，本地数据仍可继续使用");
   });
 
-  it("hides past-calendar fixtures from the ticket list while keeping them in local storage", async () => {
+  it("hides fixtures whose kickoff has already passed while keeping them in local storage", async () => {
     const past = {
       matchId: 1,
       matchNum: "周一001",
@@ -415,63 +415,51 @@ describe("ticket draft and saved-plan state", () => {
     await store.initialize();
 
     expect(store.matches).toHaveLength(2);
-    expect(store.todayKey).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(store.nowMs).toBeTypeOf("number");
     expect(store.upcomingMatches.map((match) => match.matchId)).toEqual([2]);
     expect(store.filteredMatches.map((match) => match.matchId)).toEqual([2]);
-    expect(store.statusMessage).toContain("已显示 1 场");
-    expect(store.statusMessage).toContain("隐藏 1 场历史");
+    expect(store.statusMessage).toContain("已显示 1 场未开赛");
+    expect(store.statusMessage).toContain("隐藏 1 场已开赛/历史");
   });
 
-  it("re-filters the ticket list when the device calendar day advances", async () => {
-    const yesterdayLabel = (() => {
-      const d = new Date();
-      d.setDate(d.getDate() - 1);
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      return `${y}-${m}-${day}`;
-    })();
-    const tomorrowLabel = (() => {
-      const d = new Date();
-      d.setDate(d.getDate() + 1);
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      return `${y}-${m}-${day}`;
-    })();
-    const yesterdayMatch = {
+  it("re-filters when the device clock advances past a kickoff", async () => {
+    const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const hourLater = new Date(Date.now() + 60 * 60 * 1000);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const formatLocal = (d: Date) =>
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
+
+    const started = {
       matchId: 1,
       matchNum: "周三001",
-      matchDateTime: `${yesterdayLabel} 20:00:00`,
-      homeTeam: "昨主",
-      awayTeam: "昨客",
+      matchDateTime: formatLocal(hourAgo),
+      homeTeam: "已开赛主",
+      awayTeam: "已开赛客",
       payload: { league: "测试", odds: {}, history: [] },
       updatedAt: "2026-07-22T10:00:00.000Z",
     };
-    const tomorrowMatch = {
+    const upcoming = {
       matchId: 2,
       matchNum: "周五002",
-      matchDateTime: `${tomorrowLabel} 20:00:00`,
-      homeTeam: "明主",
-      awayTeam: "明客",
+      matchDateTime: formatLocal(hourLater),
+      homeTeam: "未开赛主",
+      awayTeam: "未开赛客",
       payload: { league: "测试", odds: {}, history: [] },
       updatedAt: "2026-07-22T10:00:00.000Z",
     };
-    mocks.database.listMatches.mockResolvedValue([
-      yesterdayMatch,
-      tomorrowMatch,
-    ]);
+    mocks.database.listMatches.mockResolvedValue([started, upcoming]);
     const store = useTicketStore();
     await store.initialize();
 
     expect(store.upcomingMatches.map((m) => m.matchId)).toEqual([2]);
 
-    // Simulate staying open past midnight: force todayKey to a day after tomorrowMatch's date
-    store.todayKey = "2099-01-01";
+    // Simulate time jumping past the remaining fixture
+    store.nowMs = hourLater.getTime() + 1_000;
     expect(store.upcomingMatches).toEqual([]);
 
     store.onAppBecameActive();
-    expect(store.todayKey).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    // Real clock is still before hourLater in this test process unless delayed;
+    // after onAppBecameActive nowMs is Date.now() which is still before hourLater.
     expect(store.upcomingMatches.map((m) => m.matchId)).toEqual([2]);
   });
 

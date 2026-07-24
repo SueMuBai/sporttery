@@ -415,9 +415,9 @@ async function purchase(value: { name: string; stakeCents: number; purchasedAt: 
       <section v-else-if="!visibleMatches.length" class="ticket-empty-card" role="status">
         <img class="ticket-empty-card__illustration" :src="emptyMatchesIllustration" alt="" aria-hidden="true">
         <strong>暂无可选比赛</strong>
-        <p v-if="store.search.trim()">当前搜索条件下没有 {{ store.todayKey }} 及之后的比赛</p>
+        <p v-if="store.search.trim()">当前搜索条件下没有未开赛的比赛</p>
         <p v-else-if="store.matches.length">
-          本地有 {{ store.matches.length }} 场历史数据，但 {{ store.todayKey }} 及之后暂无可选票，请刷新
+          本地有 {{ store.matches.length }} 场数据，但当前时间之后暂无可选票，请刷新
         </p>
         <p v-else>本地暂无比赛，点击刷新获取最新数据</p>
         <AppButton size="small" @click="refresh">立即刷新</AppButton>

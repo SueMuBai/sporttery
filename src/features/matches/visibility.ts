@@ -1,4 +1,62 @@
-/** Local calendar date as YYYY-MM-DD (device timezone). */
+/**
+ * Parse official matchDateTime as a local-time kickoff instant (ms since epoch).
+ * Accepts `YYYY-MM-DD HH:mm[:ss]`, `YYYY/M/D H:mm`, and `YYYY-MM-DDTHH:mm:ss`.
+ * Date-only values are treated as local midnight that day.
+ */
+export function parseMatchKickoffMs(matchDateTime: string): number | null {
+  const matched = matchDateTime
+    .trim()
+    .match(
+      /^(\d{4})[/.-](\d{1,2})[/.-](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/,
+    )
+  if (!matched) return null
+
+  const year = Number(matched[1])
+  const monthIndex = Number(matched[2]) - 1
+  const day = Number(matched[3])
+  const hours = Number(matched[4] ?? 0)
+  const minutes = Number(matched[5] ?? 0)
+  const seconds = Number(matched[6] ?? 0)
+
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(monthIndex) ||
+    !Number.isFinite(day) ||
+    monthIndex < 0 ||
+    monthIndex > 11 ||
+    day < 1 ||
+    day > 31
+  ) {
+    return null
+  }
+
+  const kickoff = new Date(year, monthIndex, day, hours, minutes, seconds, 0)
+  const ms = kickoff.getTime()
+  return Number.isFinite(ms) ? ms : null
+}
+
+/**
+ * True when kickoff is strictly after `nowMs` (device clock).
+ * Pass a reactive store clock so the list re-filters when time advances.
+ */
+export function isMatchKickoffAfter(
+  matchDateTime: string,
+  nowMs: number,
+): boolean {
+  const kickoffMs = parseMatchKickoffMs(matchDateTime)
+  if (kickoffMs === null || !Number.isFinite(nowMs)) return false
+  return kickoffMs > nowMs
+}
+
+/** Non-reactive convenience for tests / one-shot checks. */
+export function isMatchKickoffAfterNow(
+  matchDateTime: string,
+  now: Date = new Date(),
+): boolean {
+  return isMatchKickoffAfter(matchDateTime, now.getTime())
+}
+
+/** Local calendar date as YYYY-MM-DD (device timezone). Kept for status labels. */
 export function localCalendarDate(date: Date = new Date()): string {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, "0")
@@ -6,28 +64,16 @@ export function localCalendarDate(date: Date = new Date()): string {
   return `${year}-${month}-${day}`
 }
 
-/**
- * Extract the calendar date prefix from matchDateTime.
- * Official snapshot format is typically `YYYY-MM-DD HH:mm:ss`.
- * Also accepts `YYYY/MM/DD` and leading/trailing whitespace.
- */
+/** @deprecated Prefer parseMatchKickoffMs / isMatchKickoffAfter. */
 export function matchCalendarDate(matchDateTime: string): string | null {
   const matched = matchDateTime
     .trim()
     .match(/^(\d{4})[/.-](\d{1,2})[/.-](\d{1,2})/)
   if (!matched) return null
-  const year = matched[1]
-  const month = matched[2].padStart(2, "0")
-  const day = matched[3].padStart(2, "0")
-  return `${year}-${month}-${day}`
+  return `${matched[1]}-${matched[2].padStart(2, "0")}-${matched[3].padStart(2, "0")}`
 }
 
-/**
- * True when the match is scheduled on the given local calendar day or later.
- * Pass `todayKey` from a reactive source (store clock) so list filters
- * re-evaluate when the device day changes; do not rely on a bare
- * `new Date()` inside a Vue computed alone.
- */
+/** @deprecated Prefer isMatchKickoffAfter. */
 export function isMatchOnOrAfterDay(
   matchDateTime: string,
   todayKey: string,
@@ -37,7 +83,7 @@ export function isMatchOnOrAfterDay(
   return day >= todayKey
 }
 
-/** Convenience for non-reactive callers (tests, one-shot checks). */
+/** @deprecated Prefer isMatchKickoffAfterNow. */
 export function isMatchOnOrAfterToday(
   matchDateTime: string,
   today: Date = new Date(),
